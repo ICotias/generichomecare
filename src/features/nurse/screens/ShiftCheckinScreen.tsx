@@ -30,7 +30,10 @@ export const ShiftCheckinScreen = () => {
   const isLoading = isLocationLoading || isProcessing;
 
   const loadActiveShift = useCallback(async () => {
-    if (!user?.empresaId || !user?.uid) return;
+    if (!user?.empresaId || !user?.uid) {
+      setIsLoadingShift(false);
+      return;
+    }
 
     try {
       const shift = await shiftService.getActiveShift(user.empresaId, user.uid);

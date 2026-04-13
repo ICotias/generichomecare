@@ -21,6 +21,7 @@ import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/the
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import * as adminUserService from '../../../core/services/adminUserService';
 import type { RootStackParamList } from '../../../core/navigation/RootNavigator';
+import { PasswordInput } from '../../../shared/components/PasswordInput';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'CreateNurse'>;
 
@@ -250,14 +251,26 @@ export const CreateNurseScreen = () => {
                 onSubmitEditing: () => passwordRef.current?.focus(),
               })}
 
-              {renderField('password', 'Senha temporária', {
-                placeholder: 'Mínimo 8 caracteres',
-                textContentType: 'newPassword',
-                secureTextEntry: true,
-                ref: passwordRef,
-                returnKeyType: 'done',
-                onSubmitEditing: handleSubmit,
-              })}
+              <View style={styles.field}>
+                <Text style={styles.label}>Senha temporária</Text>
+                <PasswordInput
+                  ref={passwordRef}
+                  value={form.password}
+                  onChangeText={(value) => updateField('password', value)}
+                  placeholder="Mínimo 8 caracteres"
+                  textContentType="newPassword"
+                  returnKeyType="done"
+                  onSubmitEditing={handleSubmit}
+                  onFocus={() => setFocused('password')}
+                  onBlur={() => setFocused(null)}
+                  isFocused={focused === 'password'}
+                  hasError={!!errors.password}
+                  editable={!isSubmitting}
+                />
+                {errors.password ? (
+                  <Text style={styles.errorText}>{errors.password}</Text>
+                ) : null}
+              </View>
 
               {errors.general ? (
                 <Text style={styles.generalError}>{errors.general}</Text>

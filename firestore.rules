@@ -38,7 +38,16 @@ service cloud.firestore {
     // ===== Empresas =====
     match /empresas/{empresaId} {
       allow read: if belongsToCompany(empresaId);
-      allow write: if hasRole('admin') && belongsToCompany(empresaId);
+
+      // Admin cria uma empresa pela primeira vez (setup inicial).
+      // Nesse momento o usuário admin ainda não tem empresaId vinculado,
+      // então não podemos usar belongsToCompany. Em vez disso exigimos
+      // que ele se declare ownerUid no payload.
+      allow create: if hasRole('admin')
+                    && request.resource.data.ownerUid == request.auth.uid;
+
+      // Depois de criada, só admins da própria empresa podem mexer.
+      allow update, delete: if hasRole('admin') && belongsToCompany(empresaId);
 
       // --- Pacientes ---
       match /pacientes/{pacienteId} {

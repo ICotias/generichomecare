@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
+import { PasswordInput } from '../../../shared/components/PasswordInput';
 
 const ERROR_MESSAGES: Record<string, string> = {
   'auth/user-not-found': 'Email ou senha incorretos.',
@@ -99,29 +100,22 @@ export const LoginScreen = () => {
               />
             </View>
 
-            <View>
-              <TextInput
-                ref={passwordRef}
-                style={[
-                  styles.input,
-                  focusedField === 'password' && styles.inputFocused,
-                ]}
-                placeholder="Senha"
-                placeholderTextColor={colors.textMuted}
-                value={password}
-                onChangeText={(text) => {
-                  setPassword(text);
-                  if (error) setError('');
-                }}
-                onFocus={() => setFocusedField('password')}
-                onBlur={() => setFocusedField(null)}
-                secureTextEntry
-                textContentType="password"
-                autoComplete="password"
-                returnKeyType="done"
-                onSubmitEditing={handleLogin}
-              />
-            </View>
+            <PasswordInput
+              ref={passwordRef}
+              placeholder="Senha"
+              value={password}
+              onChangeText={(text) => {
+                setPassword(text);
+                if (error) setError('');
+              }}
+              onFocus={() => setFocusedField('password')}
+              onBlur={() => setFocusedField(null)}
+              isFocused={focusedField === 'password'}
+              textContentType="password"
+              autoComplete="password"
+              returnKeyType="done"
+              onSubmitEditing={handleLogin}
+            />
 
             {/* Inline Error */}
             {error ? (

@@ -1,8 +1,14 @@
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import { UserRole } from '../../../core/types';
+import type { RootStackParamList } from '../../../core/navigation/RootNavigator';
+
+type NavProp = NativeStackNavigationProp<RootStackParamList, 'AdminHome'>;
 
 const ROLE_OPTIONS: { role: UserRole; label: string; styleKey: 'nurse' | 'family' | 'admin' }[] = [
   { role: 'nurse', label: 'Enfermeiro', styleKey: 'nurse' },
@@ -12,6 +18,7 @@ const ROLE_OPTIONS: { role: UserRole; label: string; styleKey: 'nurse' | 'family
 
 export const AdminHomeScreen = () => {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<NavProp>();
   const { user, role, signOut, simulateRole } = useAuthStore();
 
   return (
@@ -44,6 +51,25 @@ export const AdminHomeScreen = () => {
             );
           })}
         </View>
+      </View>
+
+      {/* Ações */}
+      <View style={styles.actionsSection}>
+        <Text style={styles.sectionTitle}>Gestão</Text>
+        <TouchableOpacity
+          style={styles.actionRow}
+          onPress={() => navigation.navigate('CreateNurse')}
+          activeOpacity={0.6}
+        >
+          <View style={styles.actionIconWrap}>
+            <Text style={styles.actionIcon}>+</Text>
+          </View>
+          <View style={styles.actionTextWrap}>
+            <Text style={styles.actionLabel}>Cadastrar enfermeiro</Text>
+            <Text style={styles.actionHint}>Cria conta e perfil no app</Text>
+          </View>
+          <Text style={styles.chevron}>›</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Placeholder */}
@@ -137,6 +163,53 @@ const styles = StyleSheet.create({
   activeTag: {
     fontSize: fontSize.xs,
     color: colors.textMuted,
+  },
+
+  // Actions
+  actionsSection: {
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.xl,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    gap: spacing.md,
+  },
+  actionIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionIcon: {
+    color: colors.white,
+    fontSize: 22,
+    fontWeight: '400',
+    lineHeight: 24,
+  },
+  actionTextWrap: {
+    flex: 1,
+  },
+  actionLabel: {
+    fontSize: fontSize.md,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  actionHint: {
+    fontSize: fontSize.xs,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  chevron: {
+    fontSize: fontSize.xl,
+    color: colors.textMuted,
+    fontWeight: '300',
   },
 
   // Placeholder

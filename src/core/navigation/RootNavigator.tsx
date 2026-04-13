@@ -12,12 +12,16 @@ import { NurseHomeScreen } from '../../features/nurse/screens/NurseHomeScreen';
 import { ShiftCheckinScreen } from '../../features/nurse/screens/ShiftCheckinScreen';
 import { FamilyHomeScreen } from '../../features/family/screens/FamilyHomeScreen';
 import { AdminHomeScreen } from '../../features/admin/screens/AdminHomeScreen';
+import { CreateNurseScreen } from '../../features/admin/screens/CreateNurseScreen';
+import { SetupEmpresaScreen } from '../../features/admin/screens/SetupEmpresaScreen';
 
 export type RootStackParamList = {
   Login: undefined;
   NurseTabs: undefined;
   FamilyHome: undefined;
   AdminHome: undefined;
+  CreateNurse: undefined;
+  SetupEmpresa: undefined;
 };
 
 export type NurseTabParamList = {
@@ -58,7 +62,11 @@ const NurseTabNavigator = () => (
 );
 
 export const RootNavigator = () => {
-  const { isLoading, isAuthenticated, role } = useAuthStore();
+  const { isLoading, isAuthenticated, role, user, originalRole } = useAuthStore();
+  // Admin precisa ter empresaId configurado. Se não tiver (primeiro login),
+  // mostramos o fluxo de setup. Checamos pelo originalRole para que admins
+  // simulando outros perfis ainda caiam neste fluxo quando necessário.
+  const needsEmpresaSetup = originalRole === 'admin' && !user?.empresaId;
 
   if (isLoading) {
     return (
@@ -75,6 +83,8 @@ export const RootNavigator = () => {
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {!isAuthenticated ? (
             <Stack.Screen name="Login" component={LoginScreen} />
+          ) : needsEmpresaSetup ? (
+            <Stack.Screen name="SetupEmpresa" component={SetupEmpresaScreen} />
           ) : (
             <>
               {role === 'nurse' && (
@@ -84,7 +94,14 @@ export const RootNavigator = () => {
                 <Stack.Screen name="FamilyHome" component={FamilyHomeScreen} />
               )}
               {role === 'admin' && (
-                <Stack.Screen name="AdminHome" component={AdminHomeScreen} />
+                <>
+                  <Stack.Screen name="AdminHome" component={AdminHomeScreen} />
+                  <Stack.Screen
+                    name="CreateNurse"
+                    component={CreateNurseScreen}
+                    options={{ presentation: 'modal' }}
+                  />
+                </>
               )}
             </>
           )}

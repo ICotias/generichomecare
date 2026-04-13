@@ -1,0 +1,108 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===== Funções auxiliares =====
+
+    // Verifica se o usuário está autenticado
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Retorna o documento do usuário logado
+    function getUserData() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+
+    // Verifica role do usuário
+    function hasRole(role) {
+      return isAuth() && getUserData().role == role;
+    }
+
+    // Verifica se o usuário pertence à empresa
+    function belongsToCompany(empresaId) {
+      return isAuth() && getUserData().empresaId == empresaId;
+    }
+
+    // ===== Usuarios =====
+    match /usuarios/{uid} {
+      // Cada usuário lê seu próprio perfil
+      allow read: if isAuth() && request.auth.uid == uid;
+      // Admin lê qualquer usuário da empresa
+      allow read: if hasRole('admin') && resource.data.empresaId == getUserData().empresaId;
+      // Só admin cria/atualiza usuários
+      allow write: if hasRole('admin');
+    }
+
+    // ===== Empresas =====
+    match /empresas/{empresaId} {
+      allow read: if belongsToCompany(empresaId);
+      allow write: if hasRole('admin') && belongsToCompany(empresaId);
+
+      // --- Pacientes ---
+      match /pacientes/{pacienteId} {
+        // Enfermeiro e admin da empresa podem ler
+        allow read: if belongsToCompany(empresaId);
+        // Família só lê seu paciente vinculado
+        allow read: if hasRole('family') && getUserData().pacienteId == pacienteId;
+        // Só admin cria/edita pacientes
+        allow write: if hasRole('admin') && belongsToCompany(empresaId);
+
+        // --- Prescrições ---
+        match /prescricoes/{prescricaoId} {
+          allow read: if belongsToCompany(empresaId);
+          allow read: if hasRole('family') && getUserData().pacienteId == pacienteId;
+          allow write: if hasRole('admin') && belongsToCompany(empresaId);
+        }
+
+        // --- Registros (medicamentos, sinais vitais, alimentação, etc) ---
+        match /registros/{registroId} {
+          // Enfermeiro e admin leem
+          allow read: if belongsToCompany(empresaId);
+          // Família lê registros do seu paciente
+          allow read: if hasRole('family') && getUserData().pacienteId == pacienteId;
+          // Só enfermeiro da empresa cria registros
+          allow create: if hasRole('nurse') && belongsToCompany(empresaId);
+          // Ninguém edita ou deleta registros (imutáveis)
+          allow update, delete: if false;
+        }
+
+        // --- Evoluções / Passagem de plantão ---
+        match /evolucoes/{evolucaoId} {
+          allow read: if belongsToCompany(empresaId);
+          allow read: if hasRole('family') && getUserData().pacienteId == pacienteId;
+          allow create: if hasRole('nurse') && belongsToCompany(empresaId);
+          allow update, delete: if false;
+        }
+      }
+
+      // --- Escalas ---
+      match /escalas/{escalaId} {
+        allow read: if belongsToCompany(empresaId);
+        allow write: if hasRole('admin') && belongsToCompany(empresaId);
+      }
+
+      // --- Plantões ---
+      match /plantoes/{plantaoId} {
+        allow read: if belongsToCompany(empresaId);
+        allow create: if hasRole('nurse') && belongsToCompany(empresaId);
+        allow update: if hasRole('nurse') && belongsToCompany(empresaId);
+        allow delete: if false;
+      }
+
+      // --- Financeiro ---
+      match /financeiro/{financeiroId} {
+        allow read: if hasRole('admin') && belongsToCompany(empresaId);
+        allow write: if hasRole('admin') && belongsToCompany(empresaId);
+      }
+    }
+
+    // ===== Audit Log =====
+    match /auditLog/{logId} {
+      // Só admin lê, ninguém edita/deleta
+      allow read: if hasRole('admin');
+      allow write: if false; // Só Cloud Functions escrevem
+    }
+  }
+}

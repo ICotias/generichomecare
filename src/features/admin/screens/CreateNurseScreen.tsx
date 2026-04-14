@@ -20,10 +20,10 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import * as adminUserService from '../../../core/services/adminUserService';
-import type { RootStackParamList } from '../../../core/navigation/RootNavigator';
+import type { TeamStackParamList } from '../../../core/navigation/RootNavigator';
 import { PasswordInput } from '../../../shared/components/PasswordInput';
 
-type NavProp = NativeStackNavigationProp<RootStackParamList, 'CreateNurse'>;
+type NavProp = NativeStackNavigationProp<TeamStackParamList, 'CreateNurse'>;
 
 interface FormState {
   nome: string;

@@ -8,6 +8,9 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -67,6 +70,60 @@ export const FinancialScreen = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [usingMock, setUsingMock] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+
+  // Create modal state
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [formDescricao, setFormDescricao] = useState('');
+  const [formValor, setFormValor] = useState('');
+  const [formTipo, setFormTipo] = useState<'receita' | 'despesa'>('receita');
+  const [formCategoria, setFormCategoria] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const resetForm = () => {
+    setFormDescricao('');
+    setFormValor('');
+    setFormTipo('receita');
+    setFormCategoria('');
+  };
+
+  const handleCreateEntry = async () => {
+    if (!formDescricao.trim() || !formValor.trim()) {
+      Alert.alert('Campos obrigatórios', 'Preencha a descrição e o valor.');
+      return;
+    }
+
+    const valor = parseFloat(formValor.replace(',', '.'));
+    if (isNaN(valor) || valor <= 0) {
+      Alert.alert('Valor inválido', 'Informe um valor numérico maior que zero.');
+      return;
+    }
+
+    if (!user?.empresaId) {
+      Alert.alert('Erro', 'Empresa não configurada. Configure a empresa antes de criar lançamentos.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await financialService.createEntry(user.empresaId, {
+        descricao: formDescricao.trim(),
+        valor,
+        tipo: formTipo,
+        categoria: formCategoria.trim() || (formTipo === 'receita' ? 'Receita' : 'Despesa'),
+        data: new Date(),
+      });
+      Alert.alert('Sucesso', 'Lançamento criado com sucesso!');
+      setShowCreateModal(false);
+      resetForm();
+      setIsLoading(true);
+      loadEntries(selectedMonth);
+    } catch (err) {
+      console.error('Erro ao criar lançamento:', err);
+      Alert.alert('Erro', 'Não foi possível criar o lançamento. Tente novamente.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const loadEntries = useCallback(
     async (month: number) => {
@@ -316,6 +373,94 @@ export const FinancialScreen = () => {
           </TouchableOpacity>
         </ScrollView>
       )}
+
+      {/* FAB */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => setShowCreateModal(true)}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="add" size={28} color={colors.white} />
+      </TouchableOpacity>
+
+      {/* Create Entry Modal */}
+      <Modal visible={showCreateModal} animationType="slide" transparent>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Novo Lançamento</Text>
+              <TouchableOpacity onPress={() => { setShowCreateModal(false); resetForm(); }} hitSlop={8}>
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Tipo chips */}
+            <Text style={styles.modalLabel}>Tipo</Text>
+            <View style={styles.tipoRow}>
+              <TouchableOpacity
+                style={[styles.tipoChip, formTipo === 'receita' && styles.tipoChipActiveReceita]}
+                onPress={() => setFormTipo('receita')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="trending-up" size={16} color={formTipo === 'receita' ? colors.white : '#16A34A'} />
+                <Text style={[styles.tipoChipText, formTipo === 'receita' && styles.tipoChipTextActive]}>Receita</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tipoChip, formTipo === 'despesa' && styles.tipoChipActiveDespesa]}
+                onPress={() => setFormTipo('despesa')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="trending-down" size={16} color={formTipo === 'despesa' ? colors.white : '#DC2626'} />
+                <Text style={[styles.tipoChipText, formTipo === 'despesa' && styles.tipoChipTextActive]}>Despesa</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalLabel}>Descrição</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Ex: Mensalidade — Maria Souza"
+              placeholderTextColor={colors.textMuted}
+              value={formDescricao}
+              onChangeText={setFormDescricao}
+            />
+
+            <Text style={styles.modalLabel}>Valor (R$)</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="0,00"
+              placeholderTextColor={colors.textMuted}
+              value={formValor}
+              onChangeText={setFormValor}
+              keyboardType="decimal-pad"
+            />
+
+            <Text style={styles.modalLabel}>Categoria (opcional)</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Ex: Mensalidade, Folha, Materiais"
+              placeholderTextColor={colors.textMuted}
+              value={formCategoria}
+              onChangeText={setFormCategoria}
+            />
+
+            <TouchableOpacity
+              style={[styles.modalSubmitBtn, isSubmitting && styles.modalSubmitBtnDisabled]}
+              onPress={handleCreateEntry}
+              activeOpacity={0.8}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color={colors.white} />
+              ) : (
+                <Text style={styles.modalSubmitBtnText}>Criar Lançamento</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 };
@@ -436,4 +581,111 @@ const styles = StyleSheet.create({
   },
   exportBtnDisabled: { opacity: 0.5 },
   exportBtnText: { fontSize: fontSize.md, fontWeight: '700', color: colors.white },
+
+  // FAB
+  fab: {
+    position: 'absolute',
+    bottom: 32,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.admin,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8 },
+      android: { elevation: 6 },
+    }),
+  },
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  modalTitle: {
+    fontSize: fontSize.xl,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  modalLabel: {
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+    marginTop: spacing.sm,
+  },
+  modalInput: {
+    backgroundColor: colors.inputBg,
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    fontSize: fontSize.md,
+    color: colors.textPrimary,
+  },
+  tipoRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  tipoChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  tipoChipActiveReceita: {
+    backgroundColor: '#16A34A',
+    borderColor: '#16A34A',
+  },
+  tipoChipActiveDespesa: {
+    backgroundColor: '#DC2626',
+    borderColor: '#DC2626',
+  },
+  tipoChipText: {
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  tipoChipTextActive: {
+    color: colors.white,
+  },
+  modalSubmitBtn: {
+    backgroundColor: colors.admin,
+    borderRadius: borderRadius.full,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    marginTop: spacing.lg,
+    height: 52,
+    justifyContent: 'center',
+  },
+  modalSubmitBtnDisabled: { opacity: 0.5 },
+  modalSubmitBtnText: {
+    fontSize: fontSize.md,
+    fontWeight: '700',
+    color: colors.white,
+  },
 });

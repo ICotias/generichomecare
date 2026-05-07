@@ -7,6 +7,10 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  Modal,
+  TextInput,
+  Alert,
+  KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -69,6 +73,56 @@ export const ScheduleScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [usingMock, setUsingMock] = useState(false);
+
+  // Create modal state
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [formProfissional, setFormProfissional] = useState('');
+  const [formPaciente, setFormPaciente] = useState('');
+  const [formHoraInicio, setFormHoraInicio] = useState('');
+  const [formHoraFim, setFormHoraFim] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const resetForm = () => {
+    setFormProfissional('');
+    setFormPaciente('');
+    setFormHoraInicio('');
+    setFormHoraFim('');
+  };
+
+  const handleCreateSchedule = async () => {
+    if (!formProfissional.trim() || !formPaciente.trim() || !formHoraInicio.trim() || !formHoraFim.trim()) {
+      Alert.alert('Campos obrigatórios', 'Preencha todos os campos para criar a escala.');
+      return;
+    }
+
+    if (!user?.empresaId) {
+      Alert.alert('Erro', 'Empresa não configurada. Configure a empresa antes de criar escalas.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await scheduleService.createSchedule(user.empresaId, {
+        profissionalId: '',
+        profissionalNome: formProfissional.trim(),
+        pacienteId: '',
+        pacienteNome: formPaciente.trim(),
+        diaSemana: selectedDay as 0 | 1 | 2 | 3 | 4 | 5 | 6,
+        horaInicio: formHoraInicio.trim(),
+        horaFim: formHoraFim.trim(),
+      });
+      Alert.alert('Sucesso', 'Escala criada com sucesso!');
+      setShowCreateModal(false);
+      resetForm();
+      setIsLoading(true);
+      loadSchedules(selectedDay);
+    } catch (err) {
+      console.error('Erro ao criar escala:', err);
+      Alert.alert('Erro', 'Não foi possível criar a escala. Tente novamente.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const loadSchedules = useCallback(
     async (day: number) => {
@@ -213,6 +267,92 @@ export const ScheduleScreen = () => {
           )}
         </ScrollView>
       )}
+
+      {/* FAB */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => setShowCreateModal(true)}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="add" size={28} color={colors.white} />
+      </TouchableOpacity>
+
+      {/* Create Schedule Modal */}
+      <Modal visible={showCreateModal} animationType="slide" transparent>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Nova Escala</Text>
+              <TouchableOpacity onPress={() => { setShowCreateModal(false); resetForm(); }} hitSlop={8}>
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalLabel}>Profissional</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Nome do profissional"
+              placeholderTextColor={colors.textMuted}
+              value={formProfissional}
+              onChangeText={setFormProfissional}
+            />
+
+            <Text style={styles.modalLabel}>Paciente</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Nome do paciente"
+              placeholderTextColor={colors.textMuted}
+              value={formPaciente}
+              onChangeText={setFormPaciente}
+            />
+
+            <View style={styles.modalTimeRow}>
+              <View style={styles.modalTimeField}>
+                <Text style={styles.modalLabel}>Horário início</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="07:00"
+                  placeholderTextColor={colors.textMuted}
+                  value={formHoraInicio}
+                  onChangeText={setFormHoraInicio}
+                  keyboardType="numbers-and-punctuation"
+                />
+              </View>
+              <View style={styles.modalTimeField}>
+                <Text style={styles.modalLabel}>Horário fim</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="13:00"
+                  placeholderTextColor={colors.textMuted}
+                  value={formHoraFim}
+                  onChangeText={setFormHoraFim}
+                  keyboardType="numbers-and-punctuation"
+                />
+              </View>
+            </View>
+
+            <Text style={styles.modalDayInfo}>
+              Dia: {WEEKDAYS[selectedDay]}
+            </Text>
+
+            <TouchableOpacity
+              style={[styles.modalSubmitBtn, isSubmitting && styles.modalSubmitBtnDisabled]}
+              onPress={handleCreateSchedule}
+              activeOpacity={0.8}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color={colors.white} />
+              ) : (
+                <Text style={styles.modalSubmitBtnText}>Criar Escala</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 };
@@ -282,4 +422,91 @@ const styles = StyleSheet.create({
   turnoBadgeText: { fontSize: fontSize.xs, fontWeight: '600' },
   entryPaciente: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: spacing.xs },
   entryHorario: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },
+
+  // FAB
+  fab: {
+    position: 'absolute',
+    bottom: 32,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.admin,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8 },
+      android: { elevation: 6 },
+    }),
+  },
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  modalTitle: {
+    fontSize: fontSize.xl,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  modalLabel: {
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+    marginTop: spacing.sm,
+  },
+  modalInput: {
+    backgroundColor: colors.inputBg,
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    fontSize: fontSize.md,
+    color: colors.textPrimary,
+  },
+  modalTimeRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  modalTimeField: {
+    flex: 1,
+  },
+  modalDayInfo: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+    marginTop: spacing.md,
+    textAlign: 'center',
+  },
+  modalSubmitBtn: {
+    backgroundColor: colors.admin,
+    borderRadius: borderRadius.full,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    marginTop: spacing.lg,
+    height: 52,
+    justifyContent: 'center',
+  },
+  modalSubmitBtnDisabled: { opacity: 0.5 },
+  modalSubmitBtnText: {
+    fontSize: fontSize.md,
+    fontWeight: '700',
+    color: colors.white,
+  },
 });

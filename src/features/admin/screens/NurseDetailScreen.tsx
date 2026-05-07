@@ -6,12 +6,13 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 
 import { db } from '../../../core/config/firebase';
 import { Collections } from '../../../shared/constants/firestore';
@@ -50,6 +51,40 @@ export const NurseDetailScreen = () => {
   const [nurse, setNurse] = useState<NurseData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [usingMock, setUsingMock] = useState(false);
+  const [isDeactivating, setIsDeactivating] = useState(false);
+
+  const handleDeactivate = () => {
+    if (!nurseId || usingMock) {
+      Alert.alert('Ação indisponível', 'Não é possível desativar dados de exemplo.');
+      return;
+    }
+
+    Alert.alert(
+      'Desativar Conta',
+      `Tem certeza que deseja desativar a conta de ${nurse?.nome ?? 'este profissional'}? O profissional não poderá mais acessar o app.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Desativar',
+          style: 'destructive',
+          onPress: async () => {
+            setIsDeactivating(true);
+            try {
+              await updateDoc(doc(db, Collections.USUARIOS, nurseId), { ativo: false, status: 'inativo' });
+              Alert.alert('Conta desativada', 'O profissional foi desativado com sucesso.', [
+                { text: 'OK', onPress: () => navigation.goBack() },
+              ]);
+            } catch (err) {
+              console.error('Erro ao desativar profissional:', err);
+              Alert.alert('Erro', 'Não foi possível desativar o profissional. Tente novamente.');
+            } finally {
+              setIsDeactivating(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const load = useCallback(async () => {
     if (!nurseId) {
@@ -151,6 +186,25 @@ export const NurseDetailScreen = () => {
             />
           )}
         </View>
+
+        {/* Deactivate button */}
+        {isActive && (
+          <TouchableOpacity
+            style={[styles.deactivateBtn, isDeactivating && styles.deactivateBtnDisabled]}
+            onPress={handleDeactivate}
+            activeOpacity={0.8}
+            disabled={isDeactivating}
+          >
+            {isDeactivating ? (
+              <ActivityIndicator color={colors.error} />
+            ) : (
+              <>
+                <Ionicons name="close-circle-outline" size={20} color={colors.error} />
+                <Text style={styles.deactivateBtnText}>Desativar Conta</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </View>
   );
@@ -230,4 +284,24 @@ const styles = StyleSheet.create({
   infoRowLast: { borderBottomWidth: 0 },
   infoLabel: { fontSize: fontSize.sm, color: colors.textSecondary },
   infoValue: { fontSize: fontSize.sm, fontWeight: '600', color: colors.textPrimary, textAlign: 'right', flex: 1, marginLeft: spacing.md },
+
+  deactivateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.error,
+    backgroundColor: colors.surface,
+    height: 52,
+  },
+  deactivateBtnDisabled: { opacity: 0.5 },
+  deactivateBtnText: {
+    fontSize: fontSize.md,
+    fontWeight: '600',
+    color: colors.error,
+  },
 });

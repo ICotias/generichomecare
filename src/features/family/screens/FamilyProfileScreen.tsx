@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -53,14 +53,14 @@ export const FamilyProfileScreen = () => {
       <View style={styles.body}>
         <Text style={styles.sectionLabel}>MINHA CONTA</Text>
         <View style={styles.menuCard}>
-          <MenuRow icon="settings-outline" label="Configurações Pessoais" />
+          <MenuRow icon="settings-outline" label="Configurações Pessoais" onPress={() => Alert.alert('Em breve', 'Esta funcionalidade será disponibilizada em breve.')} />
           <View style={styles.menuDivider} />
-          <MenuRow icon="person-outline" label="Paciente Vinculado" />
+          <MenuRow icon="person-outline" label="Paciente Vinculado" onPress={() => Alert.alert('Em breve', 'Esta funcionalidade será disponibilizada em breve.')} />
         </View>
 
         <Text style={styles.sectionLabel}>SUPORTE E AJUDA</Text>
         <View style={styles.menuCard}>
-          <MenuRow icon="help-circle-outline" label="Central de Ajuda" />
+          <MenuRow icon="help-circle-outline" label="Central de Ajuda" onPress={() => Alert.alert('Em breve', 'Esta funcionalidade será disponibilizada em breve.')} />
         </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={signOut} activeOpacity={0.8}>

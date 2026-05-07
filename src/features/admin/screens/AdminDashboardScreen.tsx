@@ -7,9 +7,10 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import {
   collection,
   getDocs,
@@ -66,6 +67,7 @@ const MOCK_METRICS: DashboardMetrics = {
 export const AdminDashboardScreen = () => {
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
+  const navigation = useNavigation();
 
   const [metrics, setMetrics] = useState<DashboardMetrics>(EMPTY_METRICS);
   const [isLoading, setIsLoading] = useState(true);
@@ -220,10 +222,26 @@ export const AdminDashboardScreen = () => {
             {/* Quick actions */}
             <Text style={styles.sectionTitle}>AÇÕES RÁPIDAS</Text>
             <View style={styles.actionsCol}>
-              <ActionRow label="Ver lista de pacientes" hint="Pacientes → Lista" />
-              <ActionRow label="Cadastrar profissional" hint="Equipe → Novo" />
-              <ActionRow label="Vincular família" hint="Pacientes → Vincular" />
-              <ActionRow label="Exportar relatório" hint="Paciente → Exportar PDF" />
+              <ActionRow
+                label="Ver lista de pacientes"
+                hint="Pacientes → Lista"
+                onPress={() => (navigation as any).navigate('PatientMgmtStack', { screen: 'PatientList' })}
+              />
+              <ActionRow
+                label="Cadastrar profissional"
+                hint="Equipe → Novo"
+                onPress={() => (navigation as any).navigate('TeamStack', { screen: 'CreateNurse' })}
+              />
+              <ActionRow
+                label="Vincular família"
+                hint="Pacientes → Vincular"
+                onPress={() => (navigation as any).navigate('PatientMgmtStack', { screen: 'LinkFamily' })}
+              />
+              <ActionRow
+                label="Exportar relatório"
+                hint="Paciente → Exportar PDF"
+                onPress={() => Alert.alert('Em breve', 'Esta funcionalidade será disponibilizada em breve.')}
+              />
             </View>
           </>
         )}
@@ -274,8 +292,8 @@ const StatCard = ({
   </View>
 );
 
-const ActionRow = ({ label, hint }: { label: string; hint: string }) => (
-  <TouchableOpacity style={styles.actionRow} activeOpacity={0.7}>
+const ActionRow = ({ label, hint, onPress }: { label: string; hint: string; onPress?: () => void }) => (
+  <TouchableOpacity style={styles.actionRow} activeOpacity={0.7} onPress={onPress}>
     <View>
       <Text style={styles.actionLabel}>{label}</Text>
       <Text style={styles.actionHint}>{hint}</Text>

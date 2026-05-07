@@ -7,6 +7,7 @@ export interface AppUser {
   role: UserRole;
   empresaId: string;
   telefone: string;
+  coren?: string;
   avatarUrl?: string;
   createdAt: Date;
   updatedAt: Date;

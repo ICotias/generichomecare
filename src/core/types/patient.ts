@@ -11,6 +11,9 @@ export interface Patient {
   alergias: string[];
   tipoAtendimento: 'integral' | 'diurno' | 'noturno' | 'visita';
   status: 'ativo' | 'inativo' | 'alta';
+  medicamentosEmUso?: string[];
+  observacoes?: string;
+  fotoUrl?: string;
   faixaSinaisVitais: VitalSignsRange;
   createdAt: Date;
   updatedAt: Date;

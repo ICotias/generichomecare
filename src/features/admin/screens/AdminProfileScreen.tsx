@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -66,19 +66,19 @@ export const AdminProfileScreen = () => {
         {/* MINHA CONTA */}
         <Text style={styles.sectionLabel}>MINHA CONTA</Text>
         <View style={styles.menuCard}>
-          <MenuRow icon="settings-outline" label="Configurações Pessoais" onPress={() => Alert.alert('Em breve', 'Esta funcionalidade será disponibilizada em breve.')} />
+          <MenuRow icon="settings-outline" label="Configurações Pessoais" onPress={() => navigation.navigate('EditProfile')} />
           <View style={styles.menuDivider} />
           <MenuRow
             icon="business-outline"
             label="Empresa"
-            onPress={() => Alert.alert('Em breve', 'Esta funcionalidade será disponibilizada em breve.')}
+            onPress={() => navigation.navigate('EditEmpresa')}
           />
         </View>
 
         {/* SUPORTE */}
         <Text style={styles.sectionLabel}>SUPORTE</Text>
         <View style={styles.menuCard}>
-          <MenuRow icon="help-circle-outline" label="Central de Ajuda" onPress={() => Alert.alert('Em breve', 'Esta funcionalidade será disponibilizada em breve.')} />
+          <MenuRow icon="help-circle-outline" label="Central de Ajuda" onPress={() => (navigation as any).navigate('Help')} />
         </View>
 
         {/* Role Switcher */}

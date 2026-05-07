@@ -1,5 +1,6 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -24,6 +25,7 @@ const MenuRow = ({
 
 export const FamilyProfileScreen = () => {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<any>();
   const { user, signOut } = useAuthStore();
 
   const initials = (user?.nome ?? 'F').charAt(0).toUpperCase();
@@ -53,14 +55,14 @@ export const FamilyProfileScreen = () => {
       <View style={styles.body}>
         <Text style={styles.sectionLabel}>MINHA CONTA</Text>
         <View style={styles.menuCard}>
-          <MenuRow icon="settings-outline" label="Configurações Pessoais" onPress={() => Alert.alert('Em breve', 'Esta funcionalidade será disponibilizada em breve.')} />
+          <MenuRow icon="settings-outline" label="Configurações Pessoais" onPress={() => navigation.navigate('EditProfile')} />
           <View style={styles.menuDivider} />
-          <MenuRow icon="person-outline" label="Paciente Vinculado" onPress={() => Alert.alert('Em breve', 'Esta funcionalidade será disponibilizada em breve.')} />
+          <MenuRow icon="person-outline" label="Paciente Vinculado" onPress={() => navigation.navigate('LinkedPatient')} />
         </View>
 
         <Text style={styles.sectionLabel}>SUPORTE E AJUDA</Text>
         <View style={styles.menuCard}>
-          <MenuRow icon="help-circle-outline" label="Central de Ajuda" onPress={() => Alert.alert('Em breve', 'Esta funcionalidade será disponibilizada em breve.')} />
+          <MenuRow icon="help-circle-outline" label="Central de Ajuda" onPress={() => (navigation as any).navigate('Help')} />
         </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={signOut} activeOpacity={0.8}>

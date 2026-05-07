@@ -47,7 +47,16 @@ import { CreateNurseScreen } from '../../features/admin/screens/CreateNurseScree
 import { NurseDetailScreen } from '../../features/admin/screens/NurseDetailScreen';
 import { ScheduleScreen } from '../../features/admin/screens/ScheduleScreen';
 import { AdminProfileScreen } from '../../features/admin/screens/AdminProfileScreen';
+import { EditEmpresaScreen } from '../../features/admin/screens/EditEmpresaScreen';
 import { FinancialScreen } from '../../features/admin/screens/FinancialScreen';
+
+// ── Family extra screens ──
+import { LinkedPatientScreen } from '../../features/family/screens/LinkedPatientScreen';
+
+// ── Shared screens ──
+import { EditProfileScreen } from '../../shared/screens/EditProfileScreen';
+import { HelpScreen } from '../../shared/screens/HelpScreen';
+import { ShiftHistoryScreen } from '../../features/nurse/screens/ShiftHistoryScreen';
 
 // ════════════════════════════════════════════
 // Param Lists
@@ -66,7 +75,14 @@ export type NurseTabParamList = {
   NurseHomeStack: undefined;
   RegisterStack: undefined;
   ShiftStack: undefined;
+  NurseProfileStack: undefined;
+};
+
+export type NurseProfileStackParamList = {
   NurseProfile: undefined;
+  EditProfile: undefined;
+  Help: undefined;
+  ShiftHistory: undefined;
 };
 
 export type NurseHomeStackParamList = {
@@ -95,7 +111,14 @@ export type FamilyTabParamList = {
   FamilyTimeline: undefined;
   PatientInfoStack: undefined;
   HistoryStack: undefined;
+  FamilyProfileStack: undefined;
+};
+
+export type FamilyProfileStackParamList = {
   FamilyProfile: undefined;
+  EditProfile: undefined;
+  Help: undefined;
+  LinkedPatient: undefined;
 };
 
 export type PatientInfoStackParamList = {
@@ -117,6 +140,7 @@ export type AdminTabParamList = {
 
 export type DashboardStackParamList = {
   AdminDashboard: undefined;
+  ExportReport: { patientId?: string };
 };
 
 export type PatientMgmtStackParamList = {
@@ -137,6 +161,9 @@ export type TeamStackParamList = {
 export type AdminProfileStackParamList = {
   AdminProfile: undefined;
   Financial: undefined;
+  EditProfile: undefined;
+  EditEmpresa: undefined;
+  Help: undefined;
 };
 
 // ════════════════════════════════════════════
@@ -187,6 +214,16 @@ const ShiftStack = () => (
   </ShiftStackNav.Navigator>
 );
 
+const NurseProfileStackNav = createNativeStackNavigator<NurseProfileStackParamList>();
+const NurseProfileStack = () => (
+  <NurseProfileStackNav.Navigator screenOptions={{ headerShown: false }}>
+    <NurseProfileStackNav.Screen name="NurseProfile" component={NurseProfileScreen} />
+    <NurseProfileStackNav.Screen name="EditProfile" component={EditProfileScreen} />
+    <NurseProfileStackNav.Screen name="Help" component={HelpScreen} />
+    <NurseProfileStackNav.Screen name="ShiftHistory" component={ShiftHistoryScreen} />
+  </NurseProfileStackNav.Navigator>
+);
+
 const NurseTab = createBottomTabNavigator<NurseTabParamList>();
 const NurseTabNavigator = () => (
   <NurseTab.Navigator
@@ -201,7 +238,7 @@ const NurseTabNavigator = () => (
     <NurseTab.Screen name="NurseHomeStack" component={NurseHomeStack} options={{ tabBarLabel: 'Início', tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} /> }} />
     <NurseTab.Screen name="RegisterStack" component={RegisterStack} options={{ tabBarLabel: 'Registrar', tabBarIcon: ({ color, size }) => <Ionicons name="add-circle-outline" size={size} color={color} /> }} />
     <NurseTab.Screen name="ShiftStack" component={ShiftStack} options={{ tabBarLabel: 'Plantão', tabBarIcon: ({ color, size }) => <Ionicons name="time-outline" size={size} color={color} /> }} />
-    <NurseTab.Screen name="NurseProfile" component={NurseProfileScreen} options={{ tabBarLabel: 'Perfil', tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} /> }} />
+    <NurseTab.Screen name="NurseProfileStack" component={NurseProfileStack} options={{ tabBarLabel: 'Perfil', tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} /> }} />
   </NurseTab.Navigator>
 );
 
@@ -224,6 +261,16 @@ const HistoryStack = () => (
   </HistoryStackNav.Navigator>
 );
 
+const FamilyProfileStackNav = createNativeStackNavigator<FamilyProfileStackParamList>();
+const FamilyProfileStack = () => (
+  <FamilyProfileStackNav.Navigator screenOptions={{ headerShown: false }}>
+    <FamilyProfileStackNav.Screen name="FamilyProfile" component={FamilyProfileScreen} />
+    <FamilyProfileStackNav.Screen name="EditProfile" component={EditProfileScreen} />
+    <FamilyProfileStackNav.Screen name="Help" component={HelpScreen} />
+    <FamilyProfileStackNav.Screen name="LinkedPatient" component={LinkedPatientScreen} />
+  </FamilyProfileStackNav.Navigator>
+);
+
 const FamilyTab = createBottomTabNavigator<FamilyTabParamList>();
 const FamilyTabNavigator = () => (
   <FamilyTab.Navigator
@@ -238,7 +285,7 @@ const FamilyTabNavigator = () => (
     <FamilyTab.Screen name="FamilyTimeline" component={FamilyTimelineScreen} options={{ tabBarLabel: 'Timeline', tabBarIcon: ({ color, size }) => <Ionicons name="pulse-outline" size={size} color={color} /> }} />
     <FamilyTab.Screen name="PatientInfoStack" component={PatientInfoStack} options={{ tabBarLabel: 'Paciente', tabBarIcon: ({ color, size }) => <Ionicons name="heart-outline" size={size} color={color} /> }} />
     <FamilyTab.Screen name="HistoryStack" component={HistoryStack} options={{ tabBarLabel: 'Histórico', tabBarIcon: ({ color, size }) => <Ionicons name="document-text-outline" size={size} color={color} /> }} />
-    <FamilyTab.Screen name="FamilyProfile" component={FamilyProfileScreen} options={{ tabBarLabel: 'Perfil', tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} /> }} />
+    <FamilyTab.Screen name="FamilyProfileStack" component={FamilyProfileStack} options={{ tabBarLabel: 'Perfil', tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} /> }} />
   </FamilyTab.Navigator>
 );
 
@@ -250,6 +297,7 @@ const DashboardStackNav = createNativeStackNavigator<DashboardStackParamList>();
 const DashboardStack = () => (
   <DashboardStackNav.Navigator screenOptions={{ headerShown: false }}>
     <DashboardStackNav.Screen name="AdminDashboard" component={AdminDashboardScreen} />
+    <DashboardStackNav.Screen name="ExportReport" component={ExportReportScreen} />
   </DashboardStackNav.Navigator>
 );
 
@@ -279,6 +327,9 @@ const AdminProfileStack = () => (
   <AdminProfileStackNav.Navigator screenOptions={{ headerShown: false }}>
     <AdminProfileStackNav.Screen name="AdminProfile" component={AdminProfileScreen} />
     <AdminProfileStackNav.Screen name="Financial" component={FinancialScreen} />
+    <AdminProfileStackNav.Screen name="EditProfile" component={EditProfileScreen} />
+    <AdminProfileStackNav.Screen name="EditEmpresa" component={EditEmpresaScreen} />
+    <AdminProfileStackNav.Screen name="Help" component={HelpScreen} />
   </AdminProfileStackNav.Navigator>
 );
 

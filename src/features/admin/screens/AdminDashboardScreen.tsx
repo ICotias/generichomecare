@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
-  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -240,7 +239,7 @@ export const AdminDashboardScreen = () => {
               <ActionRow
                 label="Exportar relatório"
                 hint="Paciente → Exportar PDF"
-                onPress={() => Alert.alert('Em breve', 'Esta funcionalidade será disponibilizada em breve.')}
+                onPress={() => (navigation as any).navigate('ExportReport')}
               />
             </View>
           </>

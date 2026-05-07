@@ -5,9 +5,17 @@ import {
   onAuthStateChanged,
   User as FirebaseUser,
 } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { AppUser, UserRole } from '../types';
+
+/** Detecta role pelo email (fallback para primeiro login sem doc Firestore) */
+const inferRoleFromEmail = (email: string): UserRole => {
+  const lower = email.toLowerCase();
+  if (lower.includes('admin')) return 'admin';
+  if (lower.includes('family') || lower.includes('familia')) return 'family';
+  return 'nurse';
+};
 
 interface AuthState {
   user: AppUser | null;
@@ -114,8 +122,36 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               updatedAt: data.updatedAt?.toDate?.() ?? new Date(),
             });
           } else {
-            // Usuário autenticado mas sem perfil no Firestore
-            setUser(null);
+            // Usuário autenticado mas sem perfil no Firestore — cria automaticamente
+            console.warn('Perfil não encontrado no Firestore, criando automaticamente...');
+            const role = inferRoleFromEmail(firebaseUser.email ?? '');
+            const now = Timestamp.now();
+            const newProfile = {
+              nome: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Usuário',
+              email: firebaseUser.email ?? '',
+              role,
+              empresaId: '',
+              telefone: '',
+              createdAt: now,
+              updatedAt: now,
+            };
+
+            try {
+              await setDoc(doc(db, 'usuarios', firebaseUser.uid), newProfile);
+              setUser({
+                uid: firebaseUser.uid,
+                email: newProfile.email,
+                nome: newProfile.nome,
+                role: newProfile.role,
+                empresaId: '',
+                telefone: '',
+                createdAt: now.toDate(),
+                updatedAt: now.toDate(),
+              });
+            } catch (createError) {
+              console.error('Erro ao criar perfil:', createError);
+              setUser(null);
+            }
           }
         } catch (error) {
           console.error('Erro ao buscar perfil:', error);

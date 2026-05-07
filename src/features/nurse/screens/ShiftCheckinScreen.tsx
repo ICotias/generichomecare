@@ -7,16 +7,22 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import { useLocation } from '../../../core/hooks/useLocation';
 import * as shiftService from '../../../core/services/shiftService';
-import { Shift } from '../../../core/types';
+import * as patientService from '../../../core/services/patientService';
+import { Shift, Patient } from '../../../core/types';
+import { MOCK_PATIENTS } from '../../../core/mocks/patients';
+import { PrimaryButton } from '../../../shared/components/ui';
 
 export const ShiftCheckinScreen = () => {
   const insets = useSafeAreaInsets();
@@ -27,14 +33,36 @@ export const ShiftCheckinScreen = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoadingShift, setIsLoadingShift] = useState(true);
 
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [isLoadingPatients, setIsLoadingPatients] = useState(true);
+
   const isLoading = isLocationLoading || isProcessing;
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!user?.empresaId) return;
+      setIsLoadingPatients(true);
+      patientService
+        .listPatients(user.empresaId)
+        .then((list) => {
+          const result = list.length > 0 ? list : MOCK_PATIENTS;
+          setPatients(result);
+          setSelectedPatient((prev) => prev ?? (result.length > 0 ? result[0] : null));
+        })
+        .catch(() => {
+          setPatients(MOCK_PATIENTS);
+          setSelectedPatient((prev) => prev ?? MOCK_PATIENTS[0]);
+        })
+        .finally(() => setIsLoadingPatients(false));
+    }, [user?.empresaId])
+  );
 
   const loadActiveShift = useCallback(async () => {
     if (!user?.empresaId || !user?.uid) {
       setIsLoadingShift(false);
       return;
     }
-
     try {
       const shift = await shiftService.getActiveShift(user.empresaId, user.uid);
       setActiveShift(shift);
@@ -51,16 +79,20 @@ export const ShiftCheckinScreen = () => {
 
   const handleCheckin = async () => {
     if (!user?.empresaId || !user?.uid) return;
+    if (!selectedPatient) {
+      Alert.alert('Selecione o paciente', 'Escolha o paciente antes de iniciar o plantão.');
+      return;
+    }
 
     const location = await getCurrentLocation();
     if (!location) return;
 
     const now = new Date();
-    const timeStr = format(now, "HH:mm", { locale: ptBR });
+    const timeStr = format(now, 'HH:mm', { locale: ptBR });
 
     Alert.alert(
       'Confirmar Checkin',
-      `Iniciar plantão às ${timeStr}?\nLocalização capturada com sucesso.`,
+      `Iniciar plantão às ${timeStr}?\nPaciente: ${selectedPatient.nome}\nLocalização capturada com sucesso.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -69,16 +101,14 @@ export const ShiftCheckinScreen = () => {
           onPress: async () => {
             setIsProcessing(true);
             try {
-              // TODO: pacienteId será dinâmico quando tivermos a tela de seleção
               await shiftService.checkin({
                 empresaId: user.empresaId,
-                pacienteId: 'paciente-placeholder',
+                pacienteId: selectedPatient.id,
                 profissionalId: user.uid,
                 profissionalNome: user.nome,
                 latitude: location.latitude,
                 longitude: location.longitude,
               });
-
               await loadActiveShift();
             } catch (error) {
               console.error('Erro no checkin:', error);
@@ -98,9 +128,9 @@ export const ShiftCheckinScreen = () => {
     const location = await getCurrentLocation();
     if (!location) return;
 
-    const checkinTime = format(activeShift.checkinAt, "HH:mm", { locale: ptBR });
+    const checkinTime = format(activeShift.checkinAt, 'HH:mm', { locale: ptBR });
     const now = new Date();
-    const checkoutTime = format(now, "HH:mm", { locale: ptBR });
+    const checkoutTime = format(now, 'HH:mm', { locale: ptBR });
 
     Alert.alert(
       'Finalizar Plantão',
@@ -119,7 +149,6 @@ export const ShiftCheckinScreen = () => {
                 latitude: location.latitude,
                 longitude: location.longitude,
               });
-
               setActiveShift(null);
             } catch (error) {
               console.error('Erro no checkout:', error);
@@ -133,7 +162,7 @@ export const ShiftCheckinScreen = () => {
     );
   };
 
-  if (isLoadingShift) {
+  if (isLoadingShift || isLoadingPatients) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -142,87 +171,122 @@ export const ShiftCheckinScreen = () => {
   }
 
   const hasActiveShift = !!activeShift;
+  const activePatientName = hasActiveShift
+    ? patients.find((p) => p.id === activeShift.pacienteId)?.nome ?? 'Paciente'
+    : '';
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.lg }]}>
-      {/* Status Header */}
+      {/* Two-line header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Plantão</Text>
-        <View style={[styles.statusBadge, hasActiveShift ? styles.statusActive : styles.statusInactive]}>
-          <View style={[styles.statusDot, hasActiveShift ? styles.dotActive : styles.dotInactive]} />
-          <Text style={[styles.statusText, hasActiveShift ? styles.statusTextActive : styles.statusTextInactive]}>
-            {hasActiveShift ? 'Em andamento' : 'Não iniciado'}
-          </Text>
-        </View>
+        <Text style={styles.titleLine1}>Meu</Text>
+        <Text style={styles.titleLine2}>Plantão</Text>
       </View>
 
-      {/* Shift Info */}
-      <View style={styles.content}>
+      {/* Content */}
+      <ScrollView
+        style={styles.scrollContent}
+        contentContainerStyle={styles.scrollInner}
+        showsVerticalScrollIndicator={false}
+      >
         {hasActiveShift ? (
-          <View style={styles.shiftInfo}>
-            <Text style={styles.shiftTimeLabel}>Início do plantão</Text>
+          /* ── Active shift card ── */
+          <View style={styles.shiftCard}>
+            <View style={styles.iconCircleLarge}>
+              <Ionicons name="time-outline" size={40} color={colors.primary} />
+            </View>
+
+            <Text style={styles.shiftStatus}>Em Plantão</Text>
+
             <Text style={styles.shiftTime}>
-              {format(activeShift.checkinAt, "HH:mm", { locale: ptBR })}
+              {format(activeShift.checkinAt, 'HH:mm', { locale: ptBR })}
             </Text>
             <Text style={styles.shiftDate}>
               {format(activeShift.checkinAt, "EEEE, d 'de' MMMM", { locale: ptBR })}
             </Text>
 
+            <View style={styles.patientBadge}>
+              <Ionicons name="person-outline" size={14} color={colors.primary} />
+              <Text style={styles.patientBadgeText}>{activePatientName}</Text>
+            </View>
+
             <View style={styles.durationContainer}>
               <ShiftDuration checkinAt={activeShift.checkinAt} />
             </View>
+
+            <View style={styles.locationRow}>
+              <Ionicons name="location-outline" size={16} color={colors.success} />
+              <Text style={styles.locationText}>Localização capturada</Text>
+            </View>
           </View>
         ) : (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>Nenhum plantão ativo</Text>
+          /* ── No active shift ── */
+          <View style={styles.shiftCard}>
+            <View style={styles.iconCircleLarge}>
+              <Ionicons name="time-outline" size={40} color={colors.primary} />
+            </View>
+
+            <Text style={styles.shiftStatus}>Fora de Plantão</Text>
             <Text style={styles.emptySubtitle}>
-              Toque no botão abaixo para iniciar seu plantão
+              Selecione o paciente e inicie seu plantão
             </Text>
+
+            {/* Patient selector */}
+            <View style={styles.patientSelector}>
+              <Text style={styles.sectionLabel}>PACIENTE</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.patientChipRow}
+              >
+                {patients.filter((p) => p.status === 'ativo').map((p) => {
+                  const isSelected = selectedPatient?.id === p.id;
+                  return (
+                    <TouchableOpacity
+                      key={p.id}
+                      style={[styles.patientChip, isSelected && styles.patientChipActive]}
+                      onPress={() => setSelectedPatient(p)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.patientChipText, isSelected && styles.patientChipTextActive]}>
+                        {p.nome}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            <View style={styles.locationRow}>
+              <Ionicons name="location-outline" size={16} color={colors.success} />
+              <Text style={styles.locationText}>Localização capturada</Text>
+            </View>
           </View>
         )}
-      </View>
+      </ScrollView>
 
-      {/* Action Button — posicionado na parte inferior (Apple HIG) */}
+      {/* Bottom action */}
       <View style={[styles.actionArea, { paddingBottom: insets.bottom + spacing.lg }]}>
         {hasActiveShift ? (
-          <TouchableOpacity
-            style={[styles.actionButton, styles.checkoutButton]}
+          <PrimaryButton
+            title="Finalizar Plantão"
             onPress={handleCheckout}
-            disabled={isLoading}
-            activeOpacity={0.8}
-          >
-            {isLoading ? (
-              <ActivityIndicator color={colors.white} size="small" />
-            ) : (
-              <Text style={styles.actionButtonText}>Finalizar Plantão</Text>
-            )}
-          </TouchableOpacity>
+            loading={isLoading}
+            variant="danger"
+          />
         ) : (
-          <TouchableOpacity
-            style={[styles.actionButton, styles.checkinButton]}
+          <PrimaryButton
+            title="Fazer Check-in"
             onPress={handleCheckin}
-            disabled={isLoading}
-            activeOpacity={0.8}
-          >
-            {isLoading ? (
-              <ActivityIndicator color={colors.white} size="small" />
-            ) : (
-              <Text style={styles.actionButtonText}>Iniciar Plantão</Text>
-            )}
-          </TouchableOpacity>
+            loading={isLoading}
+            disabled={!selectedPatient}
+          />
         )}
-
-        <Text style={styles.locationHint}>
-          Sua localização será registrada automaticamente
-        </Text>
       </View>
     </View>
   );
 };
 
-/**
- * Componente que mostra duração do plantão em tempo real.
- */
 const ShiftDuration = ({ checkinAt }: { checkinAt: Date }) => {
   const [elapsed, setElapsed] = useState('');
 
@@ -232,19 +296,16 @@ const ShiftDuration = ({ checkinAt }: { checkinAt: Date }) => {
       const diffMs = now.getTime() - checkinAt.getTime();
       const hours = Math.floor(diffMs / (1000 * 60 * 60));
       const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-
       setElapsed(`${hours}h ${minutes.toString().padStart(2, '0')}min`);
     };
-
     updateElapsed();
     const interval = setInterval(updateElapsed, 60000);
-
     return () => clearInterval(interval);
   }, [checkinAt]);
 
   return (
     <>
-      <Text style={styles.durationLabel}>Duração</Text>
+      <Text style={styles.durationLabel}>DURAÇÃO</Text>
       <Text style={styles.durationValue}>{elapsed}</Text>
     </>
   );
@@ -262,79 +323,75 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
 
-  // Header
   header: {
     paddingHorizontal: spacing.lg,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
   },
-  title: {
-    fontSize: fontSize.title,
-    fontWeight: '700',
+  titleLine1: {
+    fontSize: 32,
+    fontWeight: '800',
     color: colors.textPrimary,
-    letterSpacing: 0.35,
+    letterSpacing: -0.5,
   },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.sm + 4,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: borderRadius.full,
-    marginTop: spacing.sm,
-  },
-  statusActive: {
-    backgroundColor: '#DCFCE7',
-  },
-  statusInactive: {
-    backgroundColor: '#F1F5F9',
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: spacing.xs + 2,
-  },
-  dotActive: {
-    backgroundColor: colors.success,
-  },
-  dotInactive: {
-    backgroundColor: colors.textMuted,
-  },
-  statusText: {
-    fontSize: fontSize.sm,
-    fontWeight: '600',
-  },
-  statusTextActive: {
-    color: '#166534',
-  },
-  statusTextInactive: {
-    color: colors.textSecondary,
+  titleLine2: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: colors.primary,
+    letterSpacing: -0.5,
+    marginTop: -2,
   },
 
-  // Content
-  content: {
+  scrollContent: {
     flex: 1,
+  },
+  scrollInner: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+  },
+
+  // Shift card
+  shiftCard: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.xl,
+    padding: spacing.xl,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+      },
+      android: { elevation: 2 },
+    }),
+  },
+  iconCircleLarge: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.primary + '15',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
   },
-
-  // Shift Info
-  shiftInfo: {
-    alignItems: 'center',
+  shiftStatus: {
+    fontSize: fontSize.xl,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
   },
-  shiftTimeLabel: {
-    fontSize: fontSize.sm,
+  emptySubtitle: {
+    fontSize: fontSize.md,
     color: colors.textSecondary,
-    fontWeight: '500',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
   },
   shiftTime: {
-    fontSize: 64,
+    fontSize: 48,
     fontWeight: '200',
     color: colors.textPrimary,
-    marginTop: spacing.xs,
     fontVariant: ['tabular-nums'],
   },
   shiftDate: {
@@ -342,20 +399,34 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: spacing.xs,
   },
+  patientBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: spacing.md,
+    backgroundColor: colors.primary + '15',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: borderRadius.full,
+  },
+  patientBadgeText: {
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    color: colors.primary,
+  },
   durationContainer: {
     alignItems: 'center',
     marginTop: spacing.xl,
-    paddingTop: spacing.xl,
+    paddingTop: spacing.lg,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
-    width: 200,
+    width: '100%',
   },
   durationLabel: {
-    fontSize: fontSize.sm,
+    fontSize: fontSize.xs,
     color: colors.textSecondary,
-    fontWeight: '500',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    fontWeight: '700',
+    letterSpacing: 1,
   },
   durationValue: {
     fontSize: fontSize.xxl,
@@ -364,62 +435,60 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
     fontVariant: ['tabular-nums'],
   },
-
-  // Empty State
-  emptyState: {
+  locationRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    marginTop: spacing.lg,
+    paddingTop: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
   },
-  emptyTitle: {
-    fontSize: fontSize.xl,
+  locationText: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+
+  // Patient selector
+  patientSelector: {
+    width: '100%',
+    marginBottom: spacing.md,
+  },
+  sectionLabel: {
+    fontSize: fontSize.xs,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    letterSpacing: 1,
+    marginBottom: spacing.sm,
+  },
+  patientChipRow: {
+    gap: spacing.sm,
+  },
+  patientChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  patientChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  patientChipText: {
+    fontSize: fontSize.sm,
     fontWeight: '600',
     color: colors.textPrimary,
   },
-  emptySubtitle: {
-    fontSize: fontSize.md,
-    color: colors.textSecondary,
-    marginTop: spacing.sm,
-    textAlign: 'center',
-    lineHeight: 22,
+  patientChipTextActive: {
+    color: colors.white,
   },
 
-  // Action Area
+  // Action area
   actionArea: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-  },
-  actionButton: {
-    height: 56,
-    borderRadius: borderRadius.lg,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  checkinButton: {
-    backgroundColor: colors.primary,
-  },
-  checkoutButton: {
-    backgroundColor: colors.error,
-  },
-  actionButtonText: {
-    color: colors.white,
-    fontSize: fontSize.lg,
-    fontWeight: '600',
-    letterSpacing: 0.3,
-  },
-  locationHint: {
-    fontSize: fontSize.xs,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: spacing.sm,
+    paddingTop: spacing.md,
   },
 });

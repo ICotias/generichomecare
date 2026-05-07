@@ -44,6 +44,16 @@ export interface CreateNurseInput {
   coren?: string;
 }
 
+export interface CreateFamilyInput {
+  email: string;
+  password: string;
+  nome: string;
+  telefone: string;
+  empresaId: string;
+  pacienteId: string;
+  parentesco: string;
+}
+
 export interface CreateNurseResult {
   uid: string;
 }
@@ -94,6 +104,56 @@ export const createNurseAccount = async (
   } finally {
     // Limpa a app secundária para liberar recursos.
     // getApp() tenta obter de novo — se já foi removida, ignora.
+    try {
+      const app = getApp(SECONDARY_APP_NAME);
+      await deleteApp(app);
+    } catch {
+      // noop
+    }
+  }
+};
+
+/**
+ * Cria uma conta de familiar no Firebase Auth e um perfil no Firestore.
+ * Vincula o familiar ao paciente informado.
+ *
+ * Usa a mesma técnica de app secundária do createNurseAccount.
+ */
+export const createFamilyAccount = async (
+  input: CreateFamilyInput
+): Promise<CreateNurseResult> => {
+  const secondary = getSecondaryApp();
+  const secondaryAuth = getAuth(secondary);
+
+  try {
+    const cred = await createUserWithEmailAndPassword(
+      secondaryAuth,
+      input.email,
+      input.password
+    );
+
+    const uid = cred.user.uid;
+    const now = Timestamp.now();
+
+    const userData: Record<string, unknown> = {
+      uid,
+      email: input.email,
+      nome: input.nome,
+      role: 'family' satisfies UserRole,
+      empresaId: input.empresaId,
+      telefone: input.telefone,
+      pacienteId: input.pacienteId,
+      parentesco: input.parentesco,
+      createdAt: now,
+      updatedAt: now,
+      status: 'ativo',
+    };
+
+    await setDoc(doc(db, Collections.USUARIOS, uid), userData);
+    await signOut(secondaryAuth);
+
+    return { uid };
+  } finally {
     try {
       const app = getApp(SECONDARY_APP_NAME);
       await deleteApp(app);

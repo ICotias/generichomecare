@@ -1,11 +1,14 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useState } from 'react';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { useAuthStore } from '../hooks/useAuth';
 import { colors } from '../theme/theme';
 import { SimulationBanner } from '../../shared/components/SimulationBanner';
+import { LgpdConsentScreen } from '../../shared/screens/LgpdConsentScreen';
 
 // ── Auth ──
 import { LoginScreen } from '../../features/nurse/screens/LoginScreen';
@@ -24,6 +27,7 @@ import { RegisterActivityScreen } from '../../features/nurse/screens/RegisterAct
 import { RegisterIncidentScreen } from '../../features/nurse/screens/RegisterIncidentScreen';
 import { RegisterPhotoScreen } from '../../features/nurse/screens/RegisterPhotoScreen';
 import { ShiftEvolutionScreen } from '../../features/nurse/screens/ShiftEvolutionScreen';
+import { ExportReportScreen } from '../../features/nurse/screens/ExportReportScreen';
 
 // ── Family screens ──
 import { FamilyTimelineScreen } from '../../features/family/screens/FamilyTimelineScreen';
@@ -68,6 +72,7 @@ export type NurseTabParamList = {
 export type NurseHomeStackParamList = {
   NurseHome: undefined;
   PatientDetail: { patientId?: string };
+  ExportReport: { patientId?: string };
 };
 
 export type RegisterStackParamList = {
@@ -119,6 +124,7 @@ export type PatientMgmtStackParamList = {
   CreatePatient: undefined;
   AdminPatientDetail: { patientId?: string };
   LinkFamily: { patientId?: string };
+  ExportReport: { patientId?: string };
 };
 
 export type TeamStackParamList = {
@@ -156,6 +162,7 @@ const NurseHomeStack = () => (
   <NurseHomeStackNav.Navigator screenOptions={{ headerShown: false }}>
     <NurseHomeStackNav.Screen name="NurseHome" component={NurseHomeScreen} />
     <NurseHomeStackNav.Screen name="PatientDetail" component={PatientDetailScreen} />
+    <NurseHomeStackNav.Screen name="ExportReport" component={ExportReportScreen} />
   </NurseHomeStackNav.Navigator>
 );
 
@@ -185,16 +192,16 @@ const NurseTabNavigator = () => (
   <NurseTab.Navigator
     screenOptions={{
       headerShown: false,
-      tabBarActiveTintColor: colors.nurse,
+      tabBarActiveTintColor: colors.primary,
       tabBarInactiveTintColor: colors.textMuted,
       tabBarStyle,
       tabBarLabelStyle,
     }}
   >
-    <NurseTab.Screen name="NurseHomeStack" component={NurseHomeStack} options={{ tabBarLabel: 'Início' }} />
-    <NurseTab.Screen name="RegisterStack" component={RegisterStack} options={{ tabBarLabel: 'Registrar' }} />
-    <NurseTab.Screen name="ShiftStack" component={ShiftStack} options={{ tabBarLabel: 'Plantão' }} />
-    <NurseTab.Screen name="NurseProfile" component={NurseProfileScreen} options={{ tabBarLabel: 'Perfil' }} />
+    <NurseTab.Screen name="NurseHomeStack" component={NurseHomeStack} options={{ tabBarLabel: 'Início', tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} /> }} />
+    <NurseTab.Screen name="RegisterStack" component={RegisterStack} options={{ tabBarLabel: 'Registrar', tabBarIcon: ({ color, size }) => <Ionicons name="add-circle-outline" size={size} color={color} /> }} />
+    <NurseTab.Screen name="ShiftStack" component={ShiftStack} options={{ tabBarLabel: 'Plantão', tabBarIcon: ({ color, size }) => <Ionicons name="time-outline" size={size} color={color} /> }} />
+    <NurseTab.Screen name="NurseProfile" component={NurseProfileScreen} options={{ tabBarLabel: 'Perfil', tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} /> }} />
   </NurseTab.Navigator>
 );
 
@@ -228,10 +235,10 @@ const FamilyTabNavigator = () => (
       tabBarLabelStyle,
     }}
   >
-    <FamilyTab.Screen name="FamilyTimeline" component={FamilyTimelineScreen} options={{ tabBarLabel: 'Timeline' }} />
-    <FamilyTab.Screen name="PatientInfoStack" component={PatientInfoStack} options={{ tabBarLabel: 'Paciente' }} />
-    <FamilyTab.Screen name="HistoryStack" component={HistoryStack} options={{ tabBarLabel: 'Histórico' }} />
-    <FamilyTab.Screen name="FamilyProfile" component={FamilyProfileScreen} options={{ tabBarLabel: 'Perfil' }} />
+    <FamilyTab.Screen name="FamilyTimeline" component={FamilyTimelineScreen} options={{ tabBarLabel: 'Timeline', tabBarIcon: ({ color, size }) => <Ionicons name="pulse-outline" size={size} color={color} /> }} />
+    <FamilyTab.Screen name="PatientInfoStack" component={PatientInfoStack} options={{ tabBarLabel: 'Paciente', tabBarIcon: ({ color, size }) => <Ionicons name="heart-outline" size={size} color={color} /> }} />
+    <FamilyTab.Screen name="HistoryStack" component={HistoryStack} options={{ tabBarLabel: 'Histórico', tabBarIcon: ({ color, size }) => <Ionicons name="document-text-outline" size={size} color={color} /> }} />
+    <FamilyTab.Screen name="FamilyProfile" component={FamilyProfileScreen} options={{ tabBarLabel: 'Perfil', tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} /> }} />
   </FamilyTab.Navigator>
 );
 
@@ -253,6 +260,7 @@ const PatientMgmtStack = () => (
     <PatientMgmtStackNav.Screen name="CreatePatient" component={CreatePatientScreen} options={{ presentation: 'modal' }} />
     <PatientMgmtStackNav.Screen name="AdminPatientDetail" component={AdminPatientDetailScreen} />
     <PatientMgmtStackNav.Screen name="LinkFamily" component={LinkFamilyScreen} options={{ presentation: 'modal' }} />
+    <PatientMgmtStackNav.Screen name="ExportReport" component={ExportReportScreen} />
   </PatientMgmtStackNav.Navigator>
 );
 
@@ -285,10 +293,10 @@ const AdminTabNavigator = () => (
       tabBarLabelStyle,
     }}
   >
-    <AdminTab.Screen name="DashboardStack" component={DashboardStack} options={{ tabBarLabel: 'Dashboard' }} />
-    <AdminTab.Screen name="PatientMgmtStack" component={PatientMgmtStack} options={{ tabBarLabel: 'Pacientes' }} />
-    <AdminTab.Screen name="TeamStack" component={TeamStack} options={{ tabBarLabel: 'Equipe' }} />
-    <AdminTab.Screen name="AdminProfileStack" component={AdminProfileStack} options={{ tabBarLabel: 'Perfil' }} />
+    <AdminTab.Screen name="DashboardStack" component={DashboardStack} options={{ tabBarLabel: 'Dashboard', tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" size={size} color={color} /> }} />
+    <AdminTab.Screen name="PatientMgmtStack" component={PatientMgmtStack} options={{ tabBarLabel: 'Pacientes', tabBarIcon: ({ color, size }) => <Ionicons name="people-outline" size={size} color={color} /> }} />
+    <AdminTab.Screen name="TeamStack" component={TeamStack} options={{ tabBarLabel: 'Equipe', tabBarIcon: ({ color, size }) => <Ionicons name="medkit-outline" size={size} color={color} /> }} />
+    <AdminTab.Screen name="AdminProfileStack" component={AdminProfileStack} options={{ tabBarLabel: 'Perfil', tabBarIcon: ({ color, size }) => <Ionicons name="settings-outline" size={size} color={color} /> }} />
   </AdminTab.Navigator>
 );
 
@@ -302,12 +310,22 @@ export const RootNavigator = () => {
   const { isLoading, isAuthenticated, role, user, originalRole } = useAuthStore();
   const needsEmpresaSetup = originalRole === 'admin' && !user?.empresaId;
 
+  // LGPD consent check — user must accept before using app
+  const typedUser = user as typeof user & { lgpdConsentAt?: unknown };
+  const needsLgpd = isAuthenticated && !needsEmpresaSetup && !typedUser?.lgpdConsentAt;
+  const [lgpdAccepted, setLgpdAccepted] = useState(false);
+  const showLgpd = needsLgpd && !lgpdAccepted;
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
+  }
+
+  if (showLgpd) {
+    return <LgpdConsentScreen onAccepted={() => setLgpdAccepted(true)} />;
   }
 
   return (

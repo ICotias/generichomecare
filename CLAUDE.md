@@ -51,6 +51,22 @@ Ao criar/modificar fluxos de usuário, sempre verificar:
 - Loading states em todos os botões de ação
 - Safe area insets via `useSafeAreaInsets()`
 
+### 5. Zero placeholders — Nenhum elemento de UI sem funcionalidade
+**Regra absoluta:** NUNCA criar um botão, link, menu ou qualquer elemento tocável sem funcionalidade real. Se a funcionalidade não pode ser implementada agora, NÃO crie o elemento visual.
+
+**Proibido:**
+- `TouchableOpacity` sem `onPress` ou com `onPress` vazio
+- Botões decorativos que não fazem nada ao tocar
+- Menus de perfil que são apenas visuais
+- Dizer que o projeto está "pronto" ou "funcional" quando existem placeholders ou funcionalidades ausentes
+
+**Se o elemento precisa existir no layout mas a feature não está pronta:**
+- Implementar a funcionalidade mínima viável (ex: "Esqueci a senha" → chamar `sendPasswordResetEmail`)
+- OU mostrar toast/alert informando "Em breve" com `onPress` real
+- OU não criar o elemento até que a funcionalidade esteja implementada
+
+**Ao reportar status do projeto:** Listar EXPLICITAMENTE o que falta, nunca dizer "pronto" com ressalvas escondidas.
+
 ## Estrutura de Cores
 - Primary (purple): #6C63FF
 - Admin (orange): #FF6B35  

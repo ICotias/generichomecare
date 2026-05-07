@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
@@ -23,7 +24,8 @@ export const AdminHomeScreen = () => {
     <View style={[styles.container, { paddingTop: insets.top + spacing.lg }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Painel Admin</Text>
+        <Text style={styles.title}>Painel</Text>
+        <Text style={styles.titleAccent}>Admin</Text>
         <Text style={styles.greeting}>Olá, {user?.nome || 'Admin'}</Text>
       </View>
 
@@ -80,9 +82,15 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   title: {
-    fontSize: fontSize.title,
-    fontWeight: '700',
+    fontSize: 32,
+    fontWeight: '800',
     color: colors.textPrimary,
+    letterSpacing: 0.35,
+  },
+  titleAccent: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: colors.admin,
     letterSpacing: 0.35,
   },
   greeting: {
@@ -182,9 +190,9 @@ const styles = StyleSheet.create({
 /* eslint-disable react-native/no-unused-styles */
 const roleStyles = {
   nurse: StyleSheet.create({
-    dot: { backgroundColor: colors.nurse },
-    activeCard: { borderColor: colors.nurse, borderWidth: 2 },
-    activeLabel: { color: colors.nurse, fontWeight: '600' as const },
+    dot: { backgroundColor: colors.primary },
+    activeCard: { borderColor: colors.primary, borderWidth: 2 },
+    activeLabel: { color: colors.primary, fontWeight: '600' as const },
   }),
   family: StyleSheet.create({
     dot: { backgroundColor: colors.family },

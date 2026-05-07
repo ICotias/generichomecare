@@ -1,4 +1,8 @@
 /**
+ * @deprecated Este arquivo é ÓRFÃO — não está registrado em nenhum navigator.
+ * A FamilyTimelineScreen serve como tela principal da família.
+ * TODO: Deletar este arquivo (não foi possível remover via sandbox).
+ *
  * FamilyHomeScreen — Tela principal do perfil Família.
  *
  * Exibe:

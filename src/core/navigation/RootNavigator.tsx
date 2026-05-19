@@ -1,7 +1,7 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -362,10 +362,16 @@ export const RootNavigator = () => {
   const needsEmpresaSetup = originalRole === 'admin' && !user?.empresaId;
 
   // LGPD consent check — user must accept before using app
-  const typedUser = user as typeof user & { lgpdConsentAt?: unknown };
-  const needsLgpd = isAuthenticated && !needsEmpresaSetup && !typedUser?.lgpdConsentAt;
+  const needsLgpd = isAuthenticated && !needsEmpresaSetup && !user?.lgpdConsentAt;
   const [lgpdAccepted, setLgpdAccepted] = useState(false);
   const showLgpd = needsLgpd && !lgpdAccepted;
+
+  // Reset lgpdAccepted quando trocar de conta
+  useEffect(() => {
+    setLgpdAccepted(false);
+  }, [user?.uid]);
+
+  console.log('[Nav] isLoading:', isLoading, 'isAuth:', isAuthenticated, 'role:', role, 'empresaId:', user?.empresaId, 'needsSetup:', needsEmpresaSetup, 'needsLgpd:', needsLgpd, 'lgpdAccepted:', lgpdAccepted, 'lgpdConsentAt:', user?.lgpdConsentAt, 'showLgpd:', showLgpd);
 
   if (isLoading) {
     return (

@@ -59,12 +59,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setLoading: (isLoading) => set({ isLoading }),
 
   signIn: async (email, password) => {
-    set({ isLoading: true });
+    // NÃO setar isLoading aqui — o RootNavigator desmonta o LoginScreen
+    // quando isLoading=true, perdendo o estado de erro local.
+    // O loading do botão é controlado pelo estado local do LoginScreen.
+    // O isLoading do store é gerenciado apenas pelo onAuthStateChanged.
     try {
       await signInWithEmailAndPassword(auth, email, password);
       // O onAuthStateChanged vai cuidar de atualizar o state
     } catch (error) {
-      set({ isLoading: false });
       throw error;
     }
   },
@@ -101,13 +103,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   // Listener de auth — chamar no App.tsx
   initialize: () => {
+    let listenerCount = 0;
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      listenerCount++;
+      const callId = listenerCount;
+      console.log(`[Auth #${callId}] onAuthStateChanged disparou. user:`, firebaseUser?.uid ?? 'NULL');
+
       const { setUser, setFirebaseUser, setLoading } = get();
       setFirebaseUser(firebaseUser);
 
       if (firebaseUser) {
         try {
           const userDoc = await getDoc(doc(db, 'usuarios', firebaseUser.uid));
+          console.log(`[Auth #${callId}] Doc existe?`, userDoc.exists());
 
           if (userDoc.exists()) {
             const data = userDoc.data();
@@ -118,18 +126,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               role: data.role ?? 'nurse',
               empresaId: data.empresaId ?? '',
               telefone: data.telefone ?? '',
+              lgpdConsentAt: data.lgpdConsentAt?.toDate?.() ?? undefined,
               createdAt: data.createdAt?.toDate?.() ?? new Date(),
               updatedAt: data.updatedAt?.toDate?.() ?? new Date(),
             });
+            console.log(`[Auth #${callId}] setUser OK — role:`, data.role, 'lgpd:', !!data.lgpdConsentAt);
           } else {
-            // Usuário autenticado mas sem perfil no Firestore — cria automaticamente
-            console.warn('Perfil não encontrado no Firestore, criando automaticamente...');
+            console.warn(`[Auth #${callId}] Perfil não encontrado, criando...`);
             const role = inferRoleFromEmail(firebaseUser.email ?? '');
             const now = Timestamp.now();
+            const safeRole = role === 'admin' ? 'admin' : role;
+
             const newProfile = {
               nome: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Usuário',
               email: firebaseUser.email ?? '',
-              role,
+              role: safeRole,
               empresaId: '',
               telefone: '',
               createdAt: now,
@@ -148,16 +159,26 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 createdAt: now.toDate(),
                 updatedAt: now.toDate(),
               });
+              console.log(`[Auth #${callId}] Perfil criado — role:`, safeRole);
             } catch (createError) {
-              console.error('Erro ao criar perfil:', createError);
+              console.error(`[Auth #${callId}] ERRO ao criar perfil:`, createError);
+              if (role === 'admin') {
+                console.warn(
+                  'Admin não pode auto-criar perfil via client. ' +
+                  'Crie o documento usuarios/' + firebaseUser.uid + ' no Firebase Console.'
+                );
+              }
+              console.log(`[Auth #${callId}] setUser(null) — motivo: ERRO_CRIAR_PERFIL`);
               setUser(null);
             }
           }
         } catch (error) {
-          console.error('Erro ao buscar perfil:', error);
+          console.error(`[Auth #${callId}] ERRO ao buscar perfil:`, error);
+          console.log(`[Auth #${callId}] setUser(null) — motivo: ERRO_BUSCAR_PERFIL`);
           setUser(null);
         }
       } else {
+        console.log(`[Auth #${callId}] setUser(null) — motivo: SEM_USUARIO`);
         setUser(null);
       }
 

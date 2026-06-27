@@ -43,6 +43,13 @@ interface FormErrors {
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const formatPhone = (raw: string): string => {
+  const digits = raw.replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 2) return digits.length ? `(${digits}` : '';
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+};
+
 export const CreateNurseScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
@@ -150,6 +157,7 @@ export const CreateNurseScreen = () => {
       onSubmitEditing?: () => void;
       returnKeyType?: 'next' | 'done';
       optional?: boolean;
+      formatter?: (raw: string) => string;
     }
   ) => {
     const error = errors[key as keyof FormErrors];
@@ -164,7 +172,7 @@ export const CreateNurseScreen = () => {
         <TextInput
           ref={options.ref}
           value={form[key]}
-          onChangeText={(value) => updateField(key, value)}
+          onChangeText={(value) => updateField(key, options.formatter ? options.formatter(value) : value)}
           placeholder={options.placeholder}
           placeholderTextColor={colors.textMuted}
           keyboardType={options.keyboardType ?? 'default'}
@@ -241,6 +249,7 @@ export const CreateNurseScreen = () => {
                 textContentType: 'telephoneNumber',
                 ref: telefoneRef,
                 onSubmitEditing: () => corenRef.current?.focus(),
+                formatter: formatPhone,
               })}
 
               {renderField('coren', 'COREN', {

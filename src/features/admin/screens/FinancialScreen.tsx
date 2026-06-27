@@ -20,6 +20,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import * as financialService from '../../../core/services/financialService';
+import { ModalHeader } from '../../../shared/components/ui/ModalHeader';
+import { InsetGroupedSection } from '../../../shared/components/ui/InsetGroupedSection';
+import { InsetRow } from '../../../shared/components/ui/InsetRow';
+import { SegmentedControl } from '../../../shared/components/ui/SegmentedControl';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 let RNHTMLtoPDF: any = null;
@@ -86,13 +90,34 @@ export const FinancialScreen = () => {
     setFormCategoria('');
   };
 
+  /** Aceita apenas dígitos e uma vírgula, formata como "1.234,56" */
+  const handleValorChange = (raw: string) => {
+    // Remove tudo que não é dígito ou vírgula
+    let cleaned = raw.replace(/[^\d,]/g, '');
+    // Garante no máximo uma vírgula
+    const parts = cleaned.split(',');
+    if (parts.length > 2) {
+      cleaned = parts[0] + ',' + parts.slice(1).join('');
+    }
+    // Limita a 2 casas decimais
+    if (parts.length === 2 && parts[1].length > 2) {
+      cleaned = parts[0] + ',' + parts[1].slice(0, 2);
+    }
+    // Formata a parte inteira com pontos de milhar
+    if (parts[0].length > 3) {
+      const inteiro = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      cleaned = parts.length === 2 ? inteiro + ',' + parts[1] : inteiro;
+    }
+    setFormValor(cleaned);
+  };
+
   const handleCreateEntry = async () => {
     if (!formDescricao.trim() || !formValor.trim()) {
       Alert.alert('Campos obrigatórios', 'Preencha a descrição e o valor.');
       return;
     }
 
-    const valor = parseFloat(formValor.replace(',', '.'));
+    const valor = parseFloat(formValor.replace(/\./g, '').replace(',', '.'));
     if (isNaN(valor) || valor <= 0) {
       Alert.alert('Valor inválido', 'Informe um valor numérico maior que zero.');
       return;
@@ -237,7 +262,7 @@ export const FinancialScreen = () => {
         <div class="ft">HomeCare App · Relatório gerado automaticamente</div>
       </body></html>`;
 
-      const result = await RNHTMLtoPDF.default.convert({
+      const result = await RNHTMLtoPDF.generatePDF({
         html,
         fileName: `Financeiro_${monthLabel}_${year}`,
         directory: 'Documents',
@@ -247,7 +272,8 @@ export const FinancialScreen = () => {
       if (!result?.filePath) { Alert.alert('Erro', 'Não foi possível gerar o PDF.'); return; }
 
       if (Share) {
-        await Share.default.open({
+        const shareModule = Share.default ?? Share;
+        await shareModule.open({
           url: Platform.OS === 'android' ? `file://${result.filePath}` : result.filePath,
           type: 'application/pdf',
           title: `Financeiro — ${monthLabel}/${year}`,
@@ -383,81 +409,88 @@ export const FinancialScreen = () => {
         <Ionicons name="add" size={28} color={colors.white} />
       </TouchableOpacity>
 
-      {/* Create Entry Modal */}
+      {/* Create Entry Modal — Apple HIG */}
       <Modal visible={showCreateModal} animationType="slide" transparent>
         <KeyboardAvoidingView
           style={styles.modalOverlay}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Novo Lançamento</Text>
-              <TouchableOpacity onPress={() => { setShowCreateModal(false); resetForm(); }} hitSlop={8}>
-                <Ionicons name="close" size={24} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
+          <View style={styles.modalSheet}>
+            <View style={styles.grabber} />
 
-            {/* Tipo chips */}
-            <Text style={styles.modalLabel}>Tipo</Text>
-            <View style={styles.tipoRow}>
-              <TouchableOpacity
-                style={[styles.tipoChip, formTipo === 'receita' && styles.tipoChipActiveReceita]}
-                onPress={() => setFormTipo('receita')}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="trending-up" size={16} color={formTipo === 'receita' ? colors.white : '#16A34A'} />
-                <Text style={[styles.tipoChipText, formTipo === 'receita' && styles.tipoChipTextActive]}>Receita</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.tipoChip, formTipo === 'despesa' && styles.tipoChipActiveDespesa]}
-                onPress={() => setFormTipo('despesa')}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="trending-down" size={16} color={formTipo === 'despesa' ? colors.white : '#DC2626'} />
-                <Text style={[styles.tipoChipText, formTipo === 'despesa' && styles.tipoChipTextActive]}>Despesa</Text>
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.modalLabel}>Descrição</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Ex: Mensalidade — Maria Souza"
-              placeholderTextColor={colors.textMuted}
-              value={formDescricao}
-              onChangeText={setFormDescricao}
+            <ModalHeader
+              title="Novo Lançamento"
+              onCancel={() => { setShowCreateModal(false); resetForm(); }}
+              onDone={handleCreateEntry}
+              doneLabel="Salvar"
+              doneDisabled={!formDescricao.trim() || !formValor.trim()}
+              isLoading={isSubmitting}
+              accentColor={colors.admin}
             />
 
-            <Text style={styles.modalLabel}>Valor (R$)</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="0,00"
-              placeholderTextColor={colors.textMuted}
-              value={formValor}
-              onChangeText={setFormValor}
-              keyboardType="decimal-pad"
-            />
-
-            <Text style={styles.modalLabel}>Categoria (opcional)</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Ex: Mensalidade, Folha, Materiais"
-              placeholderTextColor={colors.textMuted}
-              value={formCategoria}
-              onChangeText={setFormCategoria}
-            />
-
-            <TouchableOpacity
-              style={[styles.modalSubmitBtn, isSubmitting && styles.modalSubmitBtnDisabled]}
-              onPress={handleCreateEntry}
-              activeOpacity={0.8}
-              disabled={isSubmitting}
+            <ScrollView
+              contentContainerStyle={styles.modalBody}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
             >
-              {isSubmitting ? (
-                <ActivityIndicator color={colors.white} />
-              ) : (
-                <Text style={styles.modalSubmitBtnText}>Criar Lançamento</Text>
-              )}
-            </TouchableOpacity>
+              <InsetGroupedSection header="Tipo">
+                <View style={styles.segmentWrapper}>
+                  <SegmentedControl
+                    options={[
+                      { key: 'receita', label: 'Receita' },
+                      { key: 'despesa', label: 'Despesa' },
+                    ]}
+                    selectedKey={formTipo}
+                    onSelect={(key) => setFormTipo(key as 'receita' | 'despesa')}
+                    accentColor={formTipo === 'receita' ? '#16A34A' : '#DC2626'}
+                  />
+                </View>
+              </InsetGroupedSection>
+
+              <InsetGroupedSection header="Detalhes">
+                <InsetRow
+                  label="Descrição"
+                  rightContent={
+                    <TextInput
+                      style={styles.insetInput}
+                      placeholder="Ex: Mensalidade"
+                      placeholderTextColor={colors.textMuted}
+                      value={formDescricao}
+                      onChangeText={setFormDescricao}
+                      textAlign="right"
+                    />
+                  }
+                />
+                <InsetRow
+                  label="Valor (R$)"
+                  rightContent={
+                    <TextInput
+                      style={styles.insetInput}
+                      placeholder="0,00"
+                      placeholderTextColor={colors.textMuted}
+                      value={formValor}
+                      onChangeText={handleValorChange}
+                      keyboardType="decimal-pad"
+                      textAlign="right"
+                    />
+                  }
+                />
+                <InsetRow
+                  label="Categoria"
+                  last
+                  rightContent={
+                    <TextInput
+                      style={styles.insetInput}
+                      placeholder="Opcional"
+                      placeholderTextColor={colors.textMuted}
+                      value={formCategoria}
+                      onChangeText={setFormCategoria}
+                      textAlign="right"
+                    />
+                  }
+                />
+              </InsetGroupedSection>
+            </ScrollView>
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -599,93 +632,40 @@ const styles = StyleSheet.create({
     }),
   },
 
-  // Modal
+  // Modal — Apple-style
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
   },
-  modalContent: {
-    backgroundColor: colors.surface,
+  modalSheet: {
+    backgroundColor: colors.background,
     borderTopLeftRadius: borderRadius.xl,
     borderTopRightRadius: borderRadius.xl,
-    padding: spacing.lg,
+    maxHeight: '85%',
     paddingBottom: spacing.xxl,
   },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  modalTitle: {
-    fontSize: fontSize.xl,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  modalLabel: {
-    fontSize: fontSize.sm,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
+  grabber: {
+    width: 36,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: colors.border,
+    alignSelf: 'center',
     marginTop: spacing.sm,
-  },
-  modalInput: {
-    backgroundColor: colors.inputBg,
-    borderWidth: 1,
-    borderColor: colors.inputBorder,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    fontSize: fontSize.md,
-    color: colors.textPrimary,
-  },
-  tipoRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
     marginBottom: spacing.xs,
   },
-  tipoChip: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.sm + 2,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+  modalBody: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
   },
-  tipoChipActiveReceita: {
-    backgroundColor: '#16A34A',
-    borderColor: '#16A34A',
+  segmentWrapper: {
+    padding: spacing.md,
   },
-  tipoChipActiveDespesa: {
-    backgroundColor: '#DC2626',
-    borderColor: '#DC2626',
-  },
-  tipoChipText: {
-    fontSize: fontSize.sm,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  tipoChipTextActive: {
-    color: colors.white,
-  },
-  modalSubmitBtn: {
-    backgroundColor: colors.admin,
-    borderRadius: borderRadius.full,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    marginTop: spacing.lg,
-    height: 52,
-    justifyContent: 'center',
-  },
-  modalSubmitBtnDisabled: { opacity: 0.5 },
-  modalSubmitBtnText: {
+  insetInput: {
     fontSize: fontSize.md,
-    fontWeight: '700',
-    color: colors.white,
+    color: colors.textPrimary,
+    flex: 1,
+    paddingVertical: 0,
+    minWidth: 100,
   },
 });

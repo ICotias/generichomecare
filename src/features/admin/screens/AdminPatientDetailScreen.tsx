@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  TextInput,
   ActivityIndicator,
   Alert,
   Platform,
@@ -18,7 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import * as patientService from '../../../core/services/patientService';
-import type { Patient } from '../../../core/types';
+import type { Patient, VitalSignsRange } from '../../../core/types';
 import type { PatientMgmtStackParamList } from '../../../core/navigation/RootNavigator';
 
 type NavProp = NativeStackNavigationProp<PatientMgmtStackParamList, 'AdminPatientDetail'>;
@@ -69,6 +70,9 @@ export const AdminPatientDetailScreen = () => {
   const [patient, setPatient] = useState<Patient | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isEditingVitals, setIsEditingVitals] = useState(false);
+  const [editedRanges, setEditedRanges] = useState<VitalSignsRange | null>(null);
+  const [isSavingVitals, setIsSavingVitals] = useState(false);
 
   const load = useCallback(async () => {
     if (!user?.empresaId || !patientId) return;
@@ -116,6 +120,38 @@ export const AdminPatientDetailScreen = () => {
         },
       ]
     );
+  };
+
+  const handleEditVitals = () => {
+    if (!patient) return;
+    setEditedRanges({ ...patient.faixaSinaisVitais });
+    setIsEditingVitals(true);
+  };
+
+  const handleSaveVitals = async () => {
+    if (!user?.empresaId || !patientId || !editedRanges) return;
+    setIsSavingVitals(true);
+    try {
+      await patientService.updatePatient(user.empresaId, patientId, {
+        faixaSinaisVitais: editedRanges,
+      } as any);
+      setPatient((prev) => (prev ? { ...prev, faixaSinaisVitais: editedRanges } : prev));
+      setIsEditingVitals(false);
+      Alert.alert('Atualizado', 'Faixas de sinais vitais atualizadas com sucesso.');
+    } catch (err) {
+      Alert.alert('Erro', 'Não foi possível atualizar as faixas.');
+      console.error('vitals update error', err);
+    } finally {
+      setIsSavingVitals(false);
+    }
+  };
+
+  const updateRange = (key: keyof VitalSignsRange, value: string) => {
+    if (!editedRanges) return;
+    const num = parseFloat(value);
+    if (!isNaN(num)) {
+      setEditedRanges((prev) => prev ? { ...prev, [key]: num } : prev);
+    }
   };
 
   // ── Info row helper ──
@@ -269,29 +305,58 @@ export const AdminPatientDetailScreen = () => {
         ) : null}
 
         {/* Sinais vitais ranges */}
-        <Section title="Faixas de sinais vitais">
-          <InfoRow
-            label="PA Sistólica"
-            value={`${patient.faixaSinaisVitais.paSistolicaMin}–${patient.faixaSinaisVitais.paSistolicaMax} mmHg`}
-          />
-          <InfoRow
-            label="PA Diastólica"
-            value={`${patient.faixaSinaisVitais.paDiastolicaMin}–${patient.faixaSinaisVitais.paDiastolicaMax} mmHg`}
-          />
-          <InfoRow
-            label="FC"
-            value={`${patient.faixaSinaisVitais.fcMin}–${patient.faixaSinaisVitais.fcMax} bpm`}
-          />
-          <InfoRow
-            label="FR"
-            value={`${patient.faixaSinaisVitais.frMin}–${patient.faixaSinaisVitais.frMax} irpm`}
-          />
-          <InfoRow
-            label="Temperatura"
-            value={`${patient.faixaSinaisVitais.tempMin}–${patient.faixaSinaisVitais.tempMax} °C`}
-          />
-          <InfoRow label="SpO₂ mínima" value={`${patient.faixaSinaisVitais.satO2Min}%`} />
-        </Section>
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Faixas de sinais vitais</Text>
+            {!isEditingVitals && (
+              <TouchableOpacity onPress={handleEditVitals} activeOpacity={0.7} hitSlop={8}>
+                <Ionicons name="create-outline" size={18} color={colors.primary} />
+              </TouchableOpacity>
+            )}
+          </View>
+          <View style={styles.sectionCard}>
+            {isEditingVitals && editedRanges ? (
+              <>
+                <EditableVitalRow label="PA Sist." minKey="paSistolicaMin" maxKey="paSistolicaMax" unit="mmHg" ranges={editedRanges} onChange={updateRange} />
+                <EditableVitalRow label="PA Diast." minKey="paDiastolicaMin" maxKey="paDiastolicaMax" unit="mmHg" ranges={editedRanges} onChange={updateRange} />
+                <EditableVitalRow label="FC" minKey="fcMin" maxKey="fcMax" unit="bpm" ranges={editedRanges} onChange={updateRange} />
+                <EditableVitalRow label="FR" minKey="frMin" maxKey="frMax" unit="irpm" ranges={editedRanges} onChange={updateRange} />
+                <EditableVitalRow label="Temp." minKey="tempMin" maxKey="tempMax" unit="°C" ranges={editedRanges} onChange={updateRange} />
+                <EditableVitalRow label="SpO₂ mín." minKey="satO2Min" unit="%" ranges={editedRanges} onChange={updateRange} />
+                <View style={styles.vitalActions}>
+                  <TouchableOpacity
+                    style={styles.vitalCancelBtn}
+                    onPress={() => setIsEditingVitals(false)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.vitalCancelText}>Cancelar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.vitalSaveBtn, isSavingVitals && { opacity: 0.5 }]}
+                    onPress={handleSaveVitals}
+                    activeOpacity={0.8}
+                    disabled={isSavingVitals}
+                  >
+                    {isSavingVitals ? (
+                      <ActivityIndicator size="small" color={colors.white} />
+                    ) : (
+                      <Text style={styles.vitalSaveText}>Salvar</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : (
+              <>
+                <InfoRow label="PA Sistólica" value={`${patient.faixaSinaisVitais.paSistolicaMin}–${patient.faixaSinaisVitais.paSistolicaMax} mmHg`} />
+                <InfoRow label="PA Diastólica" value={`${patient.faixaSinaisVitais.paDiastolicaMin}–${patient.faixaSinaisVitais.paDiastolicaMax} mmHg`} />
+                <InfoRow label="FC" value={`${patient.faixaSinaisVitais.fcMin}–${patient.faixaSinaisVitais.fcMax} bpm`} />
+                <InfoRow label="FR" value={`${patient.faixaSinaisVitais.frMin}–${patient.faixaSinaisVitais.frMax} irpm`} />
+                <InfoRow label="Temperatura" value={`${patient.faixaSinaisVitais.tempMin}–${patient.faixaSinaisVitais.tempMax} °C`} />
+                <InfoRow label="SpO₂ mínima" value={`${patient.faixaSinaisVitais.satO2Min}%`} />
+              </>
+            )}
+          </View>
+        </View>
 
         {/* Status actions */}
         <View style={styles.statusActions}>
@@ -327,6 +392,52 @@ export const AdminPatientDetailScreen = () => {
     </View>
   );
 };
+
+// ════════════════════════════════════════════
+// Sub-components
+// ════════════════════════════════════════════
+
+const EditableVitalRow = ({
+  label,
+  minKey,
+  maxKey,
+  unit,
+  ranges,
+  onChange,
+}: {
+  label: string;
+  minKey: keyof VitalSignsRange;
+  maxKey?: keyof VitalSignsRange;
+  unit: string;
+  ranges: VitalSignsRange;
+  onChange: (key: keyof VitalSignsRange, value: string) => void;
+}) => (
+  <View style={styles.editVitalRow}>
+    <Text style={styles.editVitalLabel}>{label}</Text>
+    <View style={styles.editVitalInputs}>
+      <TextInput
+        style={styles.editVitalInput}
+        value={String(ranges[minKey])}
+        onChangeText={(v) => onChange(minKey, v)}
+        keyboardType="decimal-pad"
+        selectTextOnFocus
+      />
+      {maxKey && (
+        <>
+          <Text style={styles.editVitalDash}>–</Text>
+          <TextInput
+            style={styles.editVitalInput}
+            value={String(ranges[maxKey])}
+            onChangeText={(v) => onChange(maxKey, v)}
+            keyboardType="decimal-pad"
+            selectTextOnFocus
+          />
+        </>
+      )}
+      <Text style={styles.editVitalUnit}>{unit}</Text>
+    </View>
+  </View>
+);
 
 // ════════════════════════════════════════════
 // Styles
@@ -542,5 +653,90 @@ const styles = StyleSheet.create({
   },
   updatingIndicator: {
     marginTop: spacing.sm,
+  },
+
+  // Vitals section header
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+
+  // Editable vital rows
+  editVitalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.xs + 2,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  editVitalLabel: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    flex: 1,
+  },
+  editVitalInputs: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  editVitalInput: {
+    width: 52,
+    height: 36,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    paddingHorizontal: spacing.xs,
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    textAlign: 'center',
+  },
+  editVitalDash: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+  },
+  editVitalUnit: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    marginLeft: 2,
+    minWidth: 30,
+  },
+
+  // Vital action buttons
+  vitalActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  vitalCancelBtn: {
+    flex: 1,
+    height: 40,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  vitalCancelText: {
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  vitalSaveBtn: {
+    flex: 1,
+    height: 40,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  vitalSaveText: {
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    color: colors.white,
   },
 });

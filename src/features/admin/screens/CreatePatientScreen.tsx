@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  ActivityIndicator,
   Alert,
   ScrollView,
   KeyboardAvoidingView,
@@ -16,27 +15,27 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
+import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import * as patientService from '../../../core/services/patientService';
+import { VITAL_SIGNS_PRESETS, type VitalSignsPresetKey } from '../../../core/services/patientService';
 import type { PatientMgmtStackParamList } from '../../../core/navigation/RootNavigator';
-import type { Patient } from '../../../core/types';
+import type { Patient, VitalSignsRange } from '../../../core/types';
+import { ModalHeader } from '../../../shared/components/ui/ModalHeader';
+import { InsetGroupedSection } from '../../../shared/components/ui/InsetGroupedSection';
+import { InsetRow } from '../../../shared/components/ui/InsetRow';
+import { SegmentedControl } from '../../../shared/components/ui/SegmentedControl';
 
 type NavProp = NativeStackNavigationProp<PatientMgmtStackParamList, 'CreatePatient'>;
 
-// ════════════════════════════════════════════
-// Form state
-// ════════════════════════════════════════════
-
 interface FormState {
-  // Dados pessoais
   nome: string;
-  dataNascimento: string; // DD/MM/AAAA — convertido para Date no submit
+  dataNascimento: Date | null;
   cpf: string;
   genero: Patient['genero'] | '';
-
-  // Endereço
   rua: string;
   numero: string;
   complemento: string;
@@ -44,13 +43,9 @@ interface FormState {
   cidade: string;
   estado: string;
   cep: string;
-
-  // Contato de emergência
   contatoNome: string;
   contatoParentesco: string;
   contatoTelefone: string;
-
-  // Clínico
   diagnosticos: string;
   alergias: string;
   medicamentosEmUso: string;
@@ -62,25 +57,22 @@ interface FormErrors {
   [key: string]: string | undefined;
 }
 
-const GENERO_OPTIONS: { value: Patient['genero']; label: string }[] = [
-  { value: 'masculino', label: 'Masculino' },
-  { value: 'feminino', label: 'Feminino' },
-  { value: 'outro', label: 'Outro' },
+const GENERO_SEGMENTS = [
+  { key: 'masculino', label: 'Masculino' },
+  { key: 'feminino', label: 'Feminino' },
+  { key: 'outro', label: 'Outro' },
 ];
 
-const ATENDIMENTO_OPTIONS: { value: Patient['tipoAtendimento']; label: string }[] = [
-  { value: 'integral', label: '24h' },
-  { value: 'diurno', label: 'Diurno' },
-  { value: 'noturno', label: 'Noturno' },
-  { value: 'visita', label: 'Visita' },
+const ATENDIMENTO_SEGMENTS = [
+  { key: 'integral', label: '24h' },
+  { key: 'diurno', label: 'Diurno' },
+  { key: 'noturno', label: 'Noturno' },
+  { key: 'visita', label: 'Visita' },
 ];
+
+const PRESET_SEGMENTS = VITAL_SIGNS_PRESETS.map((p) => ({ key: p.key, label: p.label }));
 
 const CPF_REGEX = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/;
-const DATE_REGEX = /^\d{2}\/\d{2}\/\d{4}$/;
-
-// ════════════════════════════════════════════
-// Helpers
-// ════════════════════════════════════════════
 
 const formatCPF = (raw: string): string => {
   const digits = raw.replace(/\D/g, '').slice(0, 11);
@@ -91,36 +83,28 @@ const formatCPF = (raw: string): string => {
   return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
 };
 
-const formatDate = (raw: string): string => {
-  const digits = raw.replace(/\D/g, '').slice(0, 8);
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
-  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
-};
-
 const formatCEP = (raw: string): string => {
   const digits = raw.replace(/\D/g, '').slice(0, 8);
   if (digits.length <= 5) return digits;
   return `${digits.slice(0, 5)}-${digits.slice(5)}`;
 };
 
-const parseDate = (str: string): Date | null => {
-  if (!DATE_REGEX.test(str)) return null;
-  const [dd, mm, yyyy] = str.split('/').map(Number);
-  const d = new Date(yyyy, mm - 1, dd);
-  if (d.getFullYear() !== yyyy || d.getMonth() !== mm - 1 || d.getDate() !== dd) return null;
-  return d;
+const formatPhone = (raw: string): string => {
+  const digits = raw.replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 2) return digits.length ? `(${digits}` : '';
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+};
+
+const formatDateBR = (d: Date): string => {
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
 };
 
 const splitCSV = (str: string): string[] =>
-  str
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-
-// ════════════════════════════════════════════
-// Component
-// ════════════════════════════════════════════
+  str.split(',').map((s) => s.trim()).filter(Boolean);
 
 export const CreatePatientScreen = () => {
   const insets = useSafeAreaInsets();
@@ -129,7 +113,7 @@ export const CreatePatientScreen = () => {
 
   const [form, setForm] = useState<FormState>({
     nome: '',
-    dataNascimento: '',
+    dataNascimento: null,
     cpf: '',
     genero: '',
     rua: '',
@@ -150,11 +134,12 @@ export const CreatePatientScreen = () => {
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [focused, setFocused] = useState<string | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedPreset, setSelectedPreset] = useState<VitalSignsPresetKey>('idoso_padrao');
+  const [customRanges, setCustomRanges] = useState<VitalSignsRange>(VITAL_SIGNS_PRESETS[0].ranges);
 
-  // Refs para navegação entre campos
+  // Refs
   const refs: Record<string, React.RefObject<TextInput | null>> = {
-    dataNascimento: useRef<TextInput>(null),
     cpf: useRef<TextInput>(null),
     rua: useRef<TextInput>(null),
     numero: useRef<TextInput>(null),
@@ -173,7 +158,7 @@ export const CreatePatientScreen = () => {
   };
 
   const updateField = useCallback(
-    (key: string, value: string) => {
+    (key: string, value: string | Date | null) => {
       setForm((prev) => ({ ...prev, [key]: value }));
       if (errors[key]) {
         setErrors((prev) => ({ ...prev, [key]: undefined, general: undefined }));
@@ -182,52 +167,37 @@ export const CreatePatientScreen = () => {
     [errors]
   );
 
-  // ── Validation ──
+  // (removed index helpers — SegmentedControl uses key-based selection)
+
   const validate = (): boolean => {
     const e: FormErrors = {};
-
     if (!form.nome.trim()) e.nome = 'Informe o nome completo';
-
-    const parsedDate = parseDate(form.dataNascimento);
-    if (!form.dataNascimento.trim()) {
+    if (!form.dataNascimento) {
       e.dataNascimento = 'Informe a data de nascimento';
-    } else if (!parsedDate) {
-      e.dataNascimento = 'Data inválida (DD/MM/AAAA)';
-    } else if (parsedDate > new Date()) {
+    } else if (form.dataNascimento > new Date()) {
       e.dataNascimento = 'Data não pode ser futura';
     }
-
     if (!form.cpf.trim()) {
       e.cpf = 'Informe o CPF';
     } else if (!CPF_REGEX.test(form.cpf)) {
       e.cpf = 'CPF inválido (000.000.000-00)';
     }
-
     if (!form.genero) e.genero = 'Selecione o gênero';
-
-    // Endereço mínimo
     if (!form.rua.trim()) e.rua = 'Informe a rua';
     if (!form.numero.trim()) e.numero = 'Nº obrigatório';
     if (!form.bairro.trim()) e.bairro = 'Informe o bairro';
     if (!form.cidade.trim()) e.cidade = 'Informe a cidade';
     if (!form.estado.trim()) e.estado = 'Informe o estado';
-
-    // Contato emergência
     if (!form.contatoNome.trim()) e.contatoNome = 'Informe o nome do contato';
     if (!form.contatoTelefone.trim()) e.contatoTelefone = 'Informe o telefone';
-
-    // Clínico
     if (!form.tipoAtendimento) e.tipoAtendimento = 'Selecione o tipo';
-
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  // ── Submit ──
   const handleSubmit = async () => {
     Keyboard.dismiss();
     if (!validate()) return;
-
     if (!user?.empresaId) {
       setErrors({ general: 'Administrador sem empresa vinculada' });
       return;
@@ -235,19 +205,19 @@ export const CreatePatientScreen = () => {
 
     setIsSubmitting(true);
     try {
-      await patientService.createPatient(user.empresaId, {
+      const patientData: Record<string, unknown> = {
         nome: form.nome.trim(),
-        dataNascimento: parseDate(form.dataNascimento)!,
+        dataNascimento: form.dataNascimento!,
         cpf: form.cpf.trim(),
         genero: form.genero as Patient['genero'],
         endereco: {
           rua: form.rua.trim(),
           numero: form.numero.trim(),
-          complemento: form.complemento.trim() || undefined,
           bairro: form.bairro.trim(),
           cidade: form.cidade.trim(),
           estado: form.estado.trim().toUpperCase(),
           cep: form.cep.trim(),
+          ...(form.complemento.trim() ? { complemento: form.complemento.trim() } : {}),
         },
         contatoEmergencia: {
           nome: form.contatoNome.trim(),
@@ -256,11 +226,16 @@ export const CreatePatientScreen = () => {
         },
         diagnosticos: splitCSV(form.diagnosticos),
         alergias: splitCSV(form.alergias),
-        medicamentosEmUso: splitCSV(form.medicamentosEmUso) || undefined,
         tipoAtendimento: form.tipoAtendimento as Patient['tipoAtendimento'],
-        observacoes: form.observacoes.trim() || undefined,
-        faixaSinaisVitais: patientService.DEFAULT_VITAL_SIGNS,
-      });
+        faixaSinaisVitais: customRanges,
+      };
+
+      const meds = splitCSV(form.medicamentosEmUso);
+      if (meds.length > 0) patientData.medicamentosEmUso = meds;
+      const obs = form.observacoes.trim();
+      if (obs) patientData.observacoes = obs;
+
+      await patientService.createPatient(user.empresaId, patientData as any);
 
       Alert.alert('Paciente cadastrado', `${form.nome.trim()} foi adicionado com sucesso.`, [
         { text: 'OK', onPress: () => navigation.goBack() },
@@ -273,100 +248,6 @@ export const CreatePatientScreen = () => {
     }
   };
 
-  // ── Shared field renderer ──
-  const renderField = (
-    key: string,
-    label: string,
-    opts: {
-      placeholder: string;
-      keyboardType?: 'default' | 'numeric' | 'phone-pad';
-      autoCapitalize?: 'none' | 'words' | 'characters' | 'sentences';
-      ref?: React.RefObject<TextInput | null>;
-      nextRef?: React.RefObject<TextInput | null>;
-      optional?: boolean;
-      formatter?: (raw: string) => string;
-      multiline?: boolean;
-      hint?: string;
-    } = { placeholder: '' }
-  ) => {
-    const error = errors[key];
-    const isFocused = focused === key;
-
-    return (
-      <View style={styles.field} key={key}>
-        <Text style={styles.label}>
-          {label}
-          {opts.optional ? <Text style={styles.optional}> (opcional)</Text> : null}
-        </Text>
-        <TextInput
-          ref={opts.ref ?? refs[key]}
-          value={(form as unknown as Record<string, string>)[key]}
-          onChangeText={(v) => updateField(key, opts.formatter ? opts.formatter(v) : v)}
-          placeholder={opts.placeholder}
-          placeholderTextColor={colors.textMuted}
-          keyboardType={opts.keyboardType ?? 'default'}
-          autoCapitalize={opts.autoCapitalize ?? 'none'}
-          autoCorrect={false}
-          returnKeyType={opts.nextRef ? 'next' : 'done'}
-          onSubmitEditing={() => opts.nextRef?.current?.focus()}
-          onFocus={() => setFocused(key)}
-          onBlur={() => setFocused(null)}
-          multiline={opts.multiline}
-          textAlignVertical={opts.multiline ? 'top' : 'center'}
-          style={[
-            styles.input,
-            opts.multiline && styles.inputMultiline,
-            isFocused && styles.inputFocused,
-            error && styles.inputError,
-          ]}
-          editable={!isSubmitting}
-        />
-        {opts.hint && !error ? <Text style={styles.hintText}>{opts.hint}</Text> : null}
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      </View>
-    );
-  };
-
-  // ── Option selector (chip-style) ──
-  const renderChipSelector = <T extends string>(
-    key: string,
-    label: string,
-    options: { value: T; label: string }[],
-    error?: string
-  ) => (
-    <View style={styles.field} key={key}>
-      <Text style={styles.label}>{label}</Text>
-      <View style={styles.chipRow}>
-        {options.map((opt) => {
-          const isActive = (form as unknown as Record<string, string>)[key] === opt.value;
-          return (
-            <TouchableOpacity
-              key={opt.value}
-              style={[styles.chip, isActive && styles.chipActive]}
-              onPress={() => updateField(key, opt.value)}
-              activeOpacity={0.7}
-              disabled={isSubmitting}
-            >
-              <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
-                {opt.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-    </View>
-  );
-
-  // ── Section header ──
-  const renderSection = (title: string) => (
-    <Text style={styles.sectionTitle}>{title}</Text>
-  );
-
-  // ════════════════════════════════════════════
-  // Render
-  // ════════════════════════════════════════════
-
   return (
     <KeyboardAvoidingView
       style={styles.root}
@@ -374,313 +255,488 @@ export const CreatePatientScreen = () => {
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <View style={styles.root}>
+          <View style={{ paddingTop: insets.top }}>
+            <ModalHeader
+              title="Novo Paciente"
+              onCancel={() => navigation.goBack()}
+              onDone={handleSubmit}
+              doneLabel="Cadastrar"
+              doneDisabled={isSubmitting}
+              isLoading={isSubmitting}
+              accentColor={colors.primary}
+            />
+          </View>
+
           <ScrollView
-            contentContainerStyle={[
-              styles.scrollContent,
-              { paddingTop: insets.top + spacing.md, paddingBottom: spacing.xxl },
-            ]}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + spacing.xxl }]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {/* Header */}
-            <View style={styles.headerRow}>
-              <TouchableOpacity
-                onPress={() => navigation.goBack()}
-                style={styles.backButton}
-                hitSlop={8}
-              >
-                <Text style={styles.backText}>Cancelar</Text>
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.title}>Novo paciente</Text>
-            <Text style={styles.subtitle}>
-              Preencha os dados do paciente para cadastrá-lo no sistema. Os campos de sinais
-              vitais usarão valores-padrão que podem ser ajustados depois.
-            </Text>
-
-            <View style={styles.form}>
-              {/* ── Dados pessoais ── */}
-              {renderSection('Dados pessoais')}
-
-              {renderField('nome', 'Nome completo', {
-                placeholder: 'Ex.: João da Silva',
-                autoCapitalize: 'words',
-                nextRef: refs.dataNascimento,
-              })}
-
-              {renderField('dataNascimento', 'Data de nascimento', {
-                placeholder: 'DD/MM/AAAA',
-                keyboardType: 'numeric',
-                ref: refs.dataNascimento,
-                nextRef: refs.cpf,
-                formatter: formatDate,
-              })}
-
-              {renderField('cpf', 'CPF', {
-                placeholder: '000.000.000-00',
-                keyboardType: 'numeric',
-                ref: refs.cpf,
-                formatter: formatCPF,
-              })}
-
-              {renderChipSelector('genero', 'Gênero', GENERO_OPTIONS, errors.genero)}
-
-              {/* ── Endereço ── */}
-              {renderSection('Endereço')}
-
-              {renderField('rua', 'Rua', {
-                placeholder: 'Ex.: Rua das Flores',
-                autoCapitalize: 'words',
-                ref: refs.rua,
-                nextRef: refs.numero,
-              })}
-
-              <View style={styles.row}>
-                <View style={styles.rowSmall}>
-                  {renderField('numero', 'Nº', {
-                    placeholder: '123',
-                    keyboardType: 'numeric',
-                    ref: refs.numero,
-                    nextRef: refs.complemento,
-                  })}
+            {/* Dados pessoais */}
+            <InsetGroupedSection header="DADOS PESSOAIS">
+              <InsetRow
+                label="Nome"
+                rightContent={
+                  <TextInput
+                    style={styles.inlineInput}
+                    value={form.nome}
+                    onChangeText={(v) => updateField('nome', v)}
+                    placeholder="Nome completo"
+                    placeholderTextColor={colors.textMuted}
+                    autoCapitalize="words"
+                    returnKeyType="next"
+                    onSubmitEditing={() => refs.cpf?.current?.focus()}
+                  />
+                }
+              />
+              <InsetRow
+                label="Nascimento"
+                value={form.dataNascimento ? formatDateBR(form.dataNascimento) : 'Selecionar'}
+                valueColor={form.dataNascimento ? colors.textPrimary : colors.textMuted}
+                onPress={() => setShowDatePicker(!showDatePicker)}
+              />
+              {showDatePicker && (
+                <View style={styles.pickerContainer}>
+                  <DateTimePicker
+                    value={form.dataNascimento ?? new Date(1950, 0, 1)}
+                    mode="date"
+                    display="spinner"
+                    maximumDate={new Date()}
+                    onChange={(_e: any, date: Date | undefined) => {
+                      if (date) updateField('dataNascimento', date);
+                    }}
+                    locale="pt-BR"
+                  />
                 </View>
-                <View style={styles.rowLarge}>
-                  {renderField('complemento', 'Complemento', {
-                    placeholder: 'Apto, bloco…',
-                    ref: refs.complemento,
-                    nextRef: refs.bairro,
-                    optional: true,
-                  })}
-                </View>
-              </View>
-
-              {renderField('bairro', 'Bairro', {
-                placeholder: 'Ex.: Centro',
-                autoCapitalize: 'words',
-                ref: refs.bairro,
-                nextRef: refs.cidade,
-              })}
-
-              <View style={styles.row}>
-                <View style={styles.rowLarge}>
-                  {renderField('cidade', 'Cidade', {
-                    placeholder: 'Ex.: São Paulo',
-                    autoCapitalize: 'words',
-                    ref: refs.cidade,
-                    nextRef: refs.estado,
-                  })}
-                </View>
-                <View style={styles.rowSmall}>
-                  {renderField('estado', 'UF', {
-                    placeholder: 'SP',
-                    autoCapitalize: 'characters',
-                    ref: refs.estado,
-                    nextRef: refs.cep,
-                  })}
-                </View>
-              </View>
-
-              {renderField('cep', 'CEP', {
-                placeholder: '00000-000',
-                keyboardType: 'numeric',
-                ref: refs.cep,
-                nextRef: refs.contatoNome,
-                formatter: formatCEP,
-                optional: true,
-              })}
-
-              {/* ── Contato de emergência ── */}
-              {renderSection('Contato de emergência')}
-
-              {renderField('contatoNome', 'Nome', {
-                placeholder: 'Ex.: Maria da Silva',
-                autoCapitalize: 'words',
-                ref: refs.contatoNome,
-                nextRef: refs.contatoParentesco,
-              })}
-
-              {renderField('contatoParentesco', 'Parentesco', {
-                placeholder: 'Ex.: Filha, Cônjuge',
-                autoCapitalize: 'words',
-                ref: refs.contatoParentesco,
-                nextRef: refs.contatoTelefone,
-                optional: true,
-              })}
-
-              {renderField('contatoTelefone', 'Telefone', {
-                placeholder: '(11) 90000-0000',
-                keyboardType: 'phone-pad',
-                ref: refs.contatoTelefone,
-              })}
-
-              {/* ── Dados clínicos ── */}
-              {renderSection('Dados clínicos')}
-
-              {renderChipSelector(
-                'tipoAtendimento',
-                'Tipo de atendimento',
-                ATENDIMENTO_OPTIONS,
-                errors.tipoAtendimento
               )}
+              <InsetRow
+                label="CPF"
+                rightContent={
+                  <TextInput
+                    ref={refs.cpf}
+                    style={styles.inlineInput}
+                    value={form.cpf}
+                    onChangeText={(v) => updateField('cpf', formatCPF(v))}
+                    placeholder="000.000.000-00"
+                    placeholderTextColor={colors.textMuted}
+                    keyboardType="numeric"
+                  />
+                }
+                last
+              />
+            </InsetGroupedSection>
+            {errors.nome ? <Text style={styles.errorText}>{errors.nome}</Text> : null}
+            {errors.dataNascimento ? <Text style={styles.errorText}>{errors.dataNascimento}</Text> : null}
+            {errors.cpf ? <Text style={styles.errorText}>{errors.cpf}</Text> : null}
 
-              {renderField('diagnosticos', 'Diagnósticos', {
-                placeholder: 'Ex.: Alzheimer, HAS, DM2',
-                autoCapitalize: 'sentences',
-                ref: refs.diagnosticos,
-                nextRef: refs.alergias,
-                hint: 'Separe com vírgula',
-                optional: true,
-              })}
+            {/* Gênero — SegmentedControl */}
+            <InsetGroupedSection header="GÊNERO">
+              <View style={styles.segmentedContainer}>
+                <SegmentedControl
+                  options={GENERO_SEGMENTS}
+                  selectedKey={form.genero || ''}
+                  onSelect={(key) => updateField('genero', key)}
+                  accentColor={colors.primary}
+                />
+              </View>
+            </InsetGroupedSection>
+            {errors.genero ? <Text style={styles.errorText}>{errors.genero}</Text> : null}
 
-              {renderField('alergias', 'Alergias', {
-                placeholder: 'Ex.: Dipirona, Látex',
-                autoCapitalize: 'sentences',
-                ref: refs.alergias,
-                nextRef: refs.medicamentosEmUso,
-                hint: 'Separe com vírgula',
-                optional: true,
-              })}
+            {/* Endereço */}
+            <InsetGroupedSection header="ENDEREÇO">
+              <InsetRow
+                label="Rua"
+                rightContent={
+                  <TextInput
+                    ref={refs.rua}
+                    style={styles.inlineInput}
+                    value={form.rua}
+                    onChangeText={(v) => updateField('rua', v)}
+                    placeholder="Rua das Flores"
+                    placeholderTextColor={colors.textMuted}
+                    autoCapitalize="words"
+                    returnKeyType="next"
+                    onSubmitEditing={() => refs.numero?.current?.focus()}
+                  />
+                }
+              />
+              <InsetRow
+                label="Nº"
+                rightContent={
+                  <TextInput
+                    ref={refs.numero}
+                    style={styles.inlineInput}
+                    value={form.numero}
+                    onChangeText={(v) => updateField('numero', v)}
+                    placeholder="123"
+                    placeholderTextColor={colors.textMuted}
+                    keyboardType="numeric"
+                    returnKeyType="next"
+                    onSubmitEditing={() => refs.complemento?.current?.focus()}
+                  />
+                }
+              />
+              <InsetRow
+                label="Complemento"
+                rightContent={
+                  <TextInput
+                    ref={refs.complemento}
+                    style={styles.inlineInput}
+                    value={form.complemento}
+                    onChangeText={(v) => updateField('complemento', v)}
+                    placeholder="Apto, bloco…"
+                    placeholderTextColor={colors.textMuted}
+                    returnKeyType="next"
+                    onSubmitEditing={() => refs.bairro?.current?.focus()}
+                  />
+                }
+              />
+              <InsetRow
+                label="Bairro"
+                rightContent={
+                  <TextInput
+                    ref={refs.bairro}
+                    style={styles.inlineInput}
+                    value={form.bairro}
+                    onChangeText={(v) => updateField('bairro', v)}
+                    placeholder="Centro"
+                    placeholderTextColor={colors.textMuted}
+                    autoCapitalize="words"
+                    returnKeyType="next"
+                    onSubmitEditing={() => refs.cidade?.current?.focus()}
+                  />
+                }
+              />
+              <InsetRow
+                label="Cidade"
+                rightContent={
+                  <TextInput
+                    ref={refs.cidade}
+                    style={styles.inlineInput}
+                    value={form.cidade}
+                    onChangeText={(v) => updateField('cidade', v)}
+                    placeholder="São Paulo"
+                    placeholderTextColor={colors.textMuted}
+                    autoCapitalize="words"
+                    returnKeyType="next"
+                    onSubmitEditing={() => refs.estado?.current?.focus()}
+                  />
+                }
+              />
+              <InsetRow
+                label="UF"
+                rightContent={
+                  <TextInput
+                    ref={refs.estado}
+                    style={styles.inlineInput}
+                    value={form.estado}
+                    onChangeText={(v) => updateField('estado', v)}
+                    placeholder="SP"
+                    placeholderTextColor={colors.textMuted}
+                    autoCapitalize="characters"
+                    returnKeyType="next"
+                    onSubmitEditing={() => refs.cep?.current?.focus()}
+                  />
+                }
+              />
+              <InsetRow
+                label="CEP"
+                rightContent={
+                  <TextInput
+                    ref={refs.cep}
+                    style={styles.inlineInput}
+                    value={form.cep}
+                    onChangeText={(v) => updateField('cep', formatCEP(v))}
+                    placeholder="00000-000"
+                    placeholderTextColor={colors.textMuted}
+                    keyboardType="numeric"
+                    returnKeyType="next"
+                    onSubmitEditing={() => refs.contatoNome?.current?.focus()}
+                  />
+                }
+                last
+              />
+            </InsetGroupedSection>
 
-              {renderField('medicamentosEmUso', 'Medicamentos em uso', {
-                placeholder: 'Ex.: Losartana 50mg, Metformina 850mg',
-                autoCapitalize: 'sentences',
-                ref: refs.medicamentosEmUso,
-                nextRef: refs.observacoes,
-                hint: 'Separe com vírgula',
-                optional: true,
-              })}
+            {/* Contato de emergência */}
+            <InsetGroupedSection header="CONTATO DE EMERGÊNCIA">
+              <InsetRow
+                label="Nome"
+                rightContent={
+                  <TextInput
+                    ref={refs.contatoNome}
+                    style={styles.inlineInput}
+                    value={form.contatoNome}
+                    onChangeText={(v) => updateField('contatoNome', v)}
+                    placeholder="Maria da Silva"
+                    placeholderTextColor={colors.textMuted}
+                    autoCapitalize="words"
+                    returnKeyType="next"
+                    onSubmitEditing={() => refs.contatoParentesco?.current?.focus()}
+                  />
+                }
+              />
+              <InsetRow
+                label="Parentesco"
+                rightContent={
+                  <TextInput
+                    ref={refs.contatoParentesco}
+                    style={styles.inlineInput}
+                    value={form.contatoParentesco}
+                    onChangeText={(v) => updateField('contatoParentesco', v)}
+                    placeholder="Filha, Cônjuge…"
+                    placeholderTextColor={colors.textMuted}
+                    autoCapitalize="words"
+                    returnKeyType="next"
+                    onSubmitEditing={() => refs.contatoTelefone?.current?.focus()}
+                  />
+                }
+              />
+              <InsetRow
+                label="Telefone"
+                rightContent={
+                  <TextInput
+                    ref={refs.contatoTelefone}
+                    style={styles.inlineInput}
+                    value={form.contatoTelefone}
+                    onChangeText={(v) => updateField('contatoTelefone', formatPhone(v))}
+                    placeholder="(11) 90000-0000"
+                    placeholderTextColor={colors.textMuted}
+                    keyboardType="phone-pad"
+                  />
+                }
+                last
+              />
+            </InsetGroupedSection>
 
-              {renderField('observacoes', 'Observações', {
-                placeholder: 'Informações adicionais sobre o paciente…',
-                autoCapitalize: 'sentences',
-                ref: refs.observacoes,
-                optional: true,
-                multiline: true,
-              })}
+            {/* Tipo de atendimento — SegmentedControl */}
+            <InsetGroupedSection header="TIPO DE ATENDIMENTO">
+              <View style={styles.segmentedContainer}>
+                <SegmentedControl
+                  options={ATENDIMENTO_SEGMENTS}
+                  selectedKey={form.tipoAtendimento || ''}
+                  onSelect={(key) => updateField('tipoAtendimento', key)}
+                  accentColor={colors.primary}
+                />
+              </View>
+            </InsetGroupedSection>
+            {errors.tipoAtendimento ? <Text style={styles.errorText}>{errors.tipoAtendimento}</Text> : null}
 
-              {errors.general ? (
-                <Text style={styles.generalError}>{errors.general}</Text>
-              ) : null}
+            {/* Dados clínicos */}
+            <InsetGroupedSection header="DADOS CLÍNICOS">
+              <InsetRow
+                label="Diagnósticos"
+                rightContent={
+                  <TextInput
+                    ref={refs.diagnosticos}
+                    style={styles.inlineInput}
+                    value={form.diagnosticos}
+                    onChangeText={(v) => updateField('diagnosticos', v)}
+                    placeholder="Alzheimer, HAS…"
+                    placeholderTextColor={colors.textMuted}
+                    autoCapitalize="sentences"
+                    returnKeyType="next"
+                    onSubmitEditing={() => refs.alergias?.current?.focus()}
+                  />
+                }
+              />
+              <InsetRow
+                label="Alergias"
+                rightContent={
+                  <TextInput
+                    ref={refs.alergias}
+                    style={styles.inlineInput}
+                    value={form.alergias}
+                    onChangeText={(v) => updateField('alergias', v)}
+                    placeholder="Dipirona, Látex…"
+                    placeholderTextColor={colors.textMuted}
+                    autoCapitalize="sentences"
+                    returnKeyType="next"
+                    onSubmitEditing={() => refs.medicamentosEmUso?.current?.focus()}
+                  />
+                }
+              />
+              <InsetRow
+                label="Medicamentos"
+                rightContent={
+                  <TextInput
+                    ref={refs.medicamentosEmUso}
+                    style={styles.inlineInput}
+                    value={form.medicamentosEmUso}
+                    onChangeText={(v) => updateField('medicamentosEmUso', v)}
+                    placeholder="Losartana 50mg…"
+                    placeholderTextColor={colors.textMuted}
+                    autoCapitalize="sentences"
+                  />
+                }
+                last
+              />
+            </InsetGroupedSection>
+            <Text style={styles.hintText}>Separe itens com vírgula</Text>
+
+            {/* Observações */}
+            <InsetGroupedSection header="OBSERVAÇÕES">
+              <View style={styles.textAreaContainer}>
+                <TextInput
+                  ref={refs.observacoes}
+                  style={styles.textArea}
+                  value={form.observacoes}
+                  onChangeText={(v) => updateField('observacoes', v)}
+                  placeholder="Informações adicionais sobre o paciente…"
+                  placeholderTextColor={colors.textMuted}
+                  autoCapitalize="sentences"
+                  multiline
+                  textAlignVertical="top"
+                />
+              </View>
+            </InsetGroupedSection>
+
+            {/* Perfil de sinais vitais — SegmentedControl */}
+            <InsetGroupedSection header="PERFIL DE SINAIS VITAIS">
+              <View style={styles.segmentedContainer}>
+                <SegmentedControl
+                  options={PRESET_SEGMENTS}
+                  selectedKey={selectedPreset}
+                  onSelect={(key) => {
+                    const preset = VITAL_SIGNS_PRESETS.find((p) => p.key === key);
+                    if (preset) {
+                      setSelectedPreset(preset.key);
+                      setCustomRanges(preset.ranges);
+                    }
+                  }}
+                  accentColor={colors.primary}
+                />
+              </View>
+              <Text style={styles.presetHint}>
+                {VITAL_SIGNS_PRESETS.find((p) => p.key === selectedPreset)?.descricao}
+              </Text>
+              <VitalRow label="PA Sistólica" min={customRanges.paSistolicaMin} max={customRanges.paSistolicaMax} unit="mmHg" />
+              <VitalRow label="PA Diastólica" min={customRanges.paDiastolicaMin} max={customRanges.paDiastolicaMax} unit="mmHg" />
+              <VitalRow label="Freq. Cardíaca" min={customRanges.fcMin} max={customRanges.fcMax} unit="bpm" />
+              <VitalRow label="Freq. Respiratória" min={customRanges.frMin} max={customRanges.frMax} unit="irpm" />
+              <VitalRow label="Temperatura" min={customRanges.tempMin} max={customRanges.tempMax} unit="°C" />
+              <VitalRow label="SpO₂ mínima" min={customRanges.satO2Min} unit="%" last />
+            </InsetGroupedSection>
+
+            <View style={styles.rangesNote}>
+              <Ionicons name="information-circle-outline" size={16} color={colors.textMuted} />
+              <Text style={styles.rangesNoteText}>
+                Valores podem ser ajustados depois no detalhe do paciente.
+              </Text>
             </View>
+
+            {errors.general ? (
+              <Text style={styles.generalError}>{errors.general}</Text>
+            ) : null}
           </ScrollView>
-
-          {/* Submit button */}
-          <View style={[styles.actionArea, { paddingBottom: insets.bottom + spacing.lg }]}>
-            <TouchableOpacity
-              style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-              onPress={handleSubmit}
-              disabled={isSubmitting}
-              activeOpacity={0.85}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color={colors.white} />
-              ) : (
-                <Text style={styles.submitText}>Cadastrar paciente</Text>
-              )}
-            </TouchableOpacity>
-          </View>
         </View>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 };
 
-// ════════════════════════════════════════════
-// Styles
-// ════════════════════════════════════════════
+// Sub-component for vital signs display
+const VitalRow = ({ label, min, max, unit, last }: { label: string; min: number; max?: number; unit: string; last?: boolean }) => (
+  <View style={[vitalStyles.row, !last && vitalStyles.rowBorder]}>
+    <Text style={vitalStyles.label}>{label}</Text>
+    <View style={vitalStyles.values}>
+      <Text style={vitalStyles.value}>{min}</Text>
+      {max != null && (
+        <>
+          <Text style={vitalStyles.dash}>–</Text>
+          <Text style={vitalStyles.value}>{max}</Text>
+        </>
+      )}
+      <Text style={vitalStyles.unit}>{unit}</Text>
+    </View>
+  </View>
+);
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scrollContent: {
-    paddingHorizontal: spacing.lg,
-  },
-  headerRow: {
+const vitalStyles = StyleSheet.create({
+  row: {
     flexDirection: 'row',
-    justifyContent: 'flex-start',
-    marginBottom: spacing.md,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: spacing.md,
   },
-  backButton: {
-    paddingVertical: spacing.xs,
-  },
-  backText: {
-    color: colors.primary,
-    fontSize: fontSize.md,
-    fontWeight: '500',
-  },
-  title: {
-    fontSize: fontSize.title,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    letterSpacing: 0.35,
-  },
-  subtitle: {
-    fontSize: fontSize.md,
-    color: colors.textSecondary,
-    marginTop: spacing.sm,
-    lineHeight: 22,
-  },
-  form: {
-    marginTop: spacing.xl,
-  },
-
-  // Sections
-  sectionTitle: {
-    fontSize: fontSize.sm,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginTop: spacing.lg,
-    marginBottom: spacing.sm,
-  },
-
-  // Fields
-  field: {
-    marginBottom: spacing.md,
+  rowBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
   label: {
     fontSize: fontSize.sm,
+    color: colors.textSecondary,
+  },
+  values: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  value: {
+    fontSize: fontSize.sm,
     fontWeight: '600',
     color: colors.textPrimary,
-    marginBottom: spacing.xs + 2,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+    overflow: 'hidden',
   },
-  optional: {
+  dash: {
+    fontSize: fontSize.xs,
     color: colors.textMuted,
-    fontWeight: '400',
   },
-  input: {
-    height: 52,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
+  unit: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    marginLeft: 2,
+  },
+});
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.background },
+  scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
+  inlineInput: {
+    flex: 1,
     fontSize: fontSize.md,
     color: colors.textPrimary,
+    textAlign: 'right',
+    paddingVertical: 0,
   },
-  inputMultiline: {
-    height: 100,
-    paddingTop: spacing.md,
+  segmentedContainer: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
   },
-  inputFocused: {
-    borderColor: colors.primary,
+  pickerContainer: {
+    paddingBottom: spacing.sm,
   },
-  inputError: {
-    borderColor: colors.error,
+  textAreaContainer: {
+    padding: spacing.md,
+  },
+  textArea: {
+    fontSize: fontSize.md,
+    color: colors.textPrimary,
+    minHeight: 80,
+    paddingVertical: 0,
   },
   hintText: {
     color: colors.textMuted,
     fontSize: fontSize.xs,
     marginTop: spacing.xs,
+    marginLeft: spacing.sm,
+  },
+  presetHint: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
   },
   errorText: {
     color: colors.error,
     fontSize: fontSize.xs,
     marginTop: spacing.xs,
+    marginLeft: spacing.sm,
   },
   generalError: {
     color: colors.error,
@@ -688,68 +744,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.md,
   },
-
-  // Rows (side by side fields)
-  row: {
+  rangesNote: {
     flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  rowSmall: {
-    flex: 1,
-  },
-  rowLarge: {
-    flex: 2,
-  },
-
-  // Chips
-  chipRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    flexWrap: 'wrap',
-  },
-  chip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  chipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  chipText: {
-    fontSize: fontSize.sm,
-    color: colors.textPrimary,
-    fontWeight: '500',
-  },
-  chipTextActive: {
-    color: colors.white,
-  },
-
-  // Action Area
-  actionArea: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    backgroundColor: colors.background,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-  },
-  submitButton: {
-    height: 56,
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
     alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.sm,
   },
-  submitButtonDisabled: {
-    opacity: 0.6,
-  },
-  submitText: {
-    color: colors.white,
-    fontSize: fontSize.lg,
-    fontWeight: '600',
-    letterSpacing: 0.3,
+  rangesNoteText: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    flex: 1,
   },
 });

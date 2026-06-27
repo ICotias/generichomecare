@@ -6,6 +6,7 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
@@ -103,7 +104,9 @@ export const EditEmpresaScreen = () => {
         cidade: form.cidade.trim() || null,
         updatedAt: Timestamp.now(),
       });
-      navigation.goBack();
+      Alert.alert('Empresa atualizada', 'As alterações foram salvas com sucesso.', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
     } catch (error) {
       console.error('Erro ao atualizar empresa:', error);
       setErrors({ general: 'Não foi possível salvar as alterações. Tente novamente.' });

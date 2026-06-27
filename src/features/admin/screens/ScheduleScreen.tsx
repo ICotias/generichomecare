@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,18 +8,26 @@ import {
   ActivityIndicator,
   RefreshControl,
   Modal,
-  TextInput,
   Alert,
-  KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 
+import { db } from '../../../core/config/firebase';
+import { Collections } from '../../../shared/constants/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import * as scheduleService from '../../../core/services/scheduleService';
+import * as patientService from '../../../core/services/patientService';
+import { ModalHeader } from '../../../shared/components/ui/ModalHeader';
+import { InsetGroupedSection } from '../../../shared/components/ui/InsetGroupedSection';
+import { InsetRow } from '../../../shared/components/ui/InsetRow';
+import { SelectionListModal } from '../../../shared/components/ui/SelectionListModal';
+import type { SelectionItem } from '../../../shared/components/ui/SelectionListModal';
 
 // ════════════════════════════════════════════
 // Types & constants
@@ -45,14 +53,17 @@ const MOCK_SCHEDULE: ScheduleEntry[] = [
   { id: 'm4', profissionalNome: 'Carla Oliveira', pacienteNome: 'Antônia Ferreira', horaInicio: '13:00', horaFim: '19:00', turno: 'tarde' },
 ];
 
-/**
- * Determine turno from horaInicio string.
- */
 const getTurno = (horaInicio: string): 'manha' | 'tarde' | 'noite' => {
   const hour = parseInt(horaInicio.split(':')[0], 10);
   if (hour < 12) return 'manha';
   if (hour < 18) return 'tarde';
   return 'noite';
+};
+
+const formatTimeFromDate = (d: Date): string => {
+  const h = d.getHours().toString().padStart(2, '0');
+  const m = d.getMinutes().toString().padStart(2, '0');
+  return `${h}:${m}`;
 };
 
 // ════════════════════════════════════════════
@@ -66,7 +77,7 @@ export const ScheduleScreen = () => {
 
   const [selectedDay, setSelectedDay] = useState(() => {
     const d = new Date().getDay();
-    return d === 0 ? 1 : d; // Default to Monday if Sunday
+    return d === 0 ? 1 : d;
   });
 
   const [entries, setEntries] = useState<ScheduleEntry[]>([]);
@@ -74,48 +85,87 @@ export const ScheduleScreen = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [usingMock, setUsingMock] = useState(false);
 
+  // Selectable lists
+  const [profissionais, setProfissionais] = useState<SelectionItem[]>([]);
+  const [pacientes, setPacientes] = useState<SelectionItem[]>([]);
+
+  useEffect(() => {
+    if (!user?.empresaId) return;
+
+    const profQ = query(
+      collection(db, Collections.USUARIOS),
+      where('empresaId', '==', user.empresaId),
+      where('role', '==', 'nurse')
+    );
+    getDocs(profQ)
+      .then((snap) => {
+        setProfissionais(snap.docs.map((d) => ({ id: d.id, label: d.data().nome ?? '' })));
+      })
+      .catch((err) => console.warn('Erro ao carregar profissionais:', err));
+
+    patientService
+      .listPatients(user.empresaId)
+      .then((list) => setPacientes(list.map((p) => ({ id: p.id, label: p.nome }))))
+      .catch((err) => console.warn('Erro ao carregar pacientes:', err));
+  }, [user?.empresaId]);
+
   // Create modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [formProfissional, setFormProfissional] = useState('');
-  const [formPaciente, setFormPaciente] = useState('');
-  const [formHoraInicio, setFormHoraInicio] = useState('');
-  const [formHoraFim, setFormHoraFim] = useState('');
+  const [selectedProfId, setSelectedProfId] = useState<string | null>(null);
+  const [selectedPacId, setSelectedPacId] = useState<string | null>(null);
+  const [horaInicio, setHoraInicio] = useState(() => { const d = new Date(); d.setHours(7, 0, 0, 0); return d; });
+  const [horaFim, setHoraFim] = useState(() => { const d = new Date(); d.setHours(13, 0, 0, 0); return d; });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Picker expansion state
+  const [showInicioPicker, setShowInicioPicker] = useState(false);
+  const [showFimPicker, setShowFimPicker] = useState(false);
+
+  // Selection modals
+  const [showProfList, setShowProfList] = useState(false);
+  const [showPacList, setShowPacList] = useState(false);
+
+  const selectedProf = profissionais.find((p) => p.id === selectedProfId);
+  const selectedPac = pacientes.find((p) => p.id === selectedPacId);
+
+  const canSubmit = selectedProfId != null && selectedPacId != null;
+
   const resetForm = () => {
-    setFormProfissional('');
-    setFormPaciente('');
-    setFormHoraInicio('');
-    setFormHoraFim('');
+    setSelectedProfId(null);
+    setSelectedPacId(null);
+    const ini = new Date(); ini.setHours(7, 0, 0, 0);
+    const fim = new Date(); fim.setHours(13, 0, 0, 0);
+    setHoraInicio(ini);
+    setHoraFim(fim);
+    setShowInicioPicker(false);
+    setShowFimPicker(false);
   };
 
   const handleCreateSchedule = async () => {
-    if (!formProfissional.trim() || !formPaciente.trim() || !formHoraInicio.trim() || !formHoraFim.trim()) {
-      Alert.alert('Campos obrigatórios', 'Preencha todos os campos para criar a escala.');
+    if (!canSubmit || !selectedProf || !selectedPac) {
+      Alert.alert('Campos obrigatórios', 'Selecione o profissional e o paciente.');
       return;
     }
 
     if (!user?.empresaId) {
-      Alert.alert('Erro', 'Empresa não configurada. Configure a empresa antes de criar escalas.');
+      Alert.alert('Erro', 'Empresa não configurada.');
       return;
     }
 
     setIsSubmitting(true);
     try {
       await scheduleService.createSchedule(user.empresaId, {
-        profissionalId: '',
-        profissionalNome: formProfissional.trim(),
-        pacienteId: '',
-        pacienteNome: formPaciente.trim(),
+        profissionalId: selectedProf.id,
+        profissionalNome: selectedProf.label,
+        pacienteId: selectedPac.id,
+        pacienteNome: selectedPac.label,
         diaSemana: selectedDay as 0 | 1 | 2 | 3 | 4 | 5 | 6,
-        horaInicio: formHoraInicio.trim(),
-        horaFim: formHoraFim.trim(),
+        horaInicio: formatTimeFromDate(horaInicio),
+        horaFim: formatTimeFromDate(horaFim),
       });
-      Alert.alert('Sucesso', 'Escala criada com sucesso!');
-      setShowCreateModal(false);
-      resetForm();
-      setIsLoading(true);
-      loadSchedules(selectedDay);
+      Alert.alert('Escala criada', `${selectedProf.label} → ${selectedPac.label}`, [
+        { text: 'OK', onPress: () => { setShowCreateModal(false); resetForm(); loadSchedules(selectedDay); } },
+      ]);
     } catch (err) {
       console.error('Erro ao criar escala:', err);
       Alert.alert('Erro', 'Não foi possível criar a escala. Tente novamente.');
@@ -148,7 +198,6 @@ export const ScheduleScreen = () => {
           );
           setUsingMock(false);
         } else {
-          // Fallback to mock
           setEntries(MOCK_SCHEDULE);
           setUsingMock(true);
         }
@@ -181,7 +230,6 @@ export const ScheduleScreen = () => {
     setIsRefreshing(false);
   };
 
-  // Get dates for current week
   const today = new Date();
   const startOfWeek = new Date(today);
   startOfWeek.setDate(today.getDate() - today.getDay());
@@ -190,7 +238,7 @@ export const ScheduleScreen = () => {
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={styles.backRow}>
-          <Ionicons name="arrow-back" size={20} color={colors.primary} />
+          <Ionicons name="chevron-back" size={20} color={colors.primary} />
           <Text style={styles.backBtn}>Voltar</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Escalas</Text>
@@ -237,11 +285,7 @@ export const ScheduleScreen = () => {
           contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + spacing.xxl }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={handleRefresh}
-              tintColor={colors.admin}
-            />
+            <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={colors.admin} />
           }
         >
           {entries.length === 0 ? (
@@ -269,89 +313,120 @@ export const ScheduleScreen = () => {
       )}
 
       {/* FAB */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => setShowCreateModal(true)}
-        activeOpacity={0.8}
-      >
+      <TouchableOpacity style={styles.fab} onPress={() => setShowCreateModal(true)} activeOpacity={0.8}>
         <Ionicons name="add" size={28} color={colors.white} />
       </TouchableOpacity>
 
-      {/* Create Schedule Modal */}
+      {/* ═══ Create Schedule Modal (Apple HIG) ═══ */}
       <Modal visible={showCreateModal} animationType="slide" transparent>
-        <KeyboardAvoidingView
-          style={styles.modalOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Nova Escala</Text>
-              <TouchableOpacity onPress={() => { setShowCreateModal(false); resetForm(); }} hitSlop={8}>
-                <Ionicons name="close" size={24} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { paddingBottom: insets.bottom + spacing.md }]}>
+            <View style={styles.grabber} />
 
-            <Text style={styles.modalLabel}>Profissional</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Nome do profissional"
-              placeholderTextColor={colors.textMuted}
-              value={formProfissional}
-              onChangeText={setFormProfissional}
+            <ModalHeader
+              title="Nova Escala"
+              onCancel={() => { setShowCreateModal(false); resetForm(); }}
+              onDone={handleCreateSchedule}
+              doneLabel="Salvar"
+              doneDisabled={!canSubmit}
+              isLoading={isSubmitting}
+              accentColor={colors.admin}
             />
 
-            <Text style={styles.modalLabel}>Paciente</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Nome do paciente"
-              placeholderTextColor={colors.textMuted}
-              value={formPaciente}
-              onChangeText={setFormPaciente}
-            />
-
-            <View style={styles.modalTimeRow}>
-              <View style={styles.modalTimeField}>
-                <Text style={styles.modalLabel}>Horário início</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  placeholder="07:00"
-                  placeholderTextColor={colors.textMuted}
-                  value={formHoraInicio}
-                  onChangeText={setFormHoraInicio}
-                  keyboardType="numbers-and-punctuation"
-                />
-              </View>
-              <View style={styles.modalTimeField}>
-                <Text style={styles.modalLabel}>Horário fim</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  placeholder="13:00"
-                  placeholderTextColor={colors.textMuted}
-                  value={formHoraFim}
-                  onChangeText={setFormHoraFim}
-                  keyboardType="numbers-and-punctuation"
-                />
-              </View>
-            </View>
-
-            <Text style={styles.modalDayInfo}>
-              Dia: {WEEKDAYS[selectedDay]}
-            </Text>
-
-            <TouchableOpacity
-              style={[styles.modalSubmitBtn, isSubmitting && styles.modalSubmitBtnDisabled]}
-              onPress={handleCreateSchedule}
-              activeOpacity={0.8}
-              disabled={isSubmitting}
+            <ScrollView
+              contentContainerStyle={styles.modalBody}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
             >
-              {isSubmitting ? (
-                <ActivityIndicator color={colors.white} />
-              ) : (
-                <Text style={styles.modalSubmitBtnText}>Criar Escala</Text>
-              )}
-            </TouchableOpacity>
+              <InsetGroupedSection>
+                <InsetRow
+                  label="Profissional"
+                  value={selectedProf?.label}
+                  placeholder="Selecionar"
+                  chevron
+                  onPress={() => setShowProfList(true)}
+                />
+                <InsetRow
+                  label="Paciente"
+                  value={selectedPac?.label}
+                  placeholder="Selecionar"
+                  chevron
+                  onPress={() => setShowPacList(true)}
+                  last
+                />
+              </InsetGroupedSection>
+
+              <InsetGroupedSection header="Horário">
+                <InsetRow
+                  label="Início"
+                  value={formatTimeFromDate(horaInicio)}
+                  valueColor={colors.admin}
+                  onPress={() => { setShowInicioPicker(!showInicioPicker); setShowFimPicker(false); }}
+                />
+                {showInicioPicker && (
+                  <View style={styles.pickerContainer}>
+                    <DateTimePicker
+                      value={horaInicio}
+                      mode="time"
+                      display="spinner"
+                      minuteInterval={5}
+                      onChange={(_: any, d: Date | undefined) => { if (d) setHoraInicio(d); }}
+                      locale="pt-BR"
+                    />
+                  </View>
+                )}
+                <InsetRow
+                  label="Fim"
+                  value={formatTimeFromDate(horaFim)}
+                  valueColor={colors.admin}
+                  onPress={() => { setShowFimPicker(!showFimPicker); setShowInicioPicker(false); }}
+                  last
+                />
+                {showFimPicker && (
+                  <View style={styles.pickerContainer}>
+                    <DateTimePicker
+                      value={horaFim}
+                      mode="time"
+                      display="spinner"
+                      minuteInterval={5}
+                      onChange={(_: any, d: Date | undefined) => { if (d) setHoraFim(d); }}
+                      locale="pt-BR"
+                    />
+                  </View>
+                )}
+              </InsetGroupedSection>
+
+              <InsetGroupedSection>
+                <InsetRow
+                  label="Dia"
+                  value={WEEKDAYS[selectedDay]}
+                  last
+                />
+              </InsetGroupedSection>
+            </ScrollView>
+
+            {/* Selection modals — inside parent Modal to avoid nested-modal iOS bug */}
+            <SelectionListModal
+              visible={showProfList}
+              title="Profissional"
+              items={profissionais}
+              selectedId={selectedProfId}
+              onSelect={(item) => setSelectedProfId(item.id)}
+              onClose={() => setShowProfList(false)}
+              accentColor={colors.admin}
+            />
+
+            <SelectionListModal
+              visible={showPacList}
+              title="Paciente"
+              items={pacientes}
+              selectedId={selectedPacId}
+              onSelect={(item) => setSelectedPacId(item.id)}
+              onClose={() => setShowPacList(false)}
+              accentColor={colors.admin}
+            />
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
     </View>
   );
@@ -368,19 +443,8 @@ const styles = StyleSheet.create({
 
   loadingCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-  // Week selector
-  weekRow: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.md,
-    gap: 2,
-  },
-  dayCell: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-  },
+  weekRow: { flexDirection: 'row', paddingHorizontal: spacing.sm, paddingVertical: spacing.md, gap: 2 },
+  dayCell: { flex: 1, alignItems: 'center', paddingVertical: spacing.sm, borderRadius: borderRadius.md },
   dayCellActive: { backgroundColor: colors.admin },
   dayLabel: { fontSize: fontSize.xs, fontWeight: '500', color: colors.textMuted },
   dayLabelActive: { color: colors.white },
@@ -423,7 +487,6 @@ const styles = StyleSheet.create({
   entryPaciente: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: spacing.xs },
   entryHorario: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },
 
-  // FAB
   fab: {
     position: 'absolute',
     bottom: 32,
@@ -440,73 +503,34 @@ const styles = StyleSheet.create({
     }),
   },
 
-  // Modal
+  // Modal — Apple-style bottom sheet
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
   },
-  modalContent: {
-    backgroundColor: colors.surface,
+  modalSheet: {
+    backgroundColor: colors.background,
     borderTopLeftRadius: borderRadius.xl,
     borderTopRightRadius: borderRadius.xl,
-    padding: spacing.lg,
-    paddingBottom: spacing.xxl,
+    maxHeight: '85%',
+    overflow: 'hidden',
   },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  modalTitle: {
-    fontSize: fontSize.xl,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  modalLabel: {
-    fontSize: fontSize.sm,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
+  grabber: {
+    width: 36,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: colors.border,
+    alignSelf: 'center',
     marginTop: spacing.sm,
+    marginBottom: spacing.xs,
   },
-  modalInput: {
-    backgroundColor: colors.inputBg,
-    borderWidth: 1,
-    borderColor: colors.inputBorder,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    fontSize: fontSize.md,
-    color: colors.textPrimary,
+  modalBody: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
   },
-  modalTimeRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  modalTimeField: {
-    flex: 1,
-  },
-  modalDayInfo: {
-    fontSize: fontSize.sm,
-    color: colors.textMuted,
-    marginTop: spacing.md,
-    textAlign: 'center',
-  },
-  modalSubmitBtn: {
-    backgroundColor: colors.admin,
-    borderRadius: borderRadius.full,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    marginTop: spacing.lg,
-    height: 52,
-    justifyContent: 'center',
-  },
-  modalSubmitBtnDisabled: { opacity: 0.5 },
-  modalSubmitBtnText: {
-    fontSize: fontSize.md,
-    fontWeight: '700',
-    color: colors.white,
+  pickerContainer: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
   },
 });

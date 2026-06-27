@@ -131,13 +131,23 @@ export const TeamListScreen = () => {
             {activeCount} profissional(is) ativo(s)
           </Text>
         </View>
-        <TouchableOpacity
-          style={styles.addBtn}
-          onPress={() => navigation.navigate('CreateNurse')}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.addBtnText}>+ Novo</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.scheduleBtn}
+            onPress={() => navigation.navigate('Schedule')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="calendar-outline" size={16} color={colors.admin} />
+            <Text style={styles.scheduleBtnText}>Escalas</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.addBtn}
+            onPress={() => navigation.navigate('CreateNurse')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.addBtnText}>+ Novo</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {usingMock && (
@@ -172,6 +182,18 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: fontSize.title, fontWeight: '700', color: colors.textPrimary },
   subtitle: { fontSize: fontSize.sm, color: colors.textMuted, marginTop: 2 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  scheduleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.full,
+    borderWidth: 1.5,
+    borderColor: colors.admin,
+  },
+  scheduleBtnText: { fontSize: fontSize.sm, fontWeight: '600', color: colors.admin },
   addBtn: {
     backgroundColor: colors.admin,
     paddingHorizontal: spacing.md,

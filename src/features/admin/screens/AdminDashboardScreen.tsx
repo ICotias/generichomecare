@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -70,6 +71,7 @@ export const AdminDashboardScreen = () => {
 
   const [metrics, setMetrics] = useState<DashboardMetrics>(EMPTY_METRICS);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [usingMock, setUsingMock] = useState(false);
 
   const today = new Date();
@@ -165,6 +167,11 @@ export const AdminDashboardScreen = () => {
     }, [load])
   );
 
+  const onRefresh = useCallback(() => {
+    setIsRefreshing(true);
+    load().finally(() => setIsRefreshing(false));
+  }, [load]);
+
   // ════════════════════════════════════════════
 
   return (
@@ -172,6 +179,13 @@ export const AdminDashboardScreen = () => {
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + spacing.xxl }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.admin}
+          />
+        }
       >
         {/* Header */}
         <View style={styles.header}>
@@ -235,6 +249,16 @@ export const AdminDashboardScreen = () => {
                 label="Vincular família"
                 hint="Pacientes → Vincular"
                 onPress={() => (navigation as any).navigate('PatientMgmtStack', { screen: 'LinkFamily' })}
+              />
+              <ActionRow
+                label="Gerenciar escalas"
+                hint="Equipe → Escalas"
+                onPress={() => (navigation as any).navigate('TeamStack', { screen: 'Schedule' })}
+              />
+              <ActionRow
+                label="Financeiro"
+                hint="Receitas, despesas e PDF"
+                onPress={() => (navigation as any).navigate('Financial')}
               />
               <ActionRow
                 label="Exportar relatório"

@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TextInput,
-  TouchableOpacity,
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
@@ -15,24 +14,51 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 
-import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
+import { colors, spacing, fontSize } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import * as patientService from '../../../core/services/patientService';
 import * as adminUserService from '../../../core/services/adminUserService';
 import { MOCK_PATIENTS } from '../../../core/mocks/patients';
 import type { Patient } from '../../../core/types';
+import { ModalHeader } from '../../../shared/components/ui/ModalHeader';
+import { InsetGroupedSection } from '../../../shared/components/ui/InsetGroupedSection';
+import { InsetRow } from '../../../shared/components/ui/InsetRow';
+import { SelectionListModal } from '../../../shared/components/ui/SelectionListModal';
+import type { SelectionItem } from '../../../shared/components/ui/SelectionListModal';
 
 type RouteType = RouteProp<{ LinkFamily: { patientId?: string } }, 'LinkFamily'>;
 
-const PARENTESCO_OPTIONS = [
-  'Filho(a)',
-  'Cônjuge',
-  'Neto(a)',
-  'Irmão(ã)',
-  'Sobrinho(a)',
-  'Cuidador(a)',
-  'Outro',
+const formatPhone = (raw: string): string => {
+  const digits = raw.replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 2) return digits.length ? `(${digits}` : '';
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+};
+
+const mapFirebaseError = (error: unknown): string => {
+  const code = (error as { code?: string })?.code ?? '';
+  switch (code) {
+    case 'auth/email-already-in-use':
+      return 'Já existe uma conta com este e-mail';
+    case 'auth/invalid-email':
+      return 'E-mail inválido';
+    case 'auth/weak-password':
+      return 'Senha muito fraca';
+    case 'auth/network-request-failed':
+      return 'Falha de rede. Verifique sua conexão';
+    default:
+      return (error instanceof Error ? error.message : '') || 'Erro desconhecido ao vincular família';
+  }
+};
+
+const PARENTESCO_OPTIONS: SelectionItem[] = [
+  { id: 'filho', label: 'Filho(a)' },
+  { id: 'conjuge', label: 'Cônjuge' },
+  { id: 'neto', label: 'Neto(a)' },
+  { id: 'irmao', label: 'Irmão(ã)' },
+  { id: 'sobrinho', label: 'Sobrinho(a)' },
+  { id: 'cuidador', label: 'Cuidador(a)' },
+  { id: 'outro', label: 'Outro' },
 ];
 
 export const LinkFamilyScreen = () => {
@@ -56,6 +82,8 @@ export const LinkFamilyScreen = () => {
   const [isLoadingPatients, setIsLoadingPatients] = useState(true);
 
   const [isSaving, setIsSaving] = useState(false);
+  const [showPatientList, setShowPatientList] = useState(false);
+  const [showParentescoList, setShowParentescoList] = useState(false);
 
   // Refs
   const emailRef = useRef<TextInput>(null);
@@ -73,6 +101,12 @@ export const LinkFamilyScreen = () => {
   }, [user?.empresaId]);
 
   const selectedPatient = patients.find((p) => p.id === selectedPatientId);
+  const selectedParentescoItem = PARENTESCO_OPTIONS.find((o) => o.label === parentesco);
+
+  // Patient items for SelectionListModal
+  const patientItems: SelectionItem[] = patients
+    .filter((p) => p.status === 'ativo')
+    .map((p) => ({ id: p.id, label: p.nome }));
 
   // Validation
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -104,8 +138,7 @@ export const LinkFamilyScreen = () => {
         [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Erro desconhecido';
-      Alert.alert('Erro ao vincular', msg);
+      Alert.alert('Erro ao vincular', mapFirebaseError(err));
     } finally {
       setIsSaving(false);
     }
@@ -116,230 +149,155 @@ export const LinkFamilyScreen = () => {
       style={styles.root}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={[styles.headerBar, { paddingTop: insets.top + spacing.sm }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={styles.cancelBtn}>Cancelar</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Vincular Família</Text>
-        <View style={styles.headerRight} />
+      <View style={{ paddingTop: insets.top }}>
+        <ModalHeader
+          title="Vincular Família"
+          onCancel={() => navigation.goBack()}
+          onDone={handleSave}
+          doneLabel="Vincular"
+          doneDisabled={!canSave}
+          isLoading={isSaving}
+          accentColor={colors.admin}
+        />
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Patient selector */}
-        <Text style={styles.sectionLabel}>PACIENTE</Text>
-        {isLoadingPatients ? (
-          <ActivityIndicator color={colors.admin} style={styles.loader} />
-        ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.chipRow}>
-              {patients.filter((p) => p.status === 'ativo').map((p) => {
-                const active = selectedPatientId === p.id;
-                return (
-                  <TouchableOpacity
-                    key={p.id}
-                    style={[styles.patientChip, active && styles.patientChipActive]}
-                    onPress={() => setSelectedPatientId(p.id)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.patientChipText, active && styles.patientChipTextActive]}>
-                      {p.nome.split(' ').slice(0, 2).join(' ')}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </ScrollView>
-        )}
-        {selectedPatient && (
-          <Text style={styles.selectedHint}>Vinculando ao paciente: {selectedPatient.nome}</Text>
-        )}
+        {/* Patient selector — drill-down row */}
+        <InsetGroupedSection header="PACIENTE">
+          {isLoadingPatients ? (
+            <ActivityIndicator color={colors.admin} style={styles.loader} />
+          ) : (
+            <InsetRow
+              label="Paciente"
+              value={selectedPatient ? selectedPatient.nome : 'Selecionar'}
+              valueColor={selectedPatient ? colors.textPrimary : colors.textMuted}
+              onPress={() => setShowPatientList(true)}
+              last
+            />
+          )}
+        </InsetGroupedSection>
 
-        {/* Form fields */}
-        <Text style={styles.sectionLabel}>DADOS DO FAMILIAR</Text>
+        {/* Form fields — Inset Grouped */}
+        <InsetGroupedSection header="DADOS DO FAMILIAR">
+          <InsetRow
+            label="Nome"
+            rightContent={
+              <TextInput
+                style={styles.inlineInput}
+                value={nome}
+                onChangeText={setNome}
+                placeholder="Nome completo"
+                placeholderTextColor={colors.textMuted}
+                returnKeyType="next"
+                onSubmitEditing={() => emailRef.current?.focus()}
+              />
+            }
+          />
+          <InsetRow
+            label="E-mail"
+            rightContent={
+              <TextInput
+                ref={emailRef}
+                style={styles.inlineInput}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="email@exemplo.com"
+                placeholderTextColor={colors.textMuted}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                returnKeyType="next"
+                onSubmitEditing={() => telRef.current?.focus()}
+              />
+            }
+          />
+          <InsetRow
+            label="Telefone"
+            rightContent={
+              <TextInput
+                ref={telRef}
+                style={styles.inlineInput}
+                value={telefone}
+                onChangeText={(v) => setTelefone(formatPhone(v))}
+                placeholder="(11) 99999-9999"
+                placeholderTextColor={colors.textMuted}
+                keyboardType="phone-pad"
+                returnKeyType="next"
+                onSubmitEditing={() => senhaRef.current?.focus()}
+              />
+            }
+          />
+          <InsetRow
+            label="Senha"
+            rightContent={
+              <TextInput
+                ref={senhaRef}
+                style={styles.inlineInput}
+                value={senha}
+                onChangeText={setSenha}
+                placeholder="Mín. 8 caracteres"
+                placeholderTextColor={colors.textMuted}
+                secureTextEntry
+              />
+            }
+            last
+          />
+        </InsetGroupedSection>
 
-        <Text style={styles.fieldLabel}>Nome completo</Text>
-        <TextInput
-          style={styles.input}
-          value={nome}
-          onChangeText={setNome}
-          placeholder="Nome do familiar"
-          placeholderTextColor={colors.textMuted}
-          returnKeyType="next"
-          onSubmitEditing={() => emailRef.current?.focus()}
-        />
-
-        <Text style={styles.fieldLabel}>E-mail</Text>
-        <TextInput
-          ref={emailRef}
-          style={styles.input}
-          value={email}
-          onChangeText={setEmail}
-          placeholder="email@exemplo.com"
-          placeholderTextColor={colors.textMuted}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          returnKeyType="next"
-          onSubmitEditing={() => telRef.current?.focus()}
-        />
-
-        <Text style={styles.fieldLabel}>Telefone</Text>
-        <TextInput
-          ref={telRef}
-          style={styles.input}
-          value={telefone}
-          onChangeText={setTelefone}
-          placeholder="(11) 99999-9999"
-          placeholderTextColor={colors.textMuted}
-          keyboardType="phone-pad"
-          returnKeyType="next"
-          onSubmitEditing={() => senhaRef.current?.focus()}
-        />
-
-        <Text style={styles.fieldLabel}>Senha (mín. 8 caracteres)</Text>
-        <TextInput
-          ref={senhaRef}
-          style={styles.input}
-          value={senha}
-          onChangeText={setSenha}
-          placeholder="Senha de acesso"
-          placeholderTextColor={colors.textMuted}
-          secureTextEntry
-        />
-
-        {/* Parentesco */}
-        <Text style={styles.sectionLabel}>PARENTESCO</Text>
-        <View style={styles.chipRowWrap}>
-          {PARENTESCO_OPTIONS.map((opt) => {
-            const active = parentesco === opt;
-            return (
-              <TouchableOpacity
-                key={opt}
-                style={[styles.chip, active && styles.chipActive]}
-                onPress={() => setParentesco(opt)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>{opt}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        {/* Parentesco — drill-down row */}
+        <InsetGroupedSection header="PARENTESCO">
+          <InsetRow
+            label="Parentesco"
+            value={parentesco || 'Selecionar'}
+            valueColor={parentesco ? colors.textPrimary : colors.textMuted}
+            onPress={() => setShowParentescoList(true)}
+            last
+          />
+        </InsetGroupedSection>
       </ScrollView>
 
-      {/* Save button */}
-      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + spacing.md }]}>
-        <TouchableOpacity
-          style={[styles.saveBtn, (!canSave || isSaving) && styles.saveBtnDisabled]}
-          onPress={handleSave}
-          activeOpacity={0.8}
-          disabled={!canSave || isSaving}
-        >
-          {isSaving ? (
-            <ActivityIndicator color={colors.white} />
-          ) : (
-            <Text style={styles.saveBtnText}>Vincular Família</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+      {/* Selection modals */}
+      <SelectionListModal
+        visible={showPatientList}
+        title="Selecionar Paciente"
+        items={patientItems}
+        selectedId={selectedPatientId}
+        onSelect={(item) => {
+          setSelectedPatientId(item.id);
+          setShowPatientList(false);
+        }}
+        onClose={() => setShowPatientList(false)}
+        accentColor={colors.admin}
+      />
+
+      <SelectionListModal
+        visible={showParentescoList}
+        title="Parentesco"
+        items={PARENTESCO_OPTIONS}
+        selectedId={selectedParentescoItem?.id ?? null}
+        onSelect={(item) => {
+          setParentesco(item.label);
+          setShowParentescoList(false);
+        }}
+        onClose={() => setShowParentescoList(false)}
+        accentColor={colors.admin}
+      />
     </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
-
-  headerBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  cancelBtn: { fontSize: fontSize.md, color: colors.admin, fontWeight: '600' },
-  headerTitle: { fontSize: fontSize.lg, fontWeight: '700', color: colors.textPrimary },
-  headerRight: { width: 60 },
-
-  scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
+  scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   loader: { marginVertical: spacing.md },
-
-  sectionLabel: {
-    fontSize: fontSize.xs,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    letterSpacing: 1,
-    marginBottom: spacing.sm,
-    marginTop: spacing.lg,
-  },
-
-  chipRow: { flexDirection: 'row', gap: spacing.sm },
-  patientChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.full,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  patientChipActive: { borderColor: colors.admin, backgroundColor: colors.admin + '1A' },
-  patientChipText: { fontSize: fontSize.sm, fontWeight: '500', color: colors.textPrimary },
-  patientChipTextActive: { color: colors.admin, fontWeight: '700' },
-  selectedHint: { fontSize: fontSize.xs, color: colors.admin, fontWeight: '500', marginTop: spacing.xs },
-
-  fieldLabel: {
-    fontSize: fontSize.sm,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-    marginTop: spacing.md,
-  },
-  input: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: Platform.select({ ios: 14, android: 10 }),
+  inlineInput: {
+    flex: 1,
     fontSize: fontSize.md,
     color: colors.textPrimary,
+    textAlign: 'right',
+    paddingVertical: 0,
   },
-
-  chipRowWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  chip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  chipActive: { backgroundColor: colors.admin, borderColor: colors.admin },
-  chipText: { fontSize: fontSize.sm, fontWeight: '500', color: colors.textPrimary },
-  chipTextActive: { color: colors.white },
-
-  bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    backgroundColor: colors.background,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-  },
-  saveBtn: {
-    backgroundColor: colors.admin,
-    borderRadius: borderRadius.full,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    height: 52,
-    justifyContent: 'center',
-  },
-  saveBtnDisabled: { opacity: 0.5 },
-  saveBtnText: { fontSize: fontSize.md, fontWeight: '700', color: colors.white },
 });

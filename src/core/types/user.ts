@@ -9,7 +9,6 @@ export interface AppUser {
   telefone: string;
   coren?: string;
   avatarUrl?: string;
-  lgpdConsentAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }

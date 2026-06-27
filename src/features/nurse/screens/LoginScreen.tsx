@@ -25,7 +25,6 @@ const ERROR_MESSAGES: Record<string, string> = {
   'auth/user-not-found': 'Email ou senha incorretos.',
   'auth/wrong-password': 'Email ou senha incorretos.',
   'auth/invalid-credential': 'Email ou senha incorretos.',
-  'auth/invalid-login-credentials': 'Email ou senha incorretos.',
   'auth/invalid-email': 'Insira um email válido.',
   'auth/too-many-requests': 'Muitas tentativas. Aguarde alguns minutos.',
   'auth/network-request-failed': 'Sem conexão com a internet.',

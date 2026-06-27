@@ -43,11 +43,53 @@ Ao criar/modificar fluxos de usuário, sempre verificar:
 - [ ] O `empresaId` está preenchido? (se não, admin vai para SetupEmpresa)
 - [ ] Campos obrigatórios (`nome`, `email`, `role`) têm fallbacks?
 
-### 4. Telas novas — checklist visual
-- Usar componentes do design system (`ScreenHeader`, `ChipSelector`, `FormInput`, `PrimaryButton`, `PatientDropdown`, `SectionLabel`)
+### 4. Apple HIG — Design obrigatório (CRÍTICO)
+**Este app DEVE seguir os padrões de design da Apple (Human Interface Guidelines).** Toda decisão de UI deve ser validada contra o que a Apple faria. Não usar padrões Material Design, Android, ou web.
+
+#### Modais e Sheets
+- **Header:** "Cancelar" (texto, esquerda) + Título (centro) + "OK"/"Salvar"/"Adicionar" (texto bold, direita, cor accent)
+- **NUNCA usar ícone X** para fechar modais de criação/edição — X é padrão Material Design
+- Apresentação: bottom sheet (não fullscreen), com grabber handle quando aplicável
+- Modais de criação devem ter `maxHeight: '85%'` e scroll interno
+
+#### Formulários
+- **Inset Grouped style:** campos agrupados em seções com fundo `colors.surface`, cantos arredondados, separados por hairlines internas (`StyleSheet.hairlineWidth`)
+- Labels à esquerda, valores/controles à direita na mesma row
+- **NUNCA usar floating labels** dentro de inputs (padrão Material Design)
+- Seções separadas por espaço vertical, com header label em uppercase acima
+
+#### Seleção de itens (pessoas, categorias)
+- **NUNCA usar chips** para seleção em formulários — chips são padrão Material Design / Web
+- Usar **drill-down row:** label esquerda + valor selecionado em cinza à direita + chevron `>`
+- Ao tocar, abrir lista de seleção (push ou sheet secundário) com checkmark no item selecionado
+- Para seleção simples de 2-4 opções, segmented control é aceitável
+
+#### Inputs de data/hora
+- **NUNCA usar TextInput para horários ou datas** — anti-pattern no iOS
+- Usar `@react-native-community/datetimepicker` com `display="spinner"` (wheel picker nativo)
+- O picker deve expandir inline ao tocar na row do horário
+- Formato: exibir valor formatado na row, picker aparece abaixo ao selecionar
+
+#### Botões de ação
+- Ação primária no **header à direita** como texto (não botão full-width no bottom)
+- Botão desabilitado = texto com opacidade reduzida, mesmo estilo
+- Se usar botão full-width no bottom (aceitável em telas de cadastro longas), deve ser com cantos arredondados grandes (`borderRadius.full`)
+
+#### Navegação e feedback
+- Voltar: seta + texto "Voltar" (ou título da tela anterior), cor accent
+- Confirmação de ação: `Alert.alert` nativo do iOS (nunca toast custom ou snackbar)
+- Destructive actions: texto vermelho, confirmação obrigatória via Alert
+
+#### Referências de implementação
+- Estudar: iOS Calendar "New Event", Contacts "New Contact", Reminders "New Reminder"
+- Package para pickers: `@react-native-community/datetimepicker`
+- Seguir: https://developer.apple.com/design/human-interface-guidelines/
+
+### 5. Telas novas — checklist visual
+- Seguir obrigatoriamente as regras Apple HIG da seção 4 acima
+- Usar componentes do design system (`ScreenHeader`, `FormInput`, `PrimaryButton`, `PatientDropdown`, `SectionLabel`)
 - Ícones: sempre Ionicons (nunca emoji)
 - Cor primária: `colors.primary` (#6C63FF), nunca hardcoded
-- Títulos: duas linhas (preto + colorido) quando aplicável
 - Loading states em todos os botões de ação
 - Safe area insets via `useSafeAreaInsets()`
 

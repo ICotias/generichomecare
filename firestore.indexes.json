@@ -9,14 +9,6 @@
       ]
     },
     {
-      "collectionGroup": "registros",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "type", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "escalas",
       "queryScope": "COLLECTION",
       "fields": [
@@ -29,8 +21,24 @@
       "collectionGroup": "plantoes",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "pacienteId", "order": "ASCENDING" }
+        { "fieldPath": "profissionalId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "plantoes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "profissionalId", "order": "ASCENDING" },
+        { "fieldPath": "checkinAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "usuarios",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "empresaId", "order": "ASCENDING" },
+        { "fieldPath": "role", "order": "ASCENDING" }
       ]
     }
   ],

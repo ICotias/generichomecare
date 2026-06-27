@@ -49,13 +49,31 @@ service cloud.firestore {
                   && resource.data.empresaId == getUserData().empresaId
                   && resource.data.role == 'nurse';
 
-      // Admin cria usuários (nurse ou family) — precisa validar campos
+      // Usuário cria o próprio perfil no primeiro login (auto-criação)
+      // SEGURANÇA: role 'admin' bloqueado — só outro admin pode promover.
+      // Email validado contra auth.token para evitar spoofing.
+      allow create: if isAuth()
+                    && request.auth.uid == uid
+                    && hasField('email')
+                    && hasField('nome')
+                    && hasField('role')
+                    && request.resource.data.role in ['nurse', 'family']
+                    && request.resource.data.email == request.auth.token.email;
+
+      // Admin cria perfis de outros usuários (nurse ou family)
       allow create: if hasRole('admin')
                     && hasField('email')
                     && hasField('nome')
                     && hasField('role')
                     && isValidRole(request.resource.data.role)
-                    && request.resource.data.role != 'admin'; // admin não cria outro admin
+                    && request.resource.data.role != 'admin';
+
+      // Admin no setup inicial: pode definir empresaId quando ainda está vazio
+      allow update: if isAuth()
+                    && request.auth.uid == uid
+                    && resource.data.role == 'admin'
+                    && resource.data.empresaId == ''
+                    && request.resource.data.role == 'admin';
 
       // Admin atualiza usuários da mesma empresa (não pode mudar role para admin)
       allow update: if hasRole('admin')
@@ -142,6 +160,13 @@ service cloud.firestore {
                         && hasField('profissionalId')
                         && request.resource.data.profissionalId == request.auth.uid;
 
+          // Admin pode criar registros (simulação de enfermeiro)
+          allow create: if hasRole('admin')
+                        && belongsToCompany(empresaId)
+                        && hasField('type')
+                        && hasField('pacienteId')
+                        && hasField('profissionalId');
+
           // Imutáveis — ninguém edita ou deleta
           allow update, delete: if false;
         }
@@ -157,7 +182,13 @@ service cloud.firestore {
           allow create: if hasRole('nurse')
                         && belongsToCompany(empresaId)
                         && hasField('situacao')
-                        && hasField('avaliacao');
+                        && hasField('profissionalId');
+
+          // Admin pode criar evoluções (simulação de enfermeiro)
+          allow create: if hasRole('admin')
+                        && belongsToCompany(empresaId)
+                        && hasField('situacao')
+                        && hasField('profissionalId');
 
           // Imutáveis
           allow update, delete: if false;
@@ -180,6 +211,11 @@ service cloud.firestore {
                       && belongsToCompany(empresaId)
                       && hasField('profissionalId')
                       && request.resource.data.profissionalId == request.auth.uid;
+
+        // Admin pode criar plantão (simulação de enfermeiro)
+        allow create: if hasRole('admin')
+                      && belongsToCompany(empresaId)
+                      && hasField('profissionalId');
 
         // Enfermeiro faz checkout — atualiza apenas seu plantão
         allow update: if hasRole('nurse')

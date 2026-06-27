@@ -1,11 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  ActivityIndicator,
   Alert,
   ScrollView,
   KeyboardAvoidingView,
@@ -16,40 +15,31 @@ import {
   Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-// expo-image-picker must be installed: npx expo install expo-image-picker
-// import * as ImagePicker from 'expo-image-picker';
 
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
-import * as patientService from '../../../core/services/patientService';
+import { usePatientWithActiveShift } from '../../../core/hooks/usePatientWithActiveShift';
 import * as registroService from '../../../core/services/registroService';
 import * as storageService from '../../../core/services/storageService';
-import type { Patient } from '../../../core/types';
-import { MOCK_PATIENTS } from '../../../core/mocks/patients';
+import { ModalHeader } from '../../../shared/components/ui/ModalHeader';
+import { InsetGroupedSection } from '../../../shared/components/ui/InsetGroupedSection';
+import { InsetRow } from '../../../shared/components/ui/InsetRow';
 
 export const RegisterPhotoScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { user } = useAuthStore();
 
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [showPicker, setShowPicker] = useState(false);
+  const { patients, selectedPatient, setSelectedPatient } = usePatientWithActiveShift(user?.empresaId, user?.uid);
+
 
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [fotoClinica, setFotoClinica] = useState(false);
   const [observacoes, setObservacoes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  useFocusEffect(
-    useCallback(() => {
-      if (!user?.empresaId) return;
-      patientService.listPatients(user.empresaId).then((list) => setPatients(list.length > 0 ? list : MOCK_PATIENTS)).catch(console.error);
-    }, [user?.empresaId])
-  );
 
   const pickImage = async (source: 'camera' | 'gallery') => {
     // ── expo-image-picker integration ──
@@ -105,7 +95,12 @@ export const RegisterPhotoScreen = () => {
     if (!selectedPatient) e.paciente = 'Selecione o paciente';
     if (!imageUri) e.image = 'Selecione ou tire uma foto';
     setErrors(e);
-    return Object.keys(e).length === 0;
+    if (Object.keys(e).length > 0) {
+      Alert.alert(e.paciente ? 'Sem paciente' : 'Campos obrigatórios',
+        e.paciente ? 'Inicie um plantão antes de registrar.' : 'Preencha todos os campos antes de salvar.');
+      return false;
+    }
+    return true;
   };
 
   const handleSubmit = async () => {
@@ -142,7 +137,7 @@ export const RegisterPhotoScreen = () => {
         imageUrl,
         imagePath,
         fotoClinica,
-        observacoes: observacoes.trim() || undefined,
+        ...(observacoes.trim() ? { observacoes: observacoes.trim() } : {}),
       });
 
       Alert.alert('Registrado', `Foto registrada para ${selectedPatient!.nome}.`, [
@@ -163,58 +158,28 @@ export const RegisterPhotoScreen = () => {
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <View style={styles.root}>
+          {/* ── Apple-style Modal Header ── */}
+          <View style={{ paddingTop: insets.top }}>
+            <ModalHeader
+              title="Registro Fotográfico"
+              onCancel={() => (navigation as any).getParent()?.navigate('NurseHomeStack')}
+              onDone={handleSubmit}
+              doneLabel="Salvar"
+              doneDisabled={isSubmitting}
+              isLoading={isSubmitting}
+              accentColor={colors.primary}
+            />
+          </View>
+
           <ScrollView
-            contentContainerStyle={[
-              styles.scrollContent,
-              { paddingTop: insets.top + spacing.md, paddingBottom: spacing.xxl },
-            ]}
+            contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={8}>
-              <Ionicons name="arrow-back" size={20} color={colors.primary} />
-              <Text style={styles.backText}>Voltar</Text>
-            </TouchableOpacity>
 
-            <Text style={styles.title}>Registro Fotográfico</Text>
-            <View style={styles.separator} />
-            <Text style={styles.subtitle}>Capturar foto vinculada ao paciente</Text>
-
-            <View style={styles.form}>
-              {/* Patient selector */}
-              <View style={styles.field}>
-                <Text style={styles.label}>Paciente</Text>
-                <TouchableOpacity
-                  style={[styles.selector, errors.paciente && styles.inputError]}
-                  onPress={() => setShowPicker(!showPicker)}
-                >
-                  <Text style={selectedPatient ? styles.selectorText : styles.selectorPlaceholder}>
-                    {selectedPatient?.nome ?? 'Selecione o paciente'}
-                  </Text>
-                </TouchableOpacity>
-                {showPicker && (
-                  <View style={styles.pickerDropdown}>
-                    {patients.map((p) => (
-                      <TouchableOpacity
-                        key={p.id}
-                        style={styles.pickerItem}
-                        onPress={() => {
-                          setSelectedPatient(p);
-                          setShowPicker(false);
-                          setErrors((prev) => ({ ...prev, paciente: '' }));
-                        }}
-                      >
-                        <Text style={styles.pickerItemText}>{p.nome}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-                {errors.paciente ? <Text style={styles.errorText}>{errors.paciente}</Text> : null}
-              </View>
-
-              {/* Image picker area */}
-              <View style={styles.field}>
-                <Text style={styles.sectionLabel}>FOTO</Text>
+            {/* ── Foto ── */}
+            <InsetGroupedSection header="FOTO">
+              <View style={styles.photoContent}>
                 {imageUri ? (
                   <View style={styles.previewWrap}>
                     <Image source={{ uri: imageUri }} style={styles.preview} resizeMode="cover" />
@@ -223,16 +188,16 @@ export const RegisterPhotoScreen = () => {
                       onPress={() => setImageUri(null)}
                       hitSlop={8}
                     >
-                      <Text style={styles.removeBtnText}>✕</Text>
+                      <Ionicons name="close" size={18} color={colors.white} />
                     </TouchableOpacity>
                   </View>
                 ) : (
                   <View style={styles.pickerArea}>
-                    <Text style={styles.pickerEmoji}>📷</Text>
+                    <Ionicons name="camera-outline" size={40} color={colors.textMuted} />
                     <Text style={styles.pickerHint}>Selecione uma opção abaixo</Text>
                   </View>
                 )}
-                {errors.image ? <Text style={styles.errorText}>{errors.image}</Text> : null}
+                {errors.image ? <Text style={[styles.errorText, { paddingHorizontal: spacing.md }]}>{errors.image}</Text> : null}
 
                 <View style={styles.sourceRow}>
                   <TouchableOpacity
@@ -241,7 +206,7 @@ export const RegisterPhotoScreen = () => {
                     disabled={isSubmitting}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.sourceIcon}>📸</Text>
+                    <Ionicons name="camera" size={20} color={colors.primary} />
                     <Text style={styles.sourceLabel}>Câmera</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -250,62 +215,52 @@ export const RegisterPhotoScreen = () => {
                     disabled={isSubmitting}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.sourceIcon}>🖼️</Text>
+                    <Ionicons name="images" size={20} color={colors.primary} />
                     <Text style={styles.sourceLabel}>Galeria</Text>
                   </TouchableOpacity>
                 </View>
               </View>
+            </InsetGroupedSection>
 
-              {/* Foto clínica switch */}
-              <View style={styles.switchRow}>
-                <View style={styles.switchInfo}>
-                  <Text style={styles.switchLabel}>Foto clínica</Text>
-                  <Text style={styles.switchHint}>
-                    Fotos clínicas não são visíveis para a família no app
-                  </Text>
-                </View>
-                <Switch
-                  value={fotoClinica}
-                  onValueChange={setFotoClinica}
-                  trackColor={{ false: colors.border, true: '#93C5FD' }}
-                  thumbColor={fotoClinica ? colors.primary : colors.textMuted}
-                  disabled={isSubmitting}
-                />
-              </View>
+            {/* ── Foto Clínica ── */}
+            <InsetGroupedSection>
+              <InsetRow
+                label="Foto clínica"
+                last
+                rightContent={
+                  <Switch
+                    value={fotoClinica}
+                    onValueChange={setFotoClinica}
+                    trackColor={{ false: colors.border, true: '#93C5FD' }}
+                    thumbColor={fotoClinica ? colors.primary : colors.textMuted}
+                    disabled={isSubmitting}
+                  />
+                }
+              />
+            </InsetGroupedSection>
+            {fotoClinica && (
+              <Text style={styles.switchHint}>
+                Fotos clínicas não são visíveis para a família no app
+              </Text>
+            )}
 
-              {/* Observações */}
-              <View style={styles.field}>
-                <Text style={styles.label}>
-                  Observações <Text style={styles.optional}>(opcional)</Text>
-                </Text>
+            {/* ── Observações ── */}
+            <InsetGroupedSection header="OBSERVAÇÕES">
+              <View style={styles.textAreaWrap}>
                 <TextInput
                   value={observacoes}
                   onChangeText={setObservacoes}
                   placeholder="Contexto da foto, local, evolução do ferimento..."
                   placeholderTextColor={colors.textMuted}
-                  style={[styles.input, styles.inputMultiline]}
+                  style={styles.textArea}
                   multiline
                   textAlignVertical="top"
                   editable={!isSubmitting}
                 />
               </View>
-            </View>
+            </InsetGroupedSection>
           </ScrollView>
 
-          <View style={[styles.actionArea, { paddingBottom: insets.bottom + spacing.lg }]}>
-            <TouchableOpacity
-              style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-              onPress={handleSubmit}
-              disabled={isSubmitting}
-              activeOpacity={0.85}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color={colors.white} />
-              ) : (
-                <Text style={styles.submitText}>Salvar Registro</Text>
-              )}
-            </TouchableOpacity>
-          </View>
         </View>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
@@ -313,89 +268,30 @@ export const RegisterPhotoScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.background },
-  scrollContent: { paddingHorizontal: spacing.lg },
-  backBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: spacing.xs, marginBottom: spacing.md },
-  backText: { color: colors.primary, fontSize: fontSize.md, fontWeight: '500' },
-  title: {
-    fontSize: fontSize.title,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    letterSpacing: 0.35,
+  root: {
+    flex: 1,
+    backgroundColor: colors.background,
   },
-  separator: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border,
-    marginVertical: spacing.sm,
+  scrollContent: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xxl,
   },
-  subtitle: {
-    fontSize: fontSize.md,
-    color: colors.textSecondary,
-    lineHeight: 22,
-  },
-  form: { marginTop: spacing.xl },
-  field: { marginBottom: spacing.md },
-  label: {
-    fontSize: fontSize.sm,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: spacing.xs + 2,
-  },
-  sectionLabel: {
+  errorText: {
+    color: colors.error,
     fontSize: fontSize.xs,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    letterSpacing: 1,
-    marginBottom: spacing.sm,
+    marginTop: -spacing.sm,
+    marginBottom: spacing.md,
+    marginLeft: spacing.md,
   },
-  optional: { color: colors.textMuted, fontWeight: '400' },
-  input: {
-    height: 52,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    fontSize: fontSize.md,
-    color: colors.textPrimary,
-  },
-  inputMultiline: { height: 100, paddingTop: spacing.md },
-  inputError: { borderColor: colors.error },
-  errorText: { color: colors.error, fontSize: fontSize.xs, marginTop: spacing.xs },
 
-  // Selector
-  selector: {
-    height: 52,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    justifyContent: 'center',
+  // Photo content inside InsetGroupedSection
+  photoContent: {
+    padding: spacing.md,
   },
-  selectorText: { fontSize: fontSize.md, color: colors.textPrimary },
-  selectorPlaceholder: { fontSize: fontSize.md, color: colors.textMuted },
-  pickerDropdown: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    marginTop: spacing.xs,
-    overflow: 'hidden',
-  },
-  pickerItem: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 4,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  pickerItemText: { fontSize: fontSize.md, color: colors.textPrimary },
-
-  // Image picker area
   pickerArea: {
-    height: 180,
+    height: 160,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.surface,
     borderWidth: 2,
     borderColor: colors.border,
     borderStyle: 'dashed',
@@ -403,11 +299,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
   },
-  pickerEmoji: { fontSize: 40 },
-  pickerHint: { fontSize: fontSize.sm, color: colors.textMuted },
+  pickerHint: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+  },
 
   // Preview
-  previewWrap: { position: 'relative', marginBottom: spacing.sm },
+  previewWrap: {
+    position: 'relative',
+  },
   preview: {
     width: '100%',
     height: 220,
@@ -424,13 +324,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  removeBtnText: { color: colors.white, fontSize: fontSize.md, fontWeight: '700' },
 
   // Source buttons (Câmera / Galeria)
   sourceRow: {
     flexDirection: 'row',
     gap: spacing.sm,
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
   },
   sourceButton: {
     flex: 1,
@@ -440,54 +339,34 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
+    backgroundColor: colors.background,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
   },
-  sourceIcon: { fontSize: 20 },
-  sourceLabel: { fontSize: fontSize.sm, fontWeight: '600', color: colors.textPrimary },
+  sourceLabel: {
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
 
-  // Switch
-  switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  switchInfo: { flex: 1, marginRight: spacing.md },
-  switchLabel: { fontSize: fontSize.md, fontWeight: '600', color: colors.textPrimary },
+  // Switch hint
   switchHint: {
     fontSize: fontSize.xs,
     color: colors.textSecondary,
-    marginTop: 2,
+    marginTop: -spacing.sm,
+    marginBottom: spacing.lg,
+    marginLeft: spacing.md,
     lineHeight: 16,
   },
 
-  // Action
-  actionArea: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    backgroundColor: colors.background,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+  // Text area for observações
+  textAreaWrap: {
+    padding: spacing.md,
   },
-  submitButton: {
-    height: 56,
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  submitButtonDisabled: { opacity: 0.6 },
-  submitText: {
-    color: colors.white,
-    fontSize: fontSize.lg,
-    fontWeight: '600',
-    letterSpacing: 0.3,
+  textArea: {
+    height: 100,
+    fontSize: fontSize.md,
+    color: colors.textPrimary,
+    textAlignVertical: 'top',
   },
 });

@@ -1,28 +1,31 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
+  Switch,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
-import * as patientService from '../../../core/services/patientService';
+import { usePatientWithActiveShift } from '../../../core/hooks/usePatientWithActiveShift';
 import * as registroService from '../../../core/services/registroService';
 import type { Patient, IncidentRecord } from '../../../core/types';
-import { MOCK_PATIENTS } from '../../../core/mocks/patients';
+
+import { ModalHeader } from '../../../shared/components/ui/ModalHeader';
+import { InsetGroupedSection } from '../../../shared/components/ui/InsetGroupedSection';
+import { InsetRow } from '../../../shared/components/ui/InsetRow';
+import { SelectionListModal, type SelectionItem } from '../../../shared/components/ui/SelectionListModal';
+import { SegmentedControl } from '../../../shared/components/ui/SegmentedControl';
 
 const TIPO_OPTIONS: { value: IncidentRecord['tipoIncidente']; label: string }[] = [
   { value: 'queda', label: 'Queda' },
@@ -33,15 +36,15 @@ const TIPO_OPTIONS: { value: IncidentRecord['tipoIncidente']; label: string }[] 
   { value: 'outro', label: 'Outro' },
 ];
 
-const GRAVIDADE_OPTIONS: {
-  value: IncidentRecord['gravidade'];
-  label: string;
-  activeColor: string;
-  activeBg: string;
-}[] = [
-  { value: 'leve', label: 'Leve', activeColor: colors.white, activeBg: '#6B7280' },
-  { value: 'moderado', label: 'Moderado', activeColor: colors.white, activeBg: '#DC2626' },
-  { value: 'grave', label: 'Grave', activeColor: colors.white, activeBg: '#7F1D1D' },
+const TIPO_SELECTION_ITEMS: SelectionItem[] = TIPO_OPTIONS.map((opt) => ({
+  id: opt.value,
+  label: opt.label,
+}));
+
+const GRAVIDADE_OPTIONS = [
+  { key: 'leve', label: 'Leve' },
+  { key: 'moderado', label: 'Moderado' },
+  { key: 'grave', label: 'Grave' },
 ];
 
 export const RegisterIncidentScreen = () => {
@@ -49,9 +52,8 @@ export const RegisterIncidentScreen = () => {
   const navigation = useNavigation();
   const { user } = useAuthStore();
 
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [showPicker, setShowPicker] = useState(false);
+  const { patients, selectedPatient, setSelectedPatient } = usePatientWithActiveShift(user?.empresaId, user?.uid);
+  const [showTipoModal, setShowTipoModal] = useState(false);
 
   const [tipoIncidente, setTipoIncidente] = useState<IncidentRecord['tipoIncidente'] | ''>('');
   const [gravidade, setGravidade] = useState<IncidentRecord['gravidade'] | ''>('');
@@ -64,13 +66,6 @@ export const RegisterIncidentScreen = () => {
   const descRef = useRef<TextInput>(null);
   const medidasRef = useRef<TextInput>(null);
 
-  useFocusEffect(
-    useCallback(() => {
-      if (!user?.empresaId) return;
-      patientService.listPatients(user.empresaId).then((list) => setPatients(list.length > 0 ? list : MOCK_PATIENTS)).catch(console.error);
-    }, [user?.empresaId])
-  );
-
   const validate = (): boolean => {
     const e: Record<string, string> = {};
     if (!selectedPatient) e.paciente = 'Selecione o paciente';
@@ -78,7 +73,12 @@ export const RegisterIncidentScreen = () => {
     if (!gravidade) e.gravidade = 'Selecione a gravidade';
     if (!descricao.trim()) e.descricao = 'Descreva a intercorrência';
     setErrors(e);
-    return Object.keys(e).length === 0;
+    if (Object.keys(e).length > 0) {
+      Alert.alert(e.paciente ? 'Sem paciente' : 'Campos obrigatórios',
+        e.paciente ? 'Inicie um plantão antes de registrar.' : 'Preencha todos os campos antes de salvar.');
+      return false;
+    }
+    return true;
   };
 
   const handleSubmit = async () => {
@@ -97,9 +97,8 @@ export const RegisterIncidentScreen = () => {
         tipoIncidente: tipoIncidente as IncidentRecord['tipoIncidente'],
         gravidade: gravidade as IncidentRecord['gravidade'],
         descricao: descricao.trim(),
-        medidasTomadas: medidasTomadas.trim() || undefined,
+        ...(medidasTomadas.trim() ? { medidasTomadas: medidasTomadas.trim() } : {}),
         notificouFamilia,
-        observacoes: undefined,
       });
 
       Alert.alert('Registrado', `Intercorrência registrada para ${selectedPatient!.nome}.`, [
@@ -113,129 +112,64 @@ export const RegisterIncidentScreen = () => {
     }
   };
 
+  const selectedTipoLabel = TIPO_OPTIONS.find((o) => o.value === tipoIncidente)?.label;
+
   return (
     <KeyboardAvoidingView
       style={styles.root}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-        <View style={styles.root}>
+        <View style={[styles.root, { paddingTop: insets.top }]}>
+          <ModalHeader
+            title="Intercorrência"
+            onCancel={() => (navigation as any).getParent()?.navigate('NurseHomeStack')}
+            onDone={handleSubmit}
+            doneLabel="Salvar"
+            doneDisabled={isSubmitting}
+            isLoading={isSubmitting}
+            accentColor={colors.primary}
+          />
+
           <ScrollView
-            contentContainerStyle={[
-              styles.scrollContent,
-              { paddingTop: insets.top + spacing.md, paddingBottom: spacing.xxl },
-            ]}
+            contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={8}>
-              <Ionicons name="arrow-back" size={20} color={colors.primary} />
-              <Text style={styles.backText}>Voltar</Text>
-            </TouchableOpacity>
 
-            <Text style={styles.title}>Intercorrência</Text>
-            <View style={styles.separator} />
+            {/* Tipo */}
+            <InsetGroupedSection header="TIPO">
+              <InsetRow
+                label="Tipo"
+                value={selectedTipoLabel}
+                placeholder="Selecione"
+                onPress={() => setShowTipoModal(true)}
+                chevron
+                last
+              />
+            </InsetGroupedSection>
+            {errors.tipoIncidente ? <Text style={styles.errorText}>{errors.tipoIncidente}</Text> : null}
 
-            <View style={styles.form}>
-              {/* Patient selector */}
-              <View style={styles.field}>
-                <Text style={styles.label}>Paciente</Text>
-                <TouchableOpacity
-                  style={[styles.selector, errors.paciente && styles.inputError]}
-                  onPress={() => setShowPicker(!showPicker)}
-                >
-                  <Text style={selectedPatient ? styles.selectorText : styles.selectorPlaceholder}>
-                    {selectedPatient?.nome ?? 'Selecione o paciente'}
-                  </Text>
-                  <Text style={styles.chevron}>⌃</Text>
-                </TouchableOpacity>
-                {showPicker && (
-                  <View style={styles.pickerDropdown}>
-                    {patients.map((p) => (
-                      <TouchableOpacity
-                        key={p.id}
-                        style={styles.pickerItem}
-                        onPress={() => {
-                          setSelectedPatient(p);
-                          setShowPicker(false);
-                          setErrors((prev) => ({ ...prev, paciente: '' }));
-                        }}
-                      >
-                        <Text style={styles.pickerItemText}>{p.nome}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-                {errors.paciente ? <Text style={styles.errorText}>{errors.paciente}</Text> : null}
+            {/* Gravidade */}
+            <InsetGroupedSection header="GRAVIDADE">
+              <View style={styles.segmentContainer}>
+                <SegmentedControl
+                  options={GRAVIDADE_OPTIONS}
+                  selectedKey={gravidade}
+                  onSelect={(key) => {
+                    setGravidade(key as IncidentRecord['gravidade']);
+                    setErrors((p) => ({ ...p, gravidade: '' }));
+                  }}
+                  accentColor={colors.primary}
+                />
               </View>
+            </InsetGroupedSection>
+            {errors.gravidade ? <Text style={styles.errorText}>{errors.gravidade}</Text> : null}
 
-              {/* Tipo */}
-              <View style={styles.field}>
-                <Text style={styles.sectionLabel}>TIPO</Text>
-                <View style={styles.chipRow}>
-                  {TIPO_OPTIONS.map((opt) => {
-                    const isActive = tipoIncidente === opt.value;
-                    return (
-                      <TouchableOpacity
-                        key={opt.value}
-                        style={[styles.chip, isActive && styles.chipActive]}
-                        onPress={() => {
-                          setTipoIncidente(opt.value);
-                          setErrors((p) => ({ ...p, tipoIncidente: '' }));
-                        }}
-                        activeOpacity={0.7}
-                        disabled={isSubmitting}
-                      >
-                        <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
-                          {opt.label}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-                {errors.tipoIncidente ? (
-                  <Text style={styles.errorText}>{errors.tipoIncidente}</Text>
-                ) : null}
-              </View>
-
-              {/* Gravidade */}
-              <View style={styles.field}>
-                <Text style={styles.sectionLabel}>GRAVIDADE</Text>
-                <View style={styles.chipRow}>
-                  {GRAVIDADE_OPTIONS.map((opt) => {
-                    const isActive = gravidade === opt.value;
-                    return (
-                      <TouchableOpacity
-                        key={opt.value}
-                        style={[
-                          styles.chip,
-                          isActive && { backgroundColor: opt.activeBg, borderColor: opt.activeBg },
-                        ]}
-                        onPress={() => {
-                          setGravidade(opt.value);
-                          setErrors((p) => ({ ...p, gravidade: '' }));
-                        }}
-                        activeOpacity={0.7}
-                        disabled={isSubmitting}
-                      >
-                        <Text
-                          style={[
-                            styles.chipText,
-                            isActive && styles.gravChipTextActive,
-                          ]}
-                        >
-                          {opt.label}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-                {errors.gravidade ? <Text style={styles.errorText}>{errors.gravidade}</Text> : null}
-              </View>
-
-              {/* Descrição Detalhada */}
-              <View style={styles.field}>
-                <Text style={styles.label}>Descrição Detalhada</Text>
+            {/* Descrição + Medidas */}
+            <InsetGroupedSection header="DETALHES">
+              <View style={styles.textInputRow}>
+                <Text style={styles.textInputLabel}>Descrição</Text>
                 <TextInput
                   ref={descRef}
                   value={descricao}
@@ -245,61 +179,62 @@ export const RegisterIncidentScreen = () => {
                   }}
                   placeholder="O que aconteceu..."
                   placeholderTextColor={colors.textMuted}
-                  style={[styles.input, styles.inputTall, errors.descricao && styles.inputError]}
+                  style={styles.textInput}
                   multiline
                   textAlignVertical="top"
                   editable={!isSubmitting}
                   returnKeyType="next"
                   onSubmitEditing={() => medidasRef.current?.focus()}
                 />
-                {errors.descricao ? <Text style={styles.errorText}>{errors.descricao}</Text> : null}
               </View>
-
-              {/* Medidas Tomadas */}
-              <View style={styles.field}>
-                <Text style={styles.label}>Medidas Tomadas</Text>
+              <View style={styles.hairline} />
+              <View style={styles.textInputRow}>
+                <Text style={styles.textInputLabel}>Medidas Tomadas</Text>
                 <TextInput
                   ref={medidasRef}
                   value={medidasTomadas}
                   onChangeText={setMedidasTomadas}
-                  placeholder=""
+                  placeholder="(Opcional)"
                   placeholderTextColor={colors.textMuted}
-                  style={[styles.input, styles.inputMultiline]}
+                  style={[styles.textInput, styles.textInputShort]}
                   multiline
                   textAlignVertical="top"
                   editable={!isSubmitting}
                 />
               </View>
+            </InsetGroupedSection>
+            {errors.descricao ? <Text style={styles.errorText}>{errors.descricao}</Text> : null}
 
-              {/* Notificou Família? — Checkbox */}
-              <TouchableOpacity
-                style={styles.checkboxRow}
-                onPress={() => setNotificouFamilia(!notificouFamilia)}
-                activeOpacity={0.7}
-                disabled={isSubmitting}
-              >
-                <View style={[styles.checkbox, notificouFamilia && styles.checkboxActive]}>
-                  {notificouFamilia && <Text style={styles.checkmark}>✓</Text>}
-                </View>
-                <Text style={styles.checkboxLabel}>Notificou Família?</Text>
-              </TouchableOpacity>
-            </View>
+            {/* Notificou Família */}
+            <InsetGroupedSection>
+              <InsetRow
+                label="Notificou Família"
+                last
+                rightContent={
+                  <Switch
+                    value={notificouFamilia}
+                    onValueChange={setNotificouFamilia}
+                    trackColor={{ false: colors.border, true: colors.primary }}
+                    disabled={isSubmitting}
+                  />
+                }
+              />
+            </InsetGroupedSection>
           </ScrollView>
 
-          <View style={[styles.actionArea, { paddingBottom: insets.bottom + spacing.lg }]}>
-            <TouchableOpacity
-              style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-              onPress={handleSubmit}
-              disabled={isSubmitting}
-              activeOpacity={0.85}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color={colors.white} />
-              ) : (
-                <Text style={styles.submitText}>Salvar Registro</Text>
-              )}
-            </TouchableOpacity>
-          </View>
+          {/* Tipo Selection Modal */}
+          <SelectionListModal
+            visible={showTipoModal}
+            title="Tipo de Intercorrência"
+            items={TIPO_SELECTION_ITEMS}
+            selectedId={tipoIncidente || null}
+            onSelect={(item) => {
+              setTipoIncidente(item.id as IncidentRecord['tipoIncidente']);
+              setErrors((prev) => ({ ...prev, tipoIncidente: '' }));
+            }}
+            onClose={() => setShowTipoModal(false)}
+            accentColor={colors.primary}
+          />
         </View>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
@@ -307,149 +242,47 @@ export const RegisterIncidentScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.background },
-  scrollContent: { paddingHorizontal: spacing.lg },
-  backBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: spacing.xs, marginBottom: spacing.md },
-  backText: { color: colors.primary, fontSize: fontSize.md, fontWeight: '500' },
-  title: {
-    fontSize: fontSize.title,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    letterSpacing: 0.35,
+  root: {
+    flex: 1,
+    backgroundColor: colors.background,
   },
-  separator: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.primary,
-    marginTop: spacing.sm,
+  scrollContent: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  errorText: {
+    color: colors.error,
+    fontSize: fontSize.xs,
+    marginTop: -spacing.md,
     marginBottom: spacing.md,
+    marginLeft: spacing.md,
   },
-  form: { marginTop: spacing.md },
-  field: { marginBottom: spacing.lg },
-  label: {
+  segmentContainer: {
+    padding: spacing.md,
+  },
+  textInputRow: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  textInputLabel: {
     fontSize: fontSize.sm,
     fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: spacing.xs + 2,
-  },
-  sectionLabel: {
-    fontSize: fontSize.xs,
-    fontWeight: '700',
     color: colors.textSecondary,
-    letterSpacing: 1,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
-  input: {
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
+  textInput: {
     fontSize: fontSize.md,
     color: colors.textPrimary,
+    minHeight: 100,
+    paddingTop: 0,
   },
-  inputMultiline: { height: 80, paddingTop: spacing.md },
-  inputTall: { height: 120, paddingTop: spacing.md },
-  inputError: { borderColor: colors.error },
-  errorText: { color: colors.error, fontSize: fontSize.xs, marginTop: spacing.xs },
-
-  // Selector
-  selector: {
-    height: 52,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  textInputShort: {
+    minHeight: 60,
   },
-  selectorText: { fontSize: fontSize.md, color: colors.textPrimary, flex: 1 },
-  selectorPlaceholder: { fontSize: fontSize.md, color: colors.textMuted, flex: 1 },
-  chevron: {
-    fontSize: fontSize.md,
-    color: colors.textMuted,
-    transform: [{ rotate: '180deg' }],
-  },
-  pickerDropdown: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    marginTop: spacing.xs,
-    overflow: 'hidden',
-  },
-  pickerItem: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 4,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  pickerItemText: { fontSize: fontSize.md, color: colors.textPrimary },
-
-  // Chips
-  chipRow: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
-  chip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { fontSize: fontSize.sm, color: colors.textPrimary, fontWeight: '500' },
-  chipTextActive: { color: colors.white },
-  gravChipTextActive: { color: colors.white, fontWeight: '600' },
-
-  // Checkbox
-  checkboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: borderRadius.sm,
-    borderWidth: 2,
-    borderColor: colors.textMuted,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkboxActive: {
-    backgroundColor: colors.textPrimary,
-    borderColor: colors.textPrimary,
-  },
-  checkmark: { color: colors.white, fontSize: 14, fontWeight: '700' },
-  checkboxLabel: { fontSize: fontSize.md, color: colors.textPrimary, fontWeight: '500' },
-
-  // Action
-  actionArea: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    backgroundColor: colors.background,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-  },
-  submitButton: {
-    height: 56,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  submitButtonDisabled: { opacity: 0.6 },
-  submitText: {
-    color: colors.white,
-    fontSize: fontSize.lg,
-    fontWeight: '600',
-    letterSpacing: 0.3,
+  hairline: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+    marginLeft: spacing.md,
   },
 });

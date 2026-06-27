@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import {
   View,
   Text,
@@ -8,16 +8,14 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
-import * as patientService from '../../../core/services/patientService';
-import type { Patient } from '../../../core/types';
+import { usePatientWithActiveShift } from '../../../core/hooks/usePatientWithActiveShift';
 import type { RegisterStackParamList } from '../../../core/navigation/RootNavigator';
-import { MOCK_PATIENTS } from '../../../core/mocks/patients';
 
 type NavProp = NativeStackNavigationProp<RegisterStackParamList, 'QuickRegister'>;
 
@@ -78,26 +76,7 @@ export const QuickRegisterScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const { user } = useAuthStore();
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (!user?.empresaId) return;
-      patientService
-        .listPatients(user.empresaId)
-        .then((list) => {
-          const result = list.length > 0 ? list : MOCK_PATIENTS;
-          setPatients(result.filter((p) => p.status === 'ativo'));
-          setSelectedPatient((prev) => prev ?? result[0] ?? null);
-        })
-        .catch(() => {
-          const fallback = MOCK_PATIENTS.filter((p) => p.status === 'ativo');
-          setPatients(fallback);
-          setSelectedPatient((prev) => prev ?? fallback[0] ?? null);
-        });
-    }, [user?.empresaId])
-  );
+  const { selectedPatient } = usePatientWithActiveShift(user?.empresaId, user?.uid);
 
   return (
     <ScrollView
@@ -111,56 +90,10 @@ export const QuickRegisterScreen = () => {
         <Text style={styles.titleLine2}>Registro</Text>
       </View>
 
-      {/* 1. Patient selection */}
-      <View style={styles.section}>
-        <Text style={styles.sectionLabel}>1. SELECIONE O PACIENTE</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.patientRow}
-        >
-          {patients.map((p) => {
-            const isSelected = selectedPatient?.id === p.id;
-            return (
-              <TouchableOpacity
-                key={p.id}
-                style={styles.patientItem}
-                onPress={() => setSelectedPatient(p)}
-                activeOpacity={0.7}
-              >
-                <View
-                  style={[
-                    styles.patientAvatar,
-                    isSelected && styles.patientAvatarActive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.patientAvatarText,
-                      isSelected && styles.patientAvatarTextActive,
-                    ]}
-                  >
-                    {p.nome.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-                <Text
-                  style={[
-                    styles.patientName,
-                    isSelected && styles.patientNameActive,
-                  ]}
-                  numberOfLines={1}
-                >
-                  {p.nome.split(' ')[0]}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
 
-      {/* 2. Register type grid */}
+      {/* Register type grid */}
       <View style={styles.section}>
-        <Text style={styles.sectionLabel}>2. O QUE DESEJA REGISTRAR?</Text>
+        <Text style={styles.sectionLabel}>O QUE DESEJA REGISTRAR?</Text>
         <View style={styles.grid}>
           {OPTIONS.map((opt) => (
             <TouchableOpacity
@@ -216,48 +149,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
 
-  // Patient selector
-  patientRow: {
-    gap: spacing.lg,
-    paddingHorizontal: spacing.xs,
-  },
-  patientItem: {
-    alignItems: 'center',
-    width: 64,
-  },
-  patientAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: colors.surfaceSecondary,
-    borderWidth: 2,
-    borderColor: colors.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  patientAvatarActive: {
-    backgroundColor: colors.primary + '1A',
-    borderColor: colors.primary,
-  },
-  patientAvatarText: {
-    fontSize: fontSize.xl,
-    fontWeight: '700',
-    color: colors.textMuted,
-  },
-  patientAvatarTextActive: {
-    color: colors.primary,
-  },
-  patientName: {
-    fontSize: fontSize.xs,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  patientNameActive: {
-    color: colors.primary,
-    fontWeight: '700',
-  },
 
   // Grid
   grid: {

@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, doc, getDoc, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { format } from 'date-fns';
 
 import { db } from '../../../core/config/firebase';
@@ -146,6 +146,30 @@ export const ShiftHistoryScreen = () => {
         };
       });
 
+      // Resolver nomes de pacientes para plantões antigos sem pacienteNome
+      const missing = results.filter((s) => !s.pacienteNome && s.pacienteId);
+      const uniqueIds = [...new Set(missing.map((s) => s.pacienteId))];
+      if (uniqueIds.length > 0) {
+        const nameMap: Record<string, string> = {};
+        await Promise.all(
+          uniqueIds.map(async (pid) => {
+            try {
+              const pacDoc = await getDoc(
+                doc(db, Collections.pacientes(user.empresaId), pid)
+              );
+              if (pacDoc.exists()) {
+                nameMap[pid] = pacDoc.data().nome ?? pid;
+              }
+            } catch { /* ignora se não conseguir ler */ }
+          })
+        );
+        for (const shift of results) {
+          if (!shift.pacienteNome && nameMap[shift.pacienteId]) {
+            shift.pacienteNome = nameMap[shift.pacienteId];
+          }
+        }
+      }
+
       setShifts(results);
     } catch (error) {
       console.error('Erro ao buscar plantões:', error);
@@ -167,7 +191,7 @@ export const ShiftHistoryScreen = () => {
   if (loading) {
     return (
       <View style={[styles.root, { paddingTop: insets.top + spacing.md }]}>
-        <ScreenHeader title="Meus" subtitle="Plantões" showBack />
+        <ScreenHeader title="Histórico de" subtitle="Plantões" showBack />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -177,7 +201,7 @@ export const ShiftHistoryScreen = () => {
 
   return (
     <View style={[styles.root, { paddingTop: insets.top + spacing.md }]}>
-      <ScreenHeader title="Meus" subtitle="Plantões" showBack />
+      <ScreenHeader title="Histórico de" subtitle="Plantões" showBack />
 
       <FlatList
         data={shifts}

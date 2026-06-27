@@ -63,8 +63,6 @@ export const ShiftEvolutionScreen = () => {
 
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [showPicker, setShowPicker] = useState(false);
-
   const [form, setForm] = useState<Record<string, string>>({
     situacao: '',
     ocorrencias: '',
@@ -79,12 +77,20 @@ export const ShiftEvolutionScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
-      if (!user?.empresaId) return;
-      patientService
-        .listPatients(user.empresaId)
-        .then((list) => setPatients(list.length > 0 ? list : MOCK_PATIENTS))
-        .catch(console.error);
-    }, [user?.empresaId])
+      if (!user?.empresaId || !user?.uid) return;
+      Promise.all([
+        patientService.listPatients(user.empresaId),
+        shiftService.getActiveShift(user.empresaId, user.uid).catch(() => null),
+      ]).then(([list, activeShift]) => {
+        const result = list.length > 0 ? list : MOCK_PATIENTS;
+        setPatients(result);
+        // Pré-selecionar paciente do plantão ativo
+        if (activeShift?.pacienteId && !selectedPatient) {
+          const match = result.find((p) => p.id === activeShift.pacienteId);
+          if (match) setSelectedPatient(match);
+        }
+      }).catch(console.error);
+    }, [user?.empresaId, user?.uid])
   );
 
   const updateField = (key: string, value: string) => {
@@ -99,7 +105,11 @@ export const ShiftEvolutionScreen = () => {
       if (!form[f.key]?.trim()) e[f.key] = `${f.title} é obrigatório`;
     });
     setErrors(e);
-    return Object.keys(e).length === 0;
+    if (Object.keys(e).length > 0) {
+      Alert.alert('Campos obrigatórios', 'Preencha todos os campos SBAR antes de assinar.');
+      return false;
+    }
+    return true;
   };
 
   const handleSubmit = async () => {
@@ -123,7 +133,7 @@ export const ShiftEvolutionScreen = () => {
         ocorrencias: form.ocorrencias.trim(),
         pendencias: form.pendencias.trim(),
         orientacoes: form.orientacoes.trim(),
-        observacoesLivres: form.observacoesLivres?.trim() || undefined,
+        ...(form.observacoesLivres?.trim() ? { observacoesLivres: form.observacoesLivres.trim() } : {}),
       });
 
       Alert.alert(
@@ -164,37 +174,6 @@ export const ShiftEvolutionScreen = () => {
             <Text style={styles.subtitle}>Passagem de plantão — método SBAR</Text>
 
             <View style={styles.form}>
-              {/* Patient selector */}
-              <View style={styles.field}>
-                <Text style={styles.label}>Paciente</Text>
-                <TouchableOpacity
-                  style={[styles.selector, errors.paciente && styles.inputError]}
-                  onPress={() => setShowPicker(!showPicker)}
-                >
-                  <Text style={selectedPatient ? styles.selectorText : styles.selectorPlaceholder}>
-                    {selectedPatient?.nome ?? 'Selecione o paciente'}
-                  </Text>
-                  <Text style={styles.chevron}>⌃</Text>
-                </TouchableOpacity>
-                {showPicker && (
-                  <View style={styles.pickerDropdown}>
-                    {patients.map((p) => (
-                      <TouchableOpacity
-                        key={p.id}
-                        style={styles.pickerItem}
-                        onPress={() => {
-                          setSelectedPatient(p);
-                          setShowPicker(false);
-                          setErrors((prev) => ({ ...prev, paciente: '' }));
-                        }}
-                      >
-                        <Text style={styles.pickerItemText}>{p.nome}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-                {errors.paciente ? <Text style={styles.errorText}>{errors.paciente}</Text> : null}
-              </View>
 
               {/* SBAR fields */}
               {SBAR_FIELDS.map((sbar, idx) => (
@@ -314,41 +293,6 @@ const styles = StyleSheet.create({
   inputMultiline: { height: 100, paddingTop: spacing.md },
   inputError: { borderColor: colors.error },
   errorText: { color: colors.error, fontSize: fontSize.xs, marginTop: spacing.xs },
-
-  // Selector
-  selector: {
-    height: 52,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  selectorText: { fontSize: fontSize.md, color: colors.textPrimary, flex: 1 },
-  selectorPlaceholder: { fontSize: fontSize.md, color: colors.textMuted, flex: 1 },
-  chevron: {
-    fontSize: fontSize.md,
-    color: colors.textMuted,
-    transform: [{ rotate: '180deg' }],
-  },
-  pickerDropdown: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    marginTop: spacing.xs,
-    overflow: 'hidden',
-  },
-  pickerItem: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 4,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  pickerItemText: { fontSize: fontSize.md, color: colors.textPrimary },
 
   // SBAR header
   sbarHeader: {

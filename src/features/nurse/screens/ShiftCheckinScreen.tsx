@@ -12,7 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
@@ -26,6 +26,7 @@ import { PrimaryButton } from '../../../shared/components/ui';
 
 export const ShiftCheckinScreen = () => {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const { user } = useAuthStore();
   const { isLoading: isLocationLoading, getCurrentLocation } = useLocation();
 
@@ -104,6 +105,7 @@ export const ShiftCheckinScreen = () => {
               await shiftService.checkin({
                 empresaId: user.empresaId,
                 pacienteId: selectedPatient.id,
+                pacienteNome: selectedPatient.nome,
                 profissionalId: user.uid,
                 profissionalNome: user.nome,
                 latitude: location.latitude,
@@ -268,12 +270,22 @@ export const ShiftCheckinScreen = () => {
       {/* Bottom action */}
       <View style={[styles.actionArea, { paddingBottom: insets.bottom + spacing.lg }]}>
         {hasActiveShift ? (
-          <PrimaryButton
-            title="Finalizar Plantão"
-            onPress={handleCheckout}
-            loading={isLoading}
-            variant="danger"
-          />
+          <View style={styles.activeActions}>
+            <TouchableOpacity
+              style={styles.evolutionButton}
+              onPress={() => (navigation as any).navigate('ShiftEvolution')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="document-text-outline" size={20} color={colors.primary} />
+              <Text style={styles.evolutionButtonText}>Passagem de Plantão (SBAR)</Text>
+            </TouchableOpacity>
+            <PrimaryButton
+              title="Finalizar Plantão"
+              onPress={handleCheckout}
+              loading={isLoading}
+              variant="danger"
+            />
+          </View>
         ) : (
           <PrimaryButton
             title="Fazer Check-in"
@@ -291,15 +303,18 @@ const ShiftDuration = ({ checkinAt }: { checkinAt: Date }) => {
   const [elapsed, setElapsed] = useState('');
 
   useEffect(() => {
+    // checkinAt pode vir como Timestamp do Firestore — garantir conversão
+    const safeDate = checkinAt instanceof Date ? checkinAt : new Date(checkinAt as any);
     const updateElapsed = () => {
       const now = new Date();
-      const diffMs = now.getTime() - checkinAt.getTime();
+      const diffMs = now.getTime() - safeDate.getTime();
+      if (diffMs < 0) { setElapsed('0h 00min'); return; }
       const hours = Math.floor(diffMs / (1000 * 60 * 60));
       const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
       setElapsed(`${hours}h ${minutes.toString().padStart(2, '0')}min`);
     };
     updateElapsed();
-    const interval = setInterval(updateElapsed, 60000);
+    const interval = setInterval(updateElapsed, 1000);
     return () => clearInterval(interval);
   }, [checkinAt]);
 
@@ -487,6 +502,25 @@ const styles = StyleSheet.create({
   },
 
   // Action area
+  activeActions: {
+    gap: spacing.sm,
+  },
+  evolutionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.surface,
+  },
+  evolutionButtonText: {
+    fontSize: fontSize.md,
+    fontWeight: '600',
+    color: colors.primary,
+  },
   actionArea: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,

@@ -1,11 +1,13 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useAuthStore } from '../hooks/useAuth';
+import * as shiftService from '../services/shiftService';
 import { colors } from '../theme/theme';
 import { SimulationBanner } from '../../shared/components/SimulationBanner';
 import { LgpdConsentScreen } from '../../shared/screens/LgpdConsentScreen';
@@ -141,6 +143,7 @@ export type AdminTabParamList = {
 export type DashboardStackParamList = {
   AdminDashboard: undefined;
   ExportReport: { patientId?: string };
+  Financial: undefined;
 };
 
 export type PatientMgmtStackParamList = {
@@ -160,7 +163,6 @@ export type TeamStackParamList = {
 
 export type AdminProfileStackParamList = {
   AdminProfile: undefined;
-  Financial: undefined;
   EditProfile: undefined;
   EditEmpresa: undefined;
   Help: undefined;
@@ -225,22 +227,41 @@ const NurseProfileStack = () => (
 );
 
 const NurseTab = createBottomTabNavigator<NurseTabParamList>();
-const NurseTabNavigator = () => (
-  <NurseTab.Navigator
-    screenOptions={{
-      headerShown: false,
-      tabBarActiveTintColor: colors.primary,
-      tabBarInactiveTintColor: colors.textMuted,
-      tabBarStyle,
-      tabBarLabelStyle,
-    }}
-  >
-    <NurseTab.Screen name="NurseHomeStack" component={NurseHomeStack} options={{ tabBarLabel: 'Início', tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} /> }} />
-    <NurseTab.Screen name="RegisterStack" component={RegisterStack} options={{ tabBarLabel: 'Registrar', tabBarIcon: ({ color, size }) => <Ionicons name="add-circle-outline" size={size} color={color} /> }} />
-    <NurseTab.Screen name="ShiftStack" component={ShiftStack} options={{ tabBarLabel: 'Plantão', tabBarIcon: ({ color, size }) => <Ionicons name="time-outline" size={size} color={color} /> }} />
-    <NurseTab.Screen name="NurseProfileStack" component={NurseProfileStack} options={{ tabBarLabel: 'Perfil', tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} /> }} />
-  </NurseTab.Navigator>
-);
+const NurseTabNavigator = () => {
+  const { user } = useAuthStore();
+  const [hasActiveShift, setHasActiveShift] = useState(false);
+
+  useEffect(() => {
+    if (!user?.empresaId || !user?.uid) return;
+    const check = () => {
+      shiftService.getActiveShift(user.empresaId, user.uid)
+        .then((shift) => setHasActiveShift(!!shift))
+        .catch(() => setHasActiveShift(false));
+    };
+    check();
+    const interval = setInterval(check, 3000);
+    return () => clearInterval(interval);
+  }, [user?.empresaId, user?.uid]);
+
+  return (
+    <NurseTab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
+        tabBarStyle,
+        tabBarLabelStyle,
+      }}
+    >
+      <NurseTab.Screen name="NurseHomeStack" component={NurseHomeStack} options={{ tabBarLabel: 'Início', tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} /> }} />
+      {hasActiveShift && (
+        <NurseTab.Screen name="RegisterStack" component={RegisterStack} options={{ tabBarLabel: 'Registrar', tabBarIcon: ({ color, size }) => <Ionicons name="add-circle-outline" size={size} color={color} /> }} />
+      )}
+      <NurseTab.Screen name="ShiftStack" component={ShiftStack} options={{ tabBarLabel: 'Plantão', tabBarIcon: ({ color, size }) => <Ionicons name="time-outline" size={size} color={color} /> }} />
+      <NurseTab.Screen name="NurseProfileStack" component={NurseProfileStack} options={{ tabBarLabel: 'Perfil', tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} /> }} />
+    </NurseTab.Navigator>
+  );
+};
 
 // ════════════════════════════════════════════
 // Family Navigation
@@ -298,6 +319,7 @@ const DashboardStack = () => (
   <DashboardStackNav.Navigator screenOptions={{ headerShown: false }}>
     <DashboardStackNav.Screen name="AdminDashboard" component={AdminDashboardScreen} />
     <DashboardStackNav.Screen name="ExportReport" component={ExportReportScreen} />
+    <DashboardStackNav.Screen name="Financial" component={FinancialScreen} />
   </DashboardStackNav.Navigator>
 );
 
@@ -326,7 +348,6 @@ const AdminProfileStackNav = createNativeStackNavigator<AdminProfileStackParamLi
 const AdminProfileStack = () => (
   <AdminProfileStackNav.Navigator screenOptions={{ headerShown: false }}>
     <AdminProfileStackNav.Screen name="AdminProfile" component={AdminProfileScreen} />
-    <AdminProfileStackNav.Screen name="Financial" component={FinancialScreen} />
     <AdminProfileStackNav.Screen name="EditProfile" component={EditProfileScreen} />
     <AdminProfileStackNav.Screen name="EditEmpresa" component={EditEmpresaScreen} />
     <AdminProfileStackNav.Screen name="Help" component={HelpScreen} />
@@ -362,10 +383,16 @@ export const RootNavigator = () => {
   const needsEmpresaSetup = originalRole === 'admin' && !user?.empresaId;
 
   // LGPD consent check — user must accept before using app
-  const typedUser = user as typeof user & { lgpdConsentAt?: unknown };
-  const needsLgpd = isAuthenticated && !needsEmpresaSetup && !typedUser?.lgpdConsentAt;
+  const needsLgpd = isAuthenticated && !needsEmpresaSetup && !user?.lgpdConsentAt;
   const [lgpdAccepted, setLgpdAccepted] = useState(false);
   const showLgpd = needsLgpd && !lgpdAccepted;
+
+  // Reset lgpdAccepted quando trocar de conta
+  useEffect(() => {
+    setLgpdAccepted(false);
+  }, [user?.uid]);
+
+  console.log('[Nav] isLoading:', isLoading, 'isAuth:', isAuthenticated, 'role:', role, 'empresaId:', user?.empresaId, 'needsSetup:', needsEmpresaSetup, 'needsLgpd:', needsLgpd, 'lgpdAccepted:', lgpdAccepted, 'lgpdConsentAt:', user?.lgpdConsentAt, 'showLgpd:', showLgpd);
 
   if (isLoading) {
     return (

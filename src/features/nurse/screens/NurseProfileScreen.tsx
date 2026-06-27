@@ -58,7 +58,7 @@ export const NurseProfileScreen = () => {
         <View style={styles.menuCard}>
           <MenuRow icon="settings-outline" label="Configurações Pessoais" onPress={() => navigation.navigate('EditProfile')} />
           <View style={styles.menuDivider} />
-          <MenuRow icon="time-outline" label="Meus Plantões" onPress={() => (navigation as any).navigate('ShiftHistory')} />
+          <MenuRow icon="time-outline" label="Histórico de Plantões" onPress={() => (navigation as any).navigate('ShiftHistory')} />
         </View>
 
         {/* SUPORTE E AJUDA */}

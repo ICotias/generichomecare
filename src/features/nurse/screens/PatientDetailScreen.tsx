@@ -16,10 +16,14 @@ import type { RouteProp } from '@react-navigation/native';
 import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import * as patientService from '../../../core/services/patientService';
+import * as registroService from '../../../core/services/registroService';
 import type { Patient } from '../../../core/types';
+import type { CareRecord } from '../../../core/types/records';
 import type {
   NurseHomeStackParamList,
   NurseTabParamList,
@@ -46,21 +50,13 @@ const calcAge = (birth: Date): number => {
   return age;
 };
 
-interface QuickAction {
-  key: string;
-  label: string;
-  ionicon: React.ComponentProps<typeof Ionicons>['name'];
-  bgColor: string;
-  iconColor: string;
-}
-
-const QUICK_ACTIONS: QuickAction[] = [
-  { key: 'medication', label: 'Medicamento', ionicon: 'bandage-outline', bgColor: '#F3F0FF', iconColor: '#7C3AED' },
-  { key: 'vitals', label: 'Sinais vitais', ionicon: 'heart-outline', bgColor: '#FEF2F2', iconColor: '#EF4444' },
-  { key: 'feeding', label: 'Alimentação', ionicon: 'restaurant-outline', bgColor: '#FFFBEB', iconColor: '#F59E0B' },
-  { key: 'activity', label: 'Atividade', ionicon: 'pulse-outline', bgColor: '#F0FDF4', iconColor: '#10B981' },
-  { key: 'incident', label: 'Intercorrência', ionicon: 'alert-circle-outline', bgColor: '#FEF2F2', iconColor: '#DC2626' },
-  { key: 'photo', label: 'Foto', ionicon: 'camera-outline', bgColor: '#F1F5F9', iconColor: '#64748B' },
+const GUIDE_SECTIONS = [
+  { type: 'medicamento' as const, title: 'MEDICAMENTOS', emptyMsg: 'Nenhum medicamento registrado anteriormente' },
+  { type: 'sinaisVitais' as const, title: 'SINAIS VITAIS', emptyMsg: 'Nenhuma medição anterior' },
+  { type: 'alimentacao' as const, title: 'ALIMENTAÇÃO', emptyMsg: 'Nenhum registro de alimentação' },
+  { type: 'atividade' as const, title: 'ATIVIDADES', emptyMsg: 'Nenhuma atividade registrada' },
+  { type: 'intercorrencia' as const, title: 'INTERCORRÊNCIAS', emptyMsg: 'Nenhuma intercorrência registrada' },
+  { type: 'foto' as const, title: 'FOTOS CLÍNICAS', emptyMsg: 'Nenhuma foto registrada' },
 ];
 
 const STATUS_LABELS: Record<Patient['status'], string> = {
@@ -75,6 +71,46 @@ const STATUS_COLORS: Record<Patient['status'], string> = {
   alta: colors.warning,
 };
 
+const RECORD_TYPE_CONFIG: Record<string, { icon: React.ComponentProps<typeof Ionicons>['name']; color: string; bg: string; label: string }> = {
+  medicamento: { icon: 'bandage-outline', color: '#7C3AED', bg: '#F3F0FF', label: 'Medicamento' },
+  sinaisVitais: { icon: 'heart-outline', color: '#EF4444', bg: '#FEF2F2', label: 'Sinais Vitais' },
+  alimentacao: { icon: 'restaurant-outline', color: '#F59E0B', bg: '#FFFBEB', label: 'Alimentação' },
+  atividade: { icon: 'pulse-outline', color: '#10B981', bg: '#F0FDF4', label: 'Atividade' },
+  intercorrencia: { icon: 'alert-circle-outline', color: '#DC2626', bg: '#FEF2F2', label: 'Intercorrência' },
+  foto: { icon: 'camera-outline', color: '#64748B', bg: '#F1F5F9', label: 'Foto' },
+};
+
+const REFEICAO_LABELS: Record<string, string> = {
+  cafe: 'Café', cafe_manha: 'Café da manhã', lanche_manha: 'Lanche manhã',
+  almoco: 'Almoço', lanche_tarde: 'Lanche tarde', lanche: 'Lanche',
+  jantar: 'Jantar', ceia: 'Ceia', outro: 'Outro',
+};
+
+const ATIVIDADE_LABELS: Record<string, string> = {
+  banho: 'Banho', higiene_oral: 'Higiene oral', troca_fralda: 'Troca de fralda',
+  curativo: 'Curativo', reposicionamento: 'Reposicionamento', mobilidade: 'Mobilidade',
+  fisioterapia: 'Fisioterapia', outro: 'Outro',
+};
+
+const getRecordSummary = (rec: CareRecord): string => {
+  switch (rec.type) {
+    case 'medicamento':
+      return `${rec.medicamento} — ${rec.dosagem}${rec.recusado ? ' (recusado)' : ''}`;
+    case 'sinaisVitais':
+      return `PA ${rec.paSistolica}/${rec.paDiastolica} · FC ${rec.fc} · SpO₂ ${rec.satO2}%`;
+    case 'alimentacao':
+      return `${REFEICAO_LABELS[rec.tipoRefeicao] ?? rec.tipoRefeicao} — ${rec.aceitacao}%`;
+    case 'atividade':
+      return ATIVIDADE_LABELS[rec.categoria] ?? rec.categoria;
+    case 'intercorrencia':
+      return `${rec.tipoIncidente} — ${rec.gravidade}`;
+    case 'foto':
+      return rec.fotoClinica ? 'Foto clínica' : 'Foto';
+    default:
+      return RECORD_TYPE_CONFIG[(rec as any).type]?.label ?? 'Registro';
+  }
+};
+
 export const PatientDetailScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
@@ -84,14 +120,23 @@ export const PatientDetailScreen = () => {
   const patientId = route.params?.patientId;
 
   const [patient, setPatient] = useState<Patient | null>(null);
+  const [recordsByType, setRecordsByType] = useState<Record<string, CareRecord[]>>({});
   const [isLoading, setIsLoading] = useState(true);
 
   const load = useCallback(async () => {
     if (!user?.empresaId || !patientId) return;
     setIsLoading(true);
     try {
-      const p = await patientService.getPatient(user.empresaId, patientId);
+      const [p, allRecords] = await Promise.all([
+        patientService.getPatient(user.empresaId, patientId),
+        registroService.listRecords(user.empresaId, patientId, { limitCount: 50 }),
+      ]);
       setPatient(p);
+      const grouped: Record<string, CareRecord[]> = {};
+      GUIDE_SECTIONS.forEach((s) => {
+        grouped[s.type] = allRecords.filter((r) => r.type === s.type).slice(0, 5);
+      });
+      setRecordsByType(grouped);
     } catch (err) {
       console.error('PatientDetail load error', err);
     } finally {
@@ -104,22 +149,6 @@ export const PatientDetailScreen = () => {
       load();
     }, [load])
   );
-
-  const QUICK_ACTION_SCREEN: Record<string, string> = {
-    medication: 'RegisterMedication',
-    vitals: 'RegisterVitals',
-    feeding: 'RegisterFeeding',
-    activity: 'RegisterActivity',
-    incident: 'RegisterIncident',
-    photo: 'RegisterPhoto',
-  };
-
-  const handleQuickAction = (key: string) => {
-    const screen = QUICK_ACTION_SCREEN[key];
-    if (screen) {
-      navigation.navigate('RegisterStack', { screen } as never);
-    }
-  };
 
   // ════════════════════════════════════════════
 
@@ -187,23 +216,52 @@ export const PatientDetailScreen = () => {
           </View>
         )}
 
-        {/* Ações rápidas — grid 3x2 com ícones */}
-        <Text style={styles.sectionTitle}>AÇÕES RÁPIDAS</Text>
-        <View style={styles.actionsGrid}>
-          {QUICK_ACTIONS.map((action) => (
-            <TouchableOpacity
-              key={action.key}
-              style={[styles.actionCard, { backgroundColor: action.bgColor }]}
-              activeOpacity={0.7}
-              onPress={() => handleQuickAction(action.key)}
-            >
-              <View style={[styles.actionIconWrap, { backgroundColor: action.bgColor }]}>
-                <Ionicons name={action.ionicon} size={22} color={action.iconColor} />
+        {/* Guia do Plantão — registros agrupados por tipo */}
+        <Text style={styles.guideTitle}>Guia do Paciente</Text>
+        <Text style={styles.guideSubtitle}>Últimos registros por categoria</Text>
+
+        {GUIDE_SECTIONS.every((s) => (recordsByType[s.type] ?? []).length === 0) && (
+          <View style={styles.emptyGuideCard}>
+            <Ionicons name="document-text-outline" size={40} color={colors.textMuted} />
+            <Text style={styles.emptyGuideTitle}>Nenhum registro encontrado</Text>
+            <Text style={styles.emptyGuideMsg}>
+              Os registros feitos durante os plantões aparecerão aqui como guia para os próximos profissionais.
+            </Text>
+          </View>
+        )}
+
+        {GUIDE_SECTIONS.filter((s) => (recordsByType[s.type] ?? []).length > 0).map((section) => {
+          const records = recordsByType[section.type] ?? [];
+          const config = RECORD_TYPE_CONFIG[section.type];
+          return (
+            <View key={section.type} style={styles.guideSection}>
+              <View style={styles.guideSectionHeader}>
+                <View style={[styles.guideSectionIcon, { backgroundColor: config.bg }]}>
+                  <Ionicons name={config.icon} size={16} color={config.color} />
+                </View>
+                <Text style={styles.sectionTitle}>{section.title}</Text>
               </View>
-              <Text style={styles.actionLabel}>{action.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+              <View style={styles.infoCard}>
+                {records.map((rec, idx) => (
+                    <View
+                      key={rec.id}
+                      style={[
+                        styles.recordRow,
+                        idx === records.length - 1 && styles.infoRowLast,
+                      ]}
+                    >
+                      <View style={styles.recordInfo}>
+                        <Text style={styles.recordTitle}>{getRecordSummary(rec)}</Text>
+                        <Text style={styles.recordMeta}>
+                          {format(rec.timestamp, "dd/MM · HH:mm", { locale: ptBR })} · {rec.profissionalNome}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+              </View>
+            </View>
+          );
+        })}
 
         {/* Diagnósticos */}
         {patient.diagnosticos.length > 0 && (
@@ -382,31 +440,56 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
 
-  // Quick actions — grid 3x2
-  actionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
+  // Guide
+  guideTitle: {
+    fontSize: fontSize.xxl,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  guideSubtitle: {
+    fontSize: fontSize.md,
+    color: colors.textSecondary,
     marginBottom: spacing.lg,
   },
-  actionCard: {
-    width: '31%',
-    borderRadius: borderRadius.lg,
-    paddingVertical: spacing.md,
+  guideSection: {
+    marginBottom: spacing.sm,
+  },
+  guideSectionHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+    marginBottom: spacing.sm,
   },
-  actionIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  guideSectionIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  actionLabel: { fontSize: fontSize.xs, fontWeight: '500', color: colors.textPrimary },
+  emptyGuideCard: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.xl,
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  emptyGuideTitle: {
+    fontSize: fontSize.lg,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginTop: spacing.md,
+  },
+  emptyGuideMsg: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: spacing.xs,
+    lineHeight: 20,
+  },
 
   // Tags
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.lg },
@@ -476,4 +559,40 @@ const styles = StyleSheet.create({
   statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
   statusText: { fontSize: fontSize.sm, fontWeight: '700' },
+
+  // Recent records
+  emptyRecordsText: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+    textAlign: 'center',
+    paddingVertical: spacing.md,
+  },
+  recordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm + 2,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  recordIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  recordInfo: {
+    flex: 1,
+  },
+  recordTitle: {
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  recordMeta: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
 });

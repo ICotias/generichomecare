@@ -1,61 +1,382 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { colors, spacing, fontSize } from '../../../core/theme/theme';
+import { useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+  Platform,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+import { Ionicons } from '@expo/vector-icons';
+import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
+import * as patientService from '../../../core/services/patientService';
+import type { Patient } from '../../../core/types';
+import type { NurseHomeStackParamList } from '../../../core/navigation/RootNavigator';
+import { EmptyState } from '../../../shared/components/EmptyState';
+import { MOCK_PATIENTS } from '../../../core/mocks/patients';
+
+type NavProp = NativeStackNavigationProp<NurseHomeStackParamList, 'NurseHome'>;
+
+const TIPO_LABELS: Record<Patient['tipoAtendimento'], string> = {
+  integral: '24h',
+  diurno: 'Diurno',
+  noturno: 'Noturno',
+  visita: 'Visita',
+};
+
+const calcAge = (birth: Date): number => {
+  const now = new Date();
+  let age = now.getFullYear() - birth.getFullYear();
+  const m = now.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
+  return age;
+};
+
+const getGreeting = (): string => {
+  const h = new Date().getHours();
+  if (h < 12) return 'Bom dia,';
+  if (h < 18) return 'Boa tarde,';
+  return 'Boa noite,';
+};
 
 export const NurseHomeScreen = () => {
-  const { user, signOut } = useAuthStore();
+  const insets = useSafeAreaInsets();
+  const navigation = useNavigation<NavProp>();
+  const { user } = useAuthStore();
+
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [search, setSearch] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const loadPatients = useCallback(
+    async (silent = false) => {
+      if (!user?.empresaId) {
+        setIsLoading(false);
+        return;
+      }
+      if (!silent) setIsLoading(true);
+      setError(null);
+
+      try {
+        const list = await patientService.listPatients(user.empresaId);
+        setPatients(list.length > 0 ? list : MOCK_PATIENTS);
+      } catch (err) {
+        setError('Não foi possível carregar os pacientes.');
+        console.error('NurseHome loadPatients error', err);
+      } finally {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
+    },
+    [user?.empresaId]
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      loadPatients();
+    }, [loadPatients])
+  );
+
+  const onRefresh = () => {
+    setIsRefreshing(true);
+    loadPatients(true);
+  };
+
+  const firstName = user?.nome?.split(' ')[0] ?? 'Enfermeiro(a)';
+
+  const filtered = search.trim()
+    ? patients.filter((p) => p.nome.toLowerCase().includes(search.toLowerCase().trim()))
+    : patients;
+
+  // ── Card com borda esquerda roxa ──
+  const renderPatient = ({ item }: { item: Patient }) => {
+    const age = calcAge(item.dataNascimento);
+    const hasAllergies = item.alergias.length > 0;
+
+    return (
+      <TouchableOpacity
+        style={styles.card}
+        activeOpacity={0.7}
+        onPress={() => navigation.navigate('PatientDetail', { patientId: item.id })}
+      >
+        {/* Borda lateral esquerda roxa */}
+        <View style={styles.cardLeftBorder} />
+
+        <View style={styles.cardInner}>
+          {/* Avatar */}
+          <View style={styles.cardAvatar}>
+            <Text style={styles.cardAvatarText}>
+              {item.nome.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+
+          <View style={styles.cardContent}>
+            <View style={styles.cardTopRow}>
+              <Text style={styles.cardName} numberOfLines={1}>
+                {item.nome}
+              </Text>
+              {hasAllergies && (
+                <Text style={styles.alertIcon}>⚠</Text>
+              )}
+            </View>
+            <Text style={styles.cardMeta}>
+              {age} anos · {TIPO_LABELS[item.tipoAtendimento]}
+            </Text>
+            {item.diagnosticos.length > 0 && (
+              <View style={styles.diagRow}>
+                {item.diagnosticos.slice(0, 3).map((d, i) => (
+                  <View key={i} style={styles.diagTag}>
+                    <Text style={styles.diagTagText}>{d}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  // ════════════════════════════════════════════
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.greeting}>Olá, {user?.nome || 'Enfermeiro(a)'}</Text>
-      <Text style={styles.role}>Perfil: Enfermeiro</Text>
-      <View style={styles.placeholder}>
-        <Text style={styles.placeholderText}>Tela do enfermeiro será construída na Fase 1</Text>
+    <View style={[styles.container, { paddingTop: insets.top + spacing.lg }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.greeting}>{getGreeting()}</Text>
+        <Text style={styles.name}>{firstName}</Text>
+        {patients.length > 0 && (
+          <Text style={styles.subtitle}>
+            Você tem <Text style={styles.subtitleBold}>{patients.length} pacientes</Text> ativos na sua lista.
+          </Text>
+        )}
       </View>
-      <TouchableOpacity style={styles.logoutButton} onPress={signOut}>
-        <Text style={styles.logoutText}>Sair</Text>
-      </TouchableOpacity>
+
+      {/* Search */}
+      {patients.length > 0 && (
+        <View style={styles.searchContainer}>
+          <View style={styles.searchBar}>
+            <Ionicons name="search-outline" size={18} color={colors.textMuted} />
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Buscar paciente..."
+              placeholderTextColor={colors.textMuted}
+              style={styles.searchInput}
+              autoCorrect={false}
+            />
+          </View>
+        </View>
+      )}
+
+      {/* Content */}
+      {isLoading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : error ? (
+        <EmptyState
+          title="Erro ao carregar"
+          subtitle={error}
+          actionLabel="Tentar novamente"
+          onAction={() => loadPatients()}
+        />
+      ) : patients.length === 0 ? (
+        <EmptyState
+          title="Nenhum paciente"
+          subtitle="Não há pacientes cadastrados na empresa ainda. O administrador precisa cadastrar os pacientes."
+        />
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(item) => item.id}
+          renderItem={renderPatient}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+            />
+          }
+        />
+      )}
     </View>
   );
 };
+
+// ════════════════════════════════════════════
+// Styles
+// ════════════════════════════════════════════
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    padding: spacing.lg,
-    paddingTop: 60,
+  },
+  header: {
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
   },
   greeting: {
-    fontSize: fontSize.xxl,
+    fontSize: fontSize.title,
     fontWeight: '700',
-    color: colors.nurse,
+    color: colors.textPrimary,
+    letterSpacing: 0.35,
   },
-  role: {
-    fontSize: fontSize.sm,
+  name: {
+    fontSize: fontSize.title,
+    fontWeight: '700',
+    color: colors.primary,
+    letterSpacing: 0.35,
+  },
+  subtitle: {
+    fontSize: fontSize.md,
     color: colors.textSecondary,
-    marginTop: spacing.xs,
+    marginTop: spacing.sm,
+    lineHeight: 22,
   },
-  placeholder: {
+  subtitleBold: {
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+
+  // Search
+  searchContainer: {
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 44,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    gap: spacing.sm,
+  },
+  // searchIcon removed — using Ionicons directly
+  searchInput: {
     flex: 1,
+    fontSize: fontSize.md,
+    color: colors.textPrimary,
+    height: '100%',
+  },
+
+  // List
+  listContent: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+
+  // Card — borda esquerda colorida
+  card: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.sm,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  cardLeftBorder: {
+    width: 4,
+    backgroundColor: colors.primary,
+    borderTopLeftRadius: borderRadius.md,
+    borderBottomLeftRadius: borderRadius.md,
+  },
+  cardInner: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    gap: spacing.md,
+  },
+  cardAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primary + '1A',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  placeholderText: {
-    fontSize: fontSize.md,
-    color: colors.textMuted,
-    textAlign: 'center',
+  cardAvatarText: {
+    fontSize: fontSize.xl,
+    fontWeight: '700',
+    color: colors.primary,
   },
-  logoutButton: {
-    backgroundColor: colors.error,
-    padding: spacing.md,
-    borderRadius: 12,
+  cardContent: {
+    flex: 1,
+  },
+  cardTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.xl,
   },
-  logoutText: {
-    color: colors.white,
-    fontSize: fontSize.md,
+  cardName: {
+    fontSize: fontSize.lg,
     fontWeight: '600',
+    color: colors.textPrimary,
+    flex: 1,
+  },
+  alertIcon: {
+    fontSize: 16,
+    color: colors.warning,
+    marginLeft: spacing.xs,
+  },
+  cardMeta: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+
+  // Diagnosis tags dentro do card
+  diagRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+  },
+  diagTag: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.border,
+  },
+  diagTagText: {
+    fontSize: fontSize.xs,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+
+  // Centered
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

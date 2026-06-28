@@ -1,7 +1,7 @@
 export const colors = {
-  primary: '#2563EB',
-  primaryLight: '#60A5FA',
-  primaryDark: '#1D4ED8',
+  primary: '#6C63FF',
+  primaryLight: '#A5A0FF',
+  primaryDark: '#4F46E5',
   secondary: '#10B981',
   accent: '#F59E0B',
 
@@ -13,15 +13,29 @@ export const colors = {
   white: '#FFFFFF',
   background: '#F8FAFC',
   surface: '#FFFFFF',
+  surfaceSecondary: '#F1F5F9',
   border: '#E2E8F0',
+  borderLight: '#F1F5F9',
   textPrimary: '#1E293B',
   textSecondary: '#64748B',
   textMuted: '#94A3B8',
   disabled: '#CBD5E1',
 
-  nurse: '#8B5CF6',
+  nurse: '#6C63FF',
   family: '#06B6D4',
   admin: '#F97316',
+
+  // Figma design system
+  allergyBg: '#FEF9C3',
+  allergyText: '#92400E',
+  allergyBorder: '#FDE68A',
+  chipBg: '#F1F5F9',
+  chipActiveBg: '#6C63FF',
+  chipActiveText: '#FFFFFF',
+  chipText: '#475569',
+  inputBg: '#FFFFFF',
+  inputBorder: '#E2E8F0',
+  cardShadow: 'rgba(0,0,0,0.04)',
 } as const;
 
 export const spacing = {

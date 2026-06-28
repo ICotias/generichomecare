@@ -16,6 +16,8 @@ export interface BaseRecord {
   timestamp: Date;
   observacoes?: string;
   syncStatus: 'synced' | 'pending';
+  /** Denormalizado: false só para fotos clínicas. Filtra a leitura da família. */
+  visibleToFamily?: boolean;
 }
 
 export interface MedicationRecord extends BaseRecord {
@@ -43,11 +45,14 @@ export interface FeedingRecord extends BaseRecord {
   type: 'alimentacao';
   tipoRefeicao:
     | 'cafe'
+    | 'cafe_manha'
     | 'lanche_manha'
     | 'almoco'
     | 'lanche_tarde'
+    | 'lanche'
     | 'jantar'
-    | 'ceia';
+    | 'ceia'
+    | 'outro';
   aceitacao: number; // 0, 25, 50, 75, 100
   consistencia: 'normal' | 'pastosa' | 'liquida' | 'enteral';
   hidratacaoMl: number;
@@ -67,6 +72,21 @@ export interface ActivityRecord extends BaseRecord {
     | 'outro';
 }
 
+export interface IncidentRecord extends BaseRecord {
+  type: 'intercorrencia';
+  tipoIncidente:
+    | 'queda'
+    | 'erro_medicacao'
+    | 'agitacao'
+    | 'dispneia'
+    | 'febre'
+    | 'outro';
+  gravidade: 'leve' | 'moderado' | 'grave';
+  descricao: string;
+  medidasTomadas?: string;
+  notificouFamilia: boolean;
+}
+
 export interface PhotoRecord extends BaseRecord {
   type: 'foto';
   imageUrl: string;
@@ -80,4 +100,5 @@ export type CareRecord =
   | VitalSignsRecord
   | FeedingRecord
   | ActivityRecord
+  | IncidentRecord
   | PhotoRecord;

@@ -2,27 +2,75 @@
   "expo": {
     "name": "HomeCare",
     "slug": "homecare-app",
-    "version": "0.1.0",
+    "version": "1.0.0",
+    "runtimeVersion": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "scheme": "homecare",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#F8FAFC"
+      "backgroundColor": "#2563EB"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.generichomecare.app"
+      "bundleIdentifier": "com.generichomecare.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "HomeCare usa sua localização para registrar check-in e check-out dos plantões.",
+        "NSLocationAlwaysUsageDescription": "HomeCare usa sua localização em segundo plano para garantir a precisão do registro de plantão.",
+        "NSCameraUsageDescription": "HomeCare precisa acessar a câmera para registrar fotos clínicas dos pacientes.",
+        "NSPhotoLibraryUsageDescription": "HomeCare precisa acessar suas fotos para anexar registros fotográficos.",
+        "CFBundleDisplayName": "HomeCare"
+      },
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#F8FAFC"
+        "backgroundColor": "#2563EB"
       },
-      "package": "com.generichomecare.app"
+      "package": "com.generichomecare.app",
+      "versionCode": 1,
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ],
+      "googleServicesFile": "./google-services.json"
     },
-    "plugins": ["expo-dev-client"]
+    "plugins": [
+      "expo-dev-client",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "HomeCare usa sua localização para registrar check-in e check-out dos plantões."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "HomeCare precisa acessar suas fotos para anexar registros fotográficos.",
+          "cameraPermission": "HomeCare precisa acessar a câmera para registrar fotos clínicas dos pacientes."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "your-eas-project-id"
+      }
+    },
+    "owner": "generichomecare",
+    "updates": {
+      "url": "https://u.expo.dev/your-eas-project-id"
+    }
   }
 }

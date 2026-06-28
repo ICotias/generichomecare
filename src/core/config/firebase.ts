@@ -2,9 +2,10 @@ import { initializeApp } from 'firebase/app';
 // @ts-expect-error — getReactNativePersistence exists at runtime in firebase/auth but types are not exported
 import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: 'AIzaSyDjeczZNfb7XiR3Lu6_gpZRaexZ6Y6ApNY',
   authDomain: 'generichomecare.firebaseapp.com',
   projectId: 'generichomecare',
@@ -23,5 +24,8 @@ export const auth = initializeAuth(app, {
 
 // Firestore
 export const db = getFirestore(app);
+
+// Storage
+export const storage = getStorage(app);
 
 export default app;

@@ -3,106 +3,302 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ===== Funções auxiliares =====
+    // ═══════════════════════════════════════
+    // Funções auxiliares
+    // ═══════════════════════════════════════
 
-    // Verifica se o usuário está autenticado
     function isAuth() {
       return request.auth != null;
     }
 
-    // Retorna o documento do usuário logado
     function getUserData() {
       return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
     }
 
-    // Verifica role do usuário
     function hasRole(role) {
       return isAuth() && getUserData().role == role;
     }
 
-    // Verifica se o usuário pertence à empresa
     function belongsToCompany(empresaId) {
       return isAuth() && getUserData().empresaId == empresaId;
     }
 
-    // ===== Usuarios =====
+    // Verifica se o campo existe no payload
+    function hasField(field) {
+      return field in request.resource.data;
+    }
+
+    // Verifica que role é válido
+    function isValidRole(role) {
+      return role in ['nurse', 'family', 'admin'];
+    }
+
+    // ═══════════════════════════════════════
+    // USUARIOS
+    // ═══════════════════════════════════════
     match /usuarios/{uid} {
       // Cada usuário lê seu próprio perfil
       allow read: if isAuth() && request.auth.uid == uid;
-      // Admin lê qualquer usuário da empresa
-      allow read: if hasRole('admin') && resource.data.empresaId == getUserData().empresaId;
-      // Só admin cria/atualiza usuários
-      allow write: if hasRole('admin');
+
+      // Admin lê qualquer usuário da mesma empresa
+      allow read: if hasRole('admin')
+                  && resource.data.empresaId == getUserData().empresaId;
+
+      // Nurse lê outros nurses da mesma empresa (para listas de equipe)
+      allow read: if hasRole('nurse')
+                  && resource.data.empresaId == getUserData().empresaId
+                  && resource.data.role == 'nurse';
+
+      // Usuário cria o próprio perfil no primeiro login (auto-criação)
+      // SEGURANÇA: role 'admin' bloqueado — só outro admin pode promover.
+      // Email validado contra auth.token para evitar spoofing.
+      allow create: if isAuth()
+                    && request.auth.uid == uid
+                    && hasField('email')
+                    && hasField('nome')
+                    && hasField('role')
+                    && request.resource.data.role in ['nurse', 'family']
+                    && request.resource.data.email == request.auth.token.email;
+
+      // Admin cria perfis de outros usuários (nurse ou family)
+      allow create: if hasRole('admin')
+                    && hasField('email')
+                    && hasField('nome')
+                    && hasField('role')
+                    && isValidRole(request.resource.data.role)
+                    && request.resource.data.role != 'admin';
+
+      // Admin no setup inicial: pode definir empresaId quando ainda está vazio
+      allow update: if isAuth()
+                    && request.auth.uid == uid
+                    && resource.data.role == 'admin'
+                    && resource.data.empresaId == ''
+                    && request.resource.data.role == 'admin';
+
+      // Admin atualiza usuários da mesma empresa (não pode mudar role para admin)
+      allow update: if hasRole('admin')
+                    && resource.data.empresaId == getUserData().empresaId
+                    && request.resource.data.role != 'admin';
+
+      // Usuário atualiza próprio perfil (exceto role e empresaId).
+      // pacienteId é "claim único": só pode ser definido quando ainda vazio,
+      // e depois não pode ser repontado para outro paciente.
+      allow update: if isAuth()
+                    && request.auth.uid == uid
+                    && request.resource.data.role == resource.data.role
+                    && request.resource.data.empresaId == resource.data.empresaId
+                    && (
+                         ( ('pacienteId' in resource.data)
+                           && ('pacienteId' in request.resource.data)
+                           && request.resource.data.pacienteId == resource.data.pacienteId )
+                         ||
+                         ( !('pacienteId' in resource.data) || resource.data.pacienteId == '' )
+                       );
+
+      // Ninguém deleta usuários (soft-delete via status)
+      allow delete: if false;
     }
 
-    // ===== Empresas =====
+    // ═══════════════════════════════════════
+    // EMPRESAS
+    // ═══════════════════════════════════════
     match /empresas/{empresaId} {
       allow read: if belongsToCompany(empresaId);
-      allow write: if hasRole('admin') && belongsToCompany(empresaId);
 
-      // --- Pacientes ---
+      // Admin cria empresa no setup inicial (ownerUid == auth.uid)
+      allow create: if hasRole('admin')
+                    && request.resource.data.ownerUid == request.auth.uid
+                    && hasField('nome');
+
+      // Só admins da própria empresa podem editar
+      allow update: if hasRole('admin') && belongsToCompany(empresaId);
+      allow delete: if false;
+
+      // ─── Pacientes ───
       match /pacientes/{pacienteId} {
         // Enfermeiro e admin da empresa podem ler
-        allow read: if belongsToCompany(empresaId);
-        // Família só lê seu paciente vinculado
-        allow read: if hasRole('family') && getUserData().pacienteId == pacienteId;
-        // Só admin cria/edita pacientes
-        allow write: if hasRole('admin') && belongsToCompany(empresaId);
+        allow read: if belongsToCompany(empresaId)
+                    && (hasRole('nurse') || hasRole('admin'));
 
-        // --- Prescrições ---
+        // Família só lê seu paciente vinculado
+        allow read: if hasRole('family')
+                    && getUserData().pacienteId == pacienteId
+                    && getUserData().empresaId == empresaId;
+
+        // Só admin cria pacientes — campos obrigatórios
+        allow create: if hasRole('admin')
+                      && belongsToCompany(empresaId)
+                      && hasField('nome')
+                      && hasField('dataNascimento')
+                      && hasField('status');
+
+        // Família cadastra o próprio paciente no 1º acesso (Fase 1):
+        // pertence à empresa, ainda SEM paciente vinculado (cadastro único),
+        // origem marcada como 'familia' e criador = ela mesma.
+        allow create: if hasRole('family')
+                      && belongsToCompany(empresaId)
+                      && (!('pacienteId' in getUserData()) || getUserData().pacienteId == '')
+                      && request.resource.data.status == 'ativo'
+                      && request.resource.data.origemDados == 'familia'
+                      && request.resource.data.criadoPorUid == request.auth.uid
+                      && hasField('nome')
+                      && hasField('dataNascimento')
+                      && hasField('status');
+
+        // Admin atualiza pacientes
+        allow update: if hasRole('admin') && belongsToCompany(empresaId);
+
+        // Família edita os dados que ela mesma trouxe (seu paciente vinculado)
+        allow update: if hasRole('family')
+                      && belongsToCompany(empresaId)
+                      && getUserData().pacienteId == pacienteId;
+
+        // Não deleta (soft-delete via status)
+        allow delete: if false;
+
+        // ─── Prescrições ───
         match /prescricoes/{prescricaoId} {
-          allow read: if belongsToCompany(empresaId);
-          allow read: if hasRole('family') && getUserData().pacienteId == pacienteId;
-          allow write: if hasRole('admin') && belongsToCompany(empresaId);
+          allow read: if belongsToCompany(empresaId)
+                      && (hasRole('nurse') || hasRole('admin'));
+          allow read: if hasRole('family')
+                      && getUserData().pacienteId == pacienteId;
+          allow create: if hasRole('admin') && belongsToCompany(empresaId);
+          allow update: if hasRole('admin') && belongsToCompany(empresaId);
+          // Família cria/edita prescrições do seu paciente (onboarding Fase 1)
+          allow create: if hasRole('family')
+                        && belongsToCompany(empresaId)
+                        && getUserData().pacienteId == pacienteId;
+          allow update: if hasRole('family')
+                        && belongsToCompany(empresaId)
+                        && getUserData().pacienteId == pacienteId;
+          allow delete: if false;
         }
 
-        // --- Registros (medicamentos, sinais vitais, alimentação, etc) ---
+        // ─── Registros de cuidados (imutáveis) ───
         match /registros/{registroId} {
-          // Enfermeiro e admin leem
-          allow read: if belongsToCompany(empresaId);
-          // Família lê registros do seu paciente
-          allow read: if hasRole('family') && getUserData().pacienteId == pacienteId;
-          // Só enfermeiro da empresa cria registros
-          allow create: if hasRole('nurse') && belongsToCompany(empresaId);
-          // Ninguém edita ou deleta registros (imutáveis)
+          // Enfermeiro e admin leem todos
+          allow read: if belongsToCompany(empresaId)
+                      && (hasRole('nurse') || hasRole('admin'));
+
+          // Família lê registros visíveis do seu paciente (exclui fotos clínicas).
+          // Usa o campo denormalizado visibleToFamily para ser FILTRÁVEL —
+          // rules não são filtros: a query da família precisa incluir
+          // where('visibleToFamily','==',true), senão a leitura é negada.
+          allow read: if hasRole('family')
+                      && getUserData().pacienteId == pacienteId
+                      && getUserData().empresaId == empresaId
+                      && resource.data.visibleToFamily == true;
+
+          // Enfermeiro da empresa cria registros — campos obrigatórios
+          allow create: if hasRole('nurse')
+                        && belongsToCompany(empresaId)
+                        && hasField('type')
+                        && hasField('pacienteId')
+                        && hasField('profissionalId')
+                        && request.resource.data.profissionalId == request.auth.uid;
+
+          // Admin pode criar registros (simulação de enfermeiro)
+          allow create: if hasRole('admin')
+                        && belongsToCompany(empresaId)
+                        && hasField('type')
+                        && hasField('pacienteId')
+                        && hasField('profissionalId');
+
+          // Imutáveis — ninguém edita ou deleta
           allow update, delete: if false;
         }
 
-        // --- Evoluções / Passagem de plantão ---
+        // ─── Evoluções / Passagem de plantão ───
         match /evolucoes/{evolucaoId} {
-          allow read: if belongsToCompany(empresaId);
-          allow read: if hasRole('family') && getUserData().pacienteId == pacienteId;
-          allow create: if hasRole('nurse') && belongsToCompany(empresaId);
+          allow read: if belongsToCompany(empresaId)
+                      && (hasRole('nurse') || hasRole('admin'));
+          allow read: if hasRole('family')
+                      && getUserData().pacienteId == pacienteId
+                      && getUserData().empresaId == empresaId;
+
+          allow create: if hasRole('nurse')
+                        && belongsToCompany(empresaId)
+                        && hasField('situacao')
+                        && hasField('profissionalId');
+
+          // Admin pode criar evoluções (simulação de enfermeiro)
+          allow create: if hasRole('admin')
+                        && belongsToCompany(empresaId)
+                        && hasField('situacao')
+                        && hasField('profissionalId');
+
+          // Imutáveis
           allow update, delete: if false;
         }
       }
 
-      // --- Escalas ---
+      // ─── Escalas ───
       match /escalas/{escalaId} {
         allow read: if belongsToCompany(empresaId);
-        allow write: if hasRole('admin') && belongsToCompany(empresaId);
+        allow create, update: if hasRole('admin') && belongsToCompany(empresaId);
+        allow delete: if hasRole('admin') && belongsToCompany(empresaId);
       }
 
-      // --- Plantões ---
+      // ─── Plantões ───
       match /plantoes/{plantaoId} {
         allow read: if belongsToCompany(empresaId);
-        allow create: if hasRole('nurse') && belongsToCompany(empresaId);
-        allow update: if hasRole('nurse') && belongsToCompany(empresaId);
+
+        // Enfermeiro faz checkin — cria o plantão
+        allow create: if hasRole('nurse')
+                      && belongsToCompany(empresaId)
+                      && hasField('profissionalId')
+                      && request.resource.data.profissionalId == request.auth.uid;
+
+        // Admin pode criar plantão (simulação de enfermeiro)
+        allow create: if hasRole('admin')
+                      && belongsToCompany(empresaId)
+                      && hasField('profissionalId');
+
+        // Enfermeiro faz checkout — atualiza apenas seu plantão
+        allow update: if hasRole('nurse')
+                      && belongsToCompany(empresaId)
+                      && resource.data.profissionalId == request.auth.uid;
+
+        // Admin pode atualizar qualquer plantão (ajustes)
+        allow update: if hasRole('admin') && belongsToCompany(empresaId);
+
         allow delete: if false;
       }
 
-      // --- Financeiro ---
+      // ─── Financeiro ───
       match /financeiro/{financeiroId} {
+        // Apenas admin da empresa lê e escreve
         allow read: if hasRole('admin') && belongsToCompany(empresaId);
-        allow write: if hasRole('admin') && belongsToCompany(empresaId);
+        allow create, update: if hasRole('admin') && belongsToCompany(empresaId);
+        allow delete: if hasRole('admin') && belongsToCompany(empresaId);
       }
     }
 
-    // ===== Audit Log =====
+    // ═══════════════════════════════════════
+    // AUDIT LOG
+    // ═══════════════════════════════════════
     match /auditLog/{logId} {
-      // Só admin lê, ninguém edita/deleta
-      allow read: if hasRole('admin');
-      allow write: if false; // Só Cloud Functions escrevem
+      // Admin lê os logs da sua empresa
+      allow read: if hasRole('admin')
+                  && resource.data.empresaId == getUserData().empresaId;
+
+      // Cada usuário registra seus próprios eventos (create-only).
+      // Imutável: sem update/delete a partir do client.
+      // Quando houver Cloud Functions, migrar a escrita para Admin SDK.
+      allow create: if isAuth()
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.keys().hasAll(
+                         ['action', 'userId', 'userRole', 'empresaId', 'timestamp']
+                       );
+
+      allow update, delete: if false;
+    }
+
+    // ═══════════════════════════════════════
+    // Regra padrão: nega tudo o resto
+    // ═══════════════════════════════════════
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

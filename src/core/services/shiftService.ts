@@ -15,6 +15,7 @@ import { Shift } from '../types';
 interface CheckinData {
   empresaId: string;
   pacienteId: string;
+  pacienteNome: string;
   profissionalId: string;
   profissionalNome: string;
   latitude: number;
@@ -38,6 +39,7 @@ export const checkin = async (data: CheckinData): Promise<string> => {
   const docRef = await addDoc(collection(db, collectionPath), {
     empresaId: data.empresaId,
     pacienteId: data.pacienteId,
+    pacienteNome: data.pacienteNome,
     profissionalId: data.profissionalId,
     profissionalNome: data.profissionalNome,
     checkinAt: Timestamp.now(),

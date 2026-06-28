@@ -10,17 +10,27 @@ import {
   ActivityIndicator,
   TouchableWithoutFeedback,
   Keyboard,
+  ScrollView,
+  Alert,
 } from 'react-native';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '../../../core/config/firebase';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
+import { PasswordInput } from '../../../shared/components/PasswordInput';
 
 const ERROR_MESSAGES: Record<string, string> = {
   'auth/user-not-found': 'Email ou senha incorretos.',
   'auth/wrong-password': 'Email ou senha incorretos.',
   'auth/invalid-credential': 'Email ou senha incorretos.',
+  'auth/invalid-login-credentials': 'Email ou senha incorretos.',
   'auth/invalid-email': 'Insira um email válido.',
   'auth/too-many-requests': 'Muitas tentativas. Aguarde alguns minutos.',
+  'auth/network-request-failed': 'Sem conexão com a internet.',
+  'auth/user-disabled': 'Esta conta foi desativada.',
+  'auth/operation-not-allowed': 'Login não permitido. Contate o administrador.',
 };
 
 export const LoginScreen = () => {
@@ -34,6 +44,38 @@ export const LoginScreen = () => {
   const [focusedField, setFocusedField] = useState<'email' | 'password' | null>(null);
 
   const signIn = useAuthStore((state) => state.signIn);
+
+  const handleForgotPassword = async () => {
+    Keyboard.dismiss();
+    const trimmedEmail = email.trim();
+
+    if (!trimmedEmail) {
+      setError('Insira seu email para recuperar a senha.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, trimmedEmail);
+      Alert.alert(
+        'Email enviado',
+        `Email de recuperação enviado para ${trimmedEmail}`,
+      );
+    } catch (err: unknown) {
+      const firebaseError = err as { code?: string; message?: string };
+      const code = firebaseError?.code ?? '';
+      if (code === 'auth/user-not-found') {
+        setError('Nenhuma conta encontrada com este email.');
+      } else if (code === 'auth/invalid-email') {
+        setError('Email inválido.');
+      } else {
+        console.warn('Password reset error:', code, firebaseError?.message);
+        setError('Erro ao enviar email de recuperação.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     Keyboard.dismiss();
@@ -52,8 +94,20 @@ export const LoginScreen = () => {
     try {
       await signIn(email.trim(), password);
     } catch (err: unknown) {
-      const code = (err as { code?: string })?.code ?? '';
-      setError(ERROR_MESSAGES[code] ?? 'Não foi possível conectar. Tente novamente.');
+      const firebaseError = err as { code?: string; message?: string };
+      const code = firebaseError?.code ?? '';
+      const mapped = ERROR_MESSAGES[code];
+      if (mapped) {
+        setError(mapped);
+      } else if (code) {
+        // Código Firebase não mapeado — mostra o código para debug
+        console.warn('Firebase auth error:', code, firebaseError?.message);
+        setError('Não foi possível conectar. Tente novamente.');
+      } else {
+        // Erro genérico (rede, timeout, etc.)
+        console.error('Login error:', err);
+        setError('Erro inesperado. Verifique sua conexão e tente novamente.');
+      }
     } finally {
       setLoading(false);
     }
@@ -65,22 +119,33 @@ export const LoginScreen = () => {
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={[styles.content, { paddingTop: insets.top + 80 }]}>
-          {/* Branding */}
-          <View style={styles.brandingArea}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingTop: insets.top + 80, paddingBottom: insets.bottom + spacing.xxl },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Logo */}
+          <View style={styles.logoArea}>
+            <View style={styles.logoBox}>
+              <Text style={styles.logoIcon}>❤️‍🩹</Text>
+            </View>
             <Text style={styles.appName}>HomeCare</Text>
-            <Text style={styles.tagline}>Cuidado com quem você ama</Text>
+            <Text style={styles.tagline}>Gerenciamento de cuidados{'\n'}domiciliares simplificado</Text>
           </View>
 
-          {/* Form */}
-          <View style={styles.form}>
-            <View>
+          {/* Form card */}
+          <View style={styles.formCard}>
+            <View style={styles.field}>
+              <Text style={styles.label}>E-mail</Text>
               <TextInput
                 style={[
                   styles.input,
                   focusedField === 'email' && styles.inputFocused,
                 ]}
-                placeholder="Email"
+                placeholder="seu@email.com"
                 placeholderTextColor={colors.textMuted}
                 value={email}
                 onChangeText={(text) => {
@@ -99,15 +164,11 @@ export const LoginScreen = () => {
               />
             </View>
 
-            <View>
-              <TextInput
+            <View style={styles.field}>
+              <Text style={styles.label}>Senha</Text>
+              <PasswordInput
                 ref={passwordRef}
-                style={[
-                  styles.input,
-                  focusedField === 'password' && styles.inputFocused,
-                ]}
-                placeholder="Senha"
-                placeholderTextColor={colors.textMuted}
+                placeholder="••••••••"
                 value={password}
                 onChangeText={(text) => {
                   setPassword(text);
@@ -115,7 +176,7 @@ export const LoginScreen = () => {
                 }}
                 onFocus={() => setFocusedField('password')}
                 onBlur={() => setFocusedField(null)}
-                secureTextEntry
+                isFocused={focusedField === 'password'}
                 textContentType="password"
                 autoComplete="password"
                 returnKeyType="done"
@@ -123,28 +184,39 @@ export const LoginScreen = () => {
               />
             </View>
 
+            {/* Esqueci a senha */}
+            <TouchableOpacity style={styles.forgotRow} activeOpacity={0.7} onPress={handleForgotPassword}>
+              <Text style={styles.forgotText}>Esqueci a senha</Text>
+            </TouchableOpacity>
+
             {/* Inline Error */}
             {error ? (
-              <Text style={styles.errorText}>{error}</Text>
+              <View style={styles.errorBanner}>
+                <Ionicons name="alert-circle" size={18} color={colors.error} />
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
             ) : null}
-          </View>
-        </View>
 
-        {/* Action Area — parte inferior */}
-        <View style={[styles.actionArea, { paddingBottom: insets.bottom + spacing.lg }]}>
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleLogin}
-            disabled={loading}
-            activeOpacity={0.8}
-          >
-            {loading ? (
-              <ActivityIndicator color={colors.white} size="small" />
-            ) : (
-              <Text style={styles.buttonText}>Entrar</Text>
-            )}
-          </TouchableOpacity>
-        </View>
+            {/* Botão Entrar */}
+            <TouchableOpacity
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={handleLogin}
+              disabled={loading}
+              activeOpacity={0.8}
+            >
+              {loading ? (
+                <ActivityIndicator color={colors.white} size="small" />
+              ) : (
+                <Text style={styles.buttonText}>Entrar</Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Dica */}
+            <Text style={styles.hint}>
+              Dica: use email contendo &quot;admin&quot;, &quot;nurse&quot; ou &quot;family&quot;
+            </Text>
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </TouchableWithoutFeedback>
   );
@@ -155,35 +227,79 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  content: {
-    flex: 1,
+  scrollContent: {
     paddingHorizontal: spacing.lg,
+    flexGrow: 1,
   },
 
-  // Branding
-  brandingArea: {
-    marginBottom: spacing.xxl,
+  // Logo area
+  logoArea: {
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+  },
+  logoBox: {
+    width: 72,
+    height: 72,
+    borderRadius: 18,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: { elevation: 4 },
+    }),
+  },
+  logoIcon: {
+    fontSize: 32,
   },
   appName: {
-    fontSize: fontSize.title,
+    fontSize: fontSize.xxl,
     fontWeight: '700',
     color: colors.textPrimary,
     letterSpacing: 0.35,
   },
   tagline: {
-    fontSize: fontSize.lg,
-    fontWeight: '400',
+    fontSize: fontSize.md,
     color: colors.textSecondary,
+    textAlign: 'center',
     marginTop: spacing.xs,
+    lineHeight: 22,
   },
 
-  // Form
-  form: {
-    gap: spacing.sm + 4,
+  // Form card
+  formCard: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+      },
+      android: { elevation: 3 },
+    }),
+  },
+
+  field: {
+    marginBottom: spacing.md,
+  },
+  label: {
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginBottom: spacing.xs + 2,
   },
   input: {
     height: 52,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: borderRadius.md,
@@ -195,33 +311,51 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
     borderWidth: 1.5,
   },
-  errorText: {
+
+  // Forgot password
+  forgotRow: {
+    alignSelf: 'flex-end',
+    marginBottom: spacing.md,
+  },
+  forgotText: {
     fontSize: fontSize.sm,
-    color: colors.error,
-    marginTop: spacing.xs,
+    fontWeight: '600',
+    color: colors.primary,
   },
 
-  // Action Area
-  actionArea: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-  },
-  button: {
-    height: 52,
-    backgroundColor: colors.primary,
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.error + '10',
+    borderWidth: 1,
+    borderColor: colors.error + '30',
     borderRadius: borderRadius.md,
+    padding: spacing.sm + 4,
+    marginBottom: spacing.md,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: fontSize.sm,
+    color: colors.error,
+    fontWeight: '500',
+  },
+
+  // Button
+  button: {
+    height: 56,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 6,
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
       },
-      android: {
-        elevation: 2,
-      },
+      android: { elevation: 3 },
     }),
   },
   buttonDisabled: {
@@ -232,5 +366,14 @@ const styles = StyleSheet.create({
     fontSize: fontSize.lg,
     fontWeight: '600',
     letterSpacing: 0.3,
+  },
+
+  // Hint
+  hint: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: spacing.md,
+    lineHeight: 20,
   },
 });

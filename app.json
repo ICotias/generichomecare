@@ -61,15 +61,6 @@
           "cameraPermission": "HomeCare precisa acessar a câmera para registrar fotos clínicas dos pacientes."
         }
       ]
-    ],
-    "extra": {
-      "eas": {
-        "projectId": "your-eas-project-id"
-      }
-    },
-    "owner": "generichomecare",
-    "updates": {
-      "url": "https://u.expo.dev/your-eas-project-id"
-    }
+    ]
   }
 }

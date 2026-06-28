@@ -8,6 +8,7 @@ import {
 import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { AppUser, UserRole } from '../types';
+import { logAudit } from '../services/auditService';
 
 /** Detecta role pelo email (fallback para primeiro login sem doc Firestore) */
 const inferRoleFromEmail = (email: string): UserRole => {
@@ -25,6 +26,8 @@ interface AuthState {
   role: UserRole | null;
   originalRole: UserRole | null;
   isSimulating: boolean;
+  /** Paciente selecionado durante simulação admin→family */
+  simulatedPatientId: string | null;
 
   setUser: (user: AppUser | null) => void;
   setFirebaseUser: (user: FirebaseUser | null) => void;
@@ -34,6 +37,7 @@ interface AuthState {
   initialize: () => () => void;
   simulateRole: (role: UserRole) => void;
   stopSimulation: () => void;
+  setSimulatedPatientId: (id: string | null) => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -44,15 +48,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   role: null,
   originalRole: null,
   isSimulating: false,
+  simulatedPatientId: null,
 
-  setUser: (user) =>
+  setUser: (user) => {
+    const { isSimulating, role } = get();
     set({
       user,
       isAuthenticated: !!user,
-      role: user?.role ?? null,
+      // Preservar simulação ativa — só atualizar role/originalRole se NÃO estiver simulando
+      role: isSimulating ? role : (user?.role ?? null),
       originalRole: user?.role ?? null,
-      isSimulating: false,
-    }),
+      isSimulating: user ? isSimulating : false,
+    });
+  },
 
   setFirebaseUser: (firebaseUser) => set({ firebaseUser }),
 
@@ -72,6 +80,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signOut: async () => {
+    const current = get().user;
+    if (current) {
+      logAudit('logout', current.uid, current.role, current.empresaId);
+    }
     await firebaseSignOut(auth);
     set({
       user: null,
@@ -80,6 +92,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       role: null,
       originalRole: null,
       isSimulating: false,
+      simulatedPatientId: null,
     });
   },
 
@@ -89,6 +102,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({
       role,
       isSimulating: role !== originalRole,
+      simulatedPatientId: null, // reset ao trocar de role
     });
   },
 
@@ -98,8 +112,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({
       role: originalRole,
       isSimulating: false,
+      simulatedPatientId: null,
     });
   },
+
+  setSimulatedPatientId: (id) => set({ simulatedPatientId: id }),
 
   // Listener de auth — chamar no App.tsx
   initialize: () => {
@@ -126,11 +143,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               role: data.role ?? 'nurse',
               empresaId: data.empresaId ?? '',
               telefone: data.telefone ?? '',
+              pacienteId: data.pacienteId ?? undefined,
+              parentesco: data.parentesco ?? undefined,
+              mustChangePassword: data.mustChangePassword ?? false,
               lgpdConsentAt: data.lgpdConsentAt?.toDate?.() ?? undefined,
               createdAt: data.createdAt?.toDate?.() ?? new Date(),
               updatedAt: data.updatedAt?.toDate?.() ?? new Date(),
             });
             console.log(`[Auth #${callId}] setUser OK — role:`, data.role, 'lgpd:', !!data.lgpdConsentAt);
+            logAudit('login', firebaseUser.uid, data.role ?? 'nurse', data.empresaId ?? '');
           } else {
             console.warn(`[Auth #${callId}] Perfil não encontrado, criando...`);
             const role = inferRoleFromEmail(firebaseUser.email ?? '');

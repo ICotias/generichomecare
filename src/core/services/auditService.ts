@@ -1,14 +1,15 @@
 /**
  * Serviço de log de auditoria (client-side).
  *
- * Por enquanto, grava no console e na collection local.
- * Em produção, o ideal é gravar via Cloud Function para que
- * o usuário não tenha permissão de escrita direta no auditLog
- * (as rules atuais bloqueiam write: false).
+ * Grava cada evento em três lugares:
+ *   1. Buffer em memória (debug rápido / admin in-app)
+ *   2. Console (apenas em __DEV__)
+ *   3. Coleção `auditLog` no Firestore (persistente)
  *
- * Enquanto Cloud Functions não estão configuradas, usamos
- * uma collection temporária `auditLogClient` que o user
- * pode escrever, ou simplesmente logamos localmente.
+ * As rules permitem que cada usuário CRIE seus próprios logs
+ * (request.resource.data.userId == auth.uid), sem update/delete.
+ * Quando Cloud Functions estiverem disponíveis, o ideal é mover a
+ * escrita para o Admin SDK (server-side) e capturar IP/origem.
  *
  * Estrutura do log:
  *   auditLog/{logId}
@@ -17,11 +18,11 @@
  *     - userRole: string
  *     - empresaId: string
  *     - details: Record<string, unknown>
- *     - timestamp: Timestamp
- *     - ip?: string (only via Cloud Function)
+ *     - timestamp: serverTimestamp()
  */
 
-import { Timestamp } from 'firebase/firestore';
+import { Timestamp, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { db } from '../config/firebase';
 
 export type AuditAction =
   | 'login'
@@ -54,10 +55,31 @@ const auditBuffer: AuditEntry[] = [];
 const MAX_BUFFER = 200;
 
 /**
+ * Persiste o evento no Firestore (fire-and-forget).
+ * Falhas não devem quebrar o fluxo do usuário — apenas logam em dev.
+ */
+const persistToFirestore = (entry: AuditEntry): void => {
+  // Sem userId não há como satisfazer as rules (userId == auth.uid)
+  if (!entry.userId) return;
+
+  addDoc(collection(db, 'auditLog'), {
+    action: entry.action,
+    userId: entry.userId,
+    userRole: entry.userRole,
+    empresaId: entry.empresaId,
+    details: entry.details ?? {},
+    timestamp: serverTimestamp(),
+  }).catch((err) => {
+    if (__DEV__) {
+      console.warn('[AUDIT] Falha ao persistir no Firestore:', err);
+    }
+  });
+};
+
+/**
  * Registra um evento de auditoria.
  *
- * Atualmente salva em memória e console.
- * Quando Cloud Functions estiverem prontas, enviar via HTTP callable.
+ * Salva em memória, console (dev) e persiste no Firestore.
  */
 export const logAudit = (
   action: AuditAction,
@@ -89,6 +111,9 @@ export const logAudit = (
       details ? JSON.stringify(details) : ''
     );
   }
+
+  // Persistência durável
+  persistToFirestore(entry);
 };
 
 /**

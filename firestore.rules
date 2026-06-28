@@ -80,11 +80,20 @@ service cloud.firestore {
                     && resource.data.empresaId == getUserData().empresaId
                     && request.resource.data.role != 'admin';
 
-      // Usuário atualiza próprio perfil (exceto role e empresaId)
+      // Usuário atualiza próprio perfil (exceto role e empresaId).
+      // pacienteId é "claim único": só pode ser definido quando ainda vazio,
+      // e depois não pode ser repontado para outro paciente.
       allow update: if isAuth()
                     && request.auth.uid == uid
                     && request.resource.data.role == resource.data.role
-                    && request.resource.data.empresaId == resource.data.empresaId;
+                    && request.resource.data.empresaId == resource.data.empresaId
+                    && (
+                         ( ('pacienteId' in resource.data)
+                           && ('pacienteId' in request.resource.data)
+                           && request.resource.data.pacienteId == resource.data.pacienteId )
+                         ||
+                         ( !('pacienteId' in resource.data) || resource.data.pacienteId == '' )
+                       );
 
       // Ninguém deleta usuários (soft-delete via status)
       allow delete: if false;
@@ -123,8 +132,26 @@ service cloud.firestore {
                       && hasField('dataNascimento')
                       && hasField('status');
 
+        // Família cadastra o próprio paciente no 1º acesso (Fase 1):
+        // pertence à empresa, ainda SEM paciente vinculado (cadastro único),
+        // origem marcada como 'familia' e criador = ela mesma.
+        allow create: if hasRole('family')
+                      && belongsToCompany(empresaId)
+                      && (!('pacienteId' in getUserData()) || getUserData().pacienteId == '')
+                      && request.resource.data.status == 'ativo'
+                      && request.resource.data.origemDados == 'familia'
+                      && request.resource.data.criadoPorUid == request.auth.uid
+                      && hasField('nome')
+                      && hasField('dataNascimento')
+                      && hasField('status');
+
         // Admin atualiza pacientes
         allow update: if hasRole('admin') && belongsToCompany(empresaId);
+
+        // Família edita os dados que ela mesma trouxe (seu paciente vinculado)
+        allow update: if hasRole('family')
+                      && belongsToCompany(empresaId)
+                      && getUserData().pacienteId == pacienteId;
 
         // Não deleta (soft-delete via status)
         allow delete: if false;
@@ -137,6 +164,13 @@ service cloud.firestore {
                       && getUserData().pacienteId == pacienteId;
           allow create: if hasRole('admin') && belongsToCompany(empresaId);
           allow update: if hasRole('admin') && belongsToCompany(empresaId);
+          // Família cria/edita prescrições do seu paciente (onboarding Fase 1)
+          allow create: if hasRole('family')
+                        && belongsToCompany(empresaId)
+                        && getUserData().pacienteId == pacienteId;
+          allow update: if hasRole('family')
+                        && belongsToCompany(empresaId)
+                        && getUserData().pacienteId == pacienteId;
           allow delete: if false;
         }
 
@@ -146,11 +180,14 @@ service cloud.firestore {
           allow read: if belongsToCompany(empresaId)
                       && (hasRole('nurse') || hasRole('admin'));
 
-          // Família lê registros do seu paciente, exceto fotos clínicas
+          // Família lê registros visíveis do seu paciente (exclui fotos clínicas).
+          // Usa o campo denormalizado visibleToFamily para ser FILTRÁVEL —
+          // rules não são filtros: a query da família precisa incluir
+          // where('visibleToFamily','==',true), senão a leitura é negada.
           allow read: if hasRole('family')
                       && getUserData().pacienteId == pacienteId
                       && getUserData().empresaId == empresaId
-                      && !(resource.data.type == 'foto' && resource.data.fotoClinica == true);
+                      && resource.data.visibleToFamily == true;
 
           // Enfermeiro da empresa cria registros — campos obrigatórios
           allow create: if hasRole('nurse')
@@ -241,10 +278,20 @@ service cloud.firestore {
     // AUDIT LOG
     // ═══════════════════════════════════════
     match /auditLog/{logId} {
-      // Só admin lê
-      allow read: if hasRole('admin');
-      // Só Cloud Functions escrevem (via Admin SDK)
-      allow write: if false;
+      // Admin lê os logs da sua empresa
+      allow read: if hasRole('admin')
+                  && resource.data.empresaId == getUserData().empresaId;
+
+      // Cada usuário registra seus próprios eventos (create-only).
+      // Imutável: sem update/delete a partir do client.
+      // Quando houver Cloud Functions, migrar a escrita para Admin SDK.
+      allow create: if isAuth()
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.keys().hasAll(
+                         ['action', 'userId', 'userRole', 'empresaId', 'timestamp']
+                       );
+
+      allow update, delete: if false;
     }
 
     // ═══════════════════════════════════════

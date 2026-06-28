@@ -1,0 +1,75 @@
+rules_version = '2';
+
+// ═══════════════════════════════════════════════════════════════
+// Regras de segurança do Firebase Storage — HomeCare
+//
+// Espelha a lógica do firestore.rules: autenticação obrigatória,
+// isolamento por empresaId e papel (nurse/family/admin).
+// As permissões de papel/empresa são lidas do Firestore via
+// firestore.get() sobre o documento usuarios/{uid}.
+//
+// Estrutura de paths (ver storageService.generatePhotoPath):
+//   fotos/{empresaId}/{pacienteId}/{fileName}
+// ═══════════════════════════════════════════════════════════════
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ─── Funções auxiliares ───
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function userData() {
+      return firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data;
+    }
+
+    function hasRole(role) {
+      return isAuth() && userData().role == role;
+    }
+
+    function belongsToCompany(empresaId) {
+      return isAuth() && userData().empresaId == empresaId;
+    }
+
+    // Limite de 10MB e apenas imagens
+    function isValidImage() {
+      return request.resource.size < 10 * 1024 * 1024
+             && request.resource.contentType.matches('image/.*');
+    }
+
+    // ─── Fotos comuns (visíveis também à família) ───
+    match /fotos/{empresaId}/{pacienteId}/publica/{fileName} {
+      // Enfermeiro e admin da empresa leem
+      allow read: if belongsToCompany(empresaId)
+                  && (hasRole('nurse') || hasRole('admin'));
+
+      // Família lê as fotos comuns do seu paciente vinculado
+      allow read: if hasRole('family')
+                  && userData().pacienteId == pacienteId
+                  && userData().empresaId == empresaId;
+
+      // Enfermeiro e admin da empresa fazem upload (imagem < 10MB)
+      allow write: if belongsToCompany(empresaId)
+                   && (hasRole('nurse') || hasRole('admin'))
+                   && isValidImage();
+    }
+
+    // ─── Fotos clínicas (restritas à equipe) ───
+    // Defesa em profundidade: a família NÃO tem leitura aqui, no próprio
+    // Storage, independente do campo visibleToFamily no Firestore.
+    match /fotos/{empresaId}/{pacienteId}/clinica/{fileName} {
+      allow read: if belongsToCompany(empresaId)
+                  && (hasRole('nurse') || hasRole('admin'));
+
+      allow write: if belongsToCompany(empresaId)
+                   && (hasRole('nurse') || hasRole('admin'))
+                   && isValidImage();
+    }
+
+    // ─── Nega tudo o resto ───
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

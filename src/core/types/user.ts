@@ -10,6 +10,12 @@ export interface AppUser {
   coren?: string;
   avatarUrl?: string;
   lgpdConsentAt?: Date;
+  /** Conta criada pelo admin com senha temporária — força troca no 1º acesso */
+  mustChangePassword?: boolean;
+  /** Família: paciente vinculado (vazio até o cadastro no 1º acesso) */
+  pacienteId?: string;
+  /** Família: parentesco com o paciente */
+  parentesco?: string;
   createdAt: Date;
   updatedAt: Date;
 }

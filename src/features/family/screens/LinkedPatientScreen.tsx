@@ -14,8 +14,10 @@ import { TouchableOpacity } from 'react-native';
 
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
+import { useFamilyPatientId } from '../../../core/hooks/useFamilyPatientId';
 import * as patientService from '../../../core/services/patientService';
 import type { Patient } from '../../../core/types';
+import { PatientPickerBar } from '../../../shared/components/PatientPickerBar';
 
 const calcAge = (birthDate: Date): number => {
   const today = new Date();
@@ -38,23 +40,27 @@ export const LinkedPatientScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { user } = useAuthStore();
+  const {
+    pacienteId,
+    isSimulating,
+    patients: simPatients,
+    isLoadingPatients,
+    selectPatient,
+  } = useFamilyPatientId();
 
   const [patient, setPatient] = useState<Patient | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Family users have pacienteId in their user doc
-  const familyUser = user as typeof user & { pacienteId?: string };
-
   useEffect(() => {
     const loadPatient = async () => {
-      if (!user?.empresaId || !familyUser?.pacienteId) {
+      if (!user?.empresaId || !pacienteId) {
         setIsLoading(false);
         return;
       }
 
       try {
-        const p = await patientService.getPatient(user.empresaId, familyUser.pacienteId);
+        const p = await patientService.getPatient(user.empresaId, pacienteId);
         setPatient(p);
       } catch (err) {
         console.error('Erro ao carregar paciente vinculado:', err);
@@ -64,11 +70,22 @@ export const LinkedPatientScreen = () => {
       }
     };
 
+    setIsLoading(true);
     loadPatient();
-  }, [user?.empresaId, familyUser?.pacienteId]);
+  }, [user?.empresaId, pacienteId]);
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
+      {/* Patient picker (simulação admin) */}
+      {isSimulating && (
+        <PatientPickerBar
+          patients={simPatients}
+          selectedId={pacienteId}
+          onSelect={selectPatient}
+          isLoading={isLoadingPatients}
+        />
+      )}
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity

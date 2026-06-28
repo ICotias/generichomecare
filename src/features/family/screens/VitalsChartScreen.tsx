@@ -17,10 +17,12 @@ import { LineChart } from 'react-native-chart-kit';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
+import { useFamilyPatientId } from '../../../core/hooks/useFamilyPatientId';
 import * as registroService from '../../../core/services/registroService';
 import * as patientService from '../../../core/services/patientService';
 import type { VitalSignsRecord, CareRecord } from '../../../core/types';
 import type { Patient, VitalSignsRange } from '../../../core/types';
+import { PatientPickerBar } from '../../../shared/components/PatientPickerBar';
 
 // ════════════════════════════════════════════
 // Helpers
@@ -50,14 +52,18 @@ export const VitalsChartScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { user } = useAuthStore();
+  const {
+    pacienteId,
+    isSimulating,
+    patients: simPatients,
+    isLoadingPatients,
+    selectPatient,
+  } = useFamilyPatientId();
 
   const [vitals, setVitals] = useState<VitalSignsRecord[]>([]);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [period, setPeriod] = useState<PeriodValue>(7);
-
-  const familyUser = user as typeof user & { pacienteId?: string };
-  const pacienteId = familyUser?.pacienteId;
 
   const load = useCallback(async () => {
     if (!user?.empresaId || !pacienteId) {
@@ -70,6 +76,7 @@ export const VitalsChartScreen = () => {
         registroService.listRecords(user.empresaId, pacienteId, {
           type: 'sinaisVitais',
           limitCount: 200,
+          visibleToFamilyOnly: true,
         }),
         patientService.getPatient(user.empresaId, pacienteId),
       ]);
@@ -112,6 +119,16 @@ export const VitalsChartScreen = () => {
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
+      {/* Patient picker (simulação admin) */}
+      {isSimulating && (
+        <PatientPickerBar
+          patients={simPatients}
+          selectedId={pacienteId}
+          onSelect={selectPatient}
+          isLoading={isLoadingPatients}
+        />
+      )}
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={styles.backRow}>

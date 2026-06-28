@@ -23,7 +23,14 @@ import {
 
 import { db } from '../config/firebase';
 import { Collections } from '../../shared/constants/firestore';
-import type { Patient, Address, EmergencyContact, VitalSignsRange } from '../types';
+import type {
+  Patient,
+  Address,
+  EmergencyContact,
+  VitalSignsRange,
+  ResponsibleDoctor,
+  Prescription,
+} from '../types';
 
 // ════════════════════════════════════════════
 // Input types
@@ -144,6 +151,106 @@ export const createPatient = async (
   const colRef = collection(db, Collections.pacientes(empresaId));
   const docRef = await addDoc(colRef, data);
   return docRef.id;
+};
+
+// ════════════════════════════════════════════
+// Onboarding pela família (Fase 1)
+// ════════════════════════════════════════════
+
+export interface FamilyMedicationInput {
+  medicamento: string;
+  dosagem: string;
+  via: Prescription['via'];
+  frequencia: string;
+  horarios: string[];
+  observacoes?: string;
+}
+
+export interface CreatePatientByFamilyInput {
+  nome: string;
+  dataNascimento: Date;
+  genero: Patient['genero'];
+  diagnosticos: string[];
+  alergias: string[];
+  observacoes?: string;
+  tipoAtendimento?: Patient['tipoAtendimento'];
+  contatoEmergencia: EmergencyContact;
+  medicoResponsavel?: ResponsibleDoctor;
+  faixaSinaisVitais: VitalSignsRange;
+  medicamentos: FamilyMedicationInput[];
+}
+
+const EMPTY_ADDRESS: Address = {
+  rua: '', numero: '', bairro: '', cidade: '', estado: '', cep: '',
+};
+
+/**
+ * Cria o paciente a partir do onboarding da família (dados trazidos por ela,
+ * a partir do médico do paciente). Marca proveniência `origemDados: 'familia'`
+ * e `validadoPorEquipe: false`. Já entra `ativo` (decisão "ativa na hora").
+ *
+ * IMPORTANTE: escrita sequencial (paciente → vincula usuário → prescrições)
+ * porque as Firestore rules das prescrições dependem do `pacienteId` já
+ * vinculado no doc do usuário — um batch não enxergaria esse estado.
+ */
+export const createPatientByFamily = async (
+  empresaId: string,
+  uid: string,
+  input: CreatePatientByFamilyInput
+): Promise<string> => {
+  const now = Timestamp.now();
+
+  // 1. Cria o paciente
+  const patientData: Record<string, unknown> = {
+    empresaId,
+    nome: input.nome,
+    dataNascimento: Timestamp.fromDate(input.dataNascimento),
+    cpf: '',
+    genero: input.genero,
+    endereco: EMPTY_ADDRESS,
+    contatoEmergencia: input.contatoEmergencia,
+    diagnosticos: input.diagnosticos,
+    alergias: input.alergias,
+    tipoAtendimento: input.tipoAtendimento ?? 'integral',
+    status: 'ativo',
+    observacoes: input.observacoes ?? '',
+    faixaSinaisVitais: input.faixaSinaisVitais,
+    origemDados: 'familia',
+    criadoPorUid: uid,
+    validadoPorEquipe: false,
+    createdAt: now,
+    updatedAt: now,
+  };
+  if (input.medicoResponsavel) {
+    patientData.medicoResponsavel = input.medicoResponsavel;
+  }
+
+  const patientRef = await addDoc(collection(db, Collections.pacientes(empresaId)), patientData);
+
+  // 2. Vincula o paciente ao usuário família (necessário ANTES das prescrições
+  //    para as rules de prescricoes liberarem via getUserData().pacienteId)
+  await updateDoc(doc(db, Collections.USUARIOS, uid), {
+    pacienteId: patientRef.id,
+    updatedAt: now,
+  });
+
+  // 3. Cria as prescrições (medicamentos de uso contínuo)
+  for (const m of input.medicamentos) {
+    const presData: Record<string, unknown> = {
+      pacienteId: patientRef.id,
+      medicamento: m.medicamento,
+      dosagem: m.dosagem,
+      via: m.via,
+      frequencia: m.frequencia,
+      horarios: m.horarios,
+      dataInicio: now,
+      ativo: true,
+    };
+    if (m.observacoes) presData.observacoes = m.observacoes;
+    await addDoc(collection(db, Collections.prescricoes(empresaId, patientRef.id)), presData);
+  }
+
+  return patientRef.id;
 };
 
 /**

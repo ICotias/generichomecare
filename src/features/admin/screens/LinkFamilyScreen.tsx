@@ -25,15 +25,10 @@ import { InsetGroupedSection } from '../../../shared/components/ui/InsetGroupedS
 import { InsetRow } from '../../../shared/components/ui/InsetRow';
 import { SelectionListModal } from '../../../shared/components/ui/SelectionListModal';
 import type { SelectionItem } from '../../../shared/components/ui/SelectionListModal';
+import { SegmentedControl } from '../../../shared/components/ui/SegmentedControl';
+import { formatPhone } from '../../../shared/utils/formatters';
 
 type RouteType = RouteProp<{ LinkFamily: { patientId?: string } }, 'LinkFamily'>;
-
-const formatPhone = (raw: string): string => {
-  const digits = raw.replace(/\D/g, '').slice(0, 11);
-  if (digits.length <= 2) return digits.length ? `(${digits}` : '';
-  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-};
 
 const mapFirebaseError = (error: unknown): string => {
   const code = (error as { code?: string })?.code ?? '';
@@ -61,6 +56,11 @@ const PARENTESCO_OPTIONS: SelectionItem[] = [
   { id: 'outro', label: 'Outro' },
 ];
 
+const MODE_SEGMENTS = [
+  { key: 'new', label: 'Nova conta' },
+  { key: 'existing', label: 'Conta existente' },
+];
+
 export const LinkFamilyScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
@@ -69,21 +69,29 @@ export const LinkFamilyScreen = () => {
 
   const initialPatientId = route.params?.patientId;
 
-  // Form state
+  // Mode
+  const [mode, setMode] = useState<'new' | 'existing'>('new');
+
+  // Shared state
+  const [parentesco, setParentesco] = useState('');
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(initialPatientId ?? null);
+  const [isLoadingPatients, setIsLoadingPatients] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showPatientList, setShowPatientList] = useState(false);
+  const [showParentescoList, setShowParentescoList] = useState(false);
+
+  // New account fields
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [telefone, setTelefone] = useState('');
   const [senha, setSenha] = useState('');
-  const [parentesco, setParentesco] = useState('');
 
-  // Patient selection
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(initialPatientId ?? null);
-  const [isLoadingPatients, setIsLoadingPatients] = useState(true);
-
-  const [isSaving, setIsSaving] = useState(false);
-  const [showPatientList, setShowPatientList] = useState(false);
-  const [showParentescoList, setShowParentescoList] = useState(false);
+  // Existing account fields
+  const [searchEmail, setSearchEmail] = useState('');
+  const [foundMember, setFoundMember] = useState<adminUserService.FamilyMember | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchDone, setSearchDone] = useState(false);
 
   // Refs
   const emailRef = useRef<TextInput>(null);
@@ -103,40 +111,91 @@ export const LinkFamilyScreen = () => {
   const selectedPatient = patients.find((p) => p.id === selectedPatientId);
   const selectedParentescoItem = PARENTESCO_OPTIONS.find((o) => o.label === parentesco);
 
-  // Patient items for SelectionListModal
   const patientItems: SelectionItem[] = patients
     .filter((p) => p.status === 'ativo')
     .map((p) => ({ id: p.id, label: p.nome }));
 
-  // Validation
+  // ── Validation ──
+
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const canSave =
+
+  const canSaveNew =
     nome.trim().length > 0 &&
     emailValid &&
     senha.length >= 8 &&
     parentesco.length > 0 &&
     selectedPatientId != null;
 
+  const canSaveExisting =
+    foundMember != null &&
+    parentesco.length > 0 &&
+    selectedPatientId != null;
+
+  const canSave = mode === 'new' ? canSaveNew : canSaveExisting;
+
+  // ── Search existing ──
+
+  const handleSearchEmail = async () => {
+    if (!user?.empresaId || !searchEmail.trim()) return;
+    setIsSearching(true);
+    setFoundMember(null);
+    setSearchDone(false);
+    try {
+      const member = await adminUserService.findFamilyByEmail(user.empresaId, searchEmail.trim());
+      setFoundMember(member);
+      setSearchDone(true);
+      if (!member) {
+        Alert.alert('Não encontrado', 'Nenhum familiar com este e-mail nesta empresa.');
+      } else if (member.pacienteId) {
+        // Already linked — inform but allow re-linking
+        const linkedPatient = patients.find((p) => p.id === member.pacienteId);
+        Alert.alert(
+          'Familiar encontrado',
+          `${member.nome} já está vinculado a ${linkedPatient?.nome ?? 'outro paciente'}. Ao vincular novamente, o vínculo anterior será substituído.`
+        );
+      }
+    } catch (err) {
+      Alert.alert('Erro', 'Não foi possível buscar o familiar.');
+      console.error('search family error', err);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // ── Save ──
+
   const handleSave = async () => {
     if (!canSave || !user?.empresaId || !selectedPatientId) return;
 
     setIsSaving(true);
     try {
-      const result = await adminUserService.createFamilyAccount({
-        email: email.trim(),
-        password: senha,
-        nome: nome.trim(),
-        telefone: telefone.trim(),
-        empresaId: user.empresaId,
-        pacienteId: selectedPatientId,
-        parentesco,
-      });
-
-      Alert.alert(
-        'Família vinculada',
-        `Conta criada para ${nome.trim()}.\nUID: ${result.uid}`,
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
+      if (mode === 'new') {
+        const result = await adminUserService.createFamilyAccount({
+          email: email.trim(),
+          password: senha,
+          nome: nome.trim(),
+          telefone: telefone.trim(),
+          empresaId: user.empresaId,
+          pacienteId: selectedPatientId,
+          parentesco,
+        });
+        Alert.alert(
+          'Família vinculada',
+          `Conta criada para ${nome.trim()}.`,
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+      } else {
+        await adminUserService.linkExistingFamily(
+          foundMember!.uid,
+          selectedPatientId,
+          parentesco
+        );
+        Alert.alert(
+          'Familiar vinculado',
+          `${foundMember!.nome} foi vinculado ao paciente com sucesso.`,
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+      }
     } catch (err) {
       Alert.alert('Erro ao vincular', mapFirebaseError(err));
     } finally {
@@ -166,7 +225,16 @@ export const LinkFamilyScreen = () => {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Patient selector — drill-down row */}
+        {/* Mode selector */}
+        <View style={styles.segmentWrapper}>
+          <SegmentedControl
+            options={MODE_SEGMENTS}
+            selectedKey={mode}
+            onSelect={(key) => setMode(key as 'new' | 'existing')}
+          />
+        </View>
+
+        {/* Patient selector */}
         <InsetGroupedSection header="PACIENTE">
           {isLoadingPatients ? (
             <ActivityIndicator color={colors.admin} style={styles.loader} />
@@ -176,84 +244,138 @@ export const LinkFamilyScreen = () => {
               value={selectedPatient ? selectedPatient.nome : 'Selecionar'}
               valueColor={selectedPatient ? colors.textPrimary : colors.textMuted}
               onPress={() => setShowPatientList(true)}
+              chevron
               last
             />
           )}
         </InsetGroupedSection>
 
-        {/* Form fields — Inset Grouped */}
-        <InsetGroupedSection header="DADOS DO FAMILIAR">
-          <InsetRow
-            label="Nome"
-            rightContent={
-              <TextInput
-                style={styles.inlineInput}
-                value={nome}
-                onChangeText={setNome}
-                placeholder="Nome completo"
-                placeholderTextColor={colors.textMuted}
-                returnKeyType="next"
-                onSubmitEditing={() => emailRef.current?.focus()}
+        {mode === 'new' ? (
+          /* ═══ Nova conta ═══ */
+          <InsetGroupedSection header="DADOS DO FAMILIAR">
+            <InsetRow
+              label="Nome"
+              rightContent={
+                <TextInput
+                  style={styles.inlineInput}
+                  value={nome}
+                  onChangeText={setNome}
+                  placeholder="Nome completo"
+                  placeholderTextColor={colors.textMuted}
+                  returnKeyType="next"
+                  onSubmitEditing={() => emailRef.current?.focus()}
+                />
+              }
+            />
+            <InsetRow
+              label="E-mail"
+              rightContent={
+                <TextInput
+                  ref={emailRef}
+                  style={styles.inlineInput}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="email@exemplo.com"
+                  placeholderTextColor={colors.textMuted}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  returnKeyType="next"
+                  onSubmitEditing={() => telRef.current?.focus()}
+                />
+              }
+            />
+            <InsetRow
+              label="Telefone"
+              rightContent={
+                <TextInput
+                  ref={telRef}
+                  style={styles.inlineInput}
+                  value={telefone}
+                  onChangeText={(v) => setTelefone(formatPhone(v))}
+                  placeholder="(11) 99999-9999"
+                  placeholderTextColor={colors.textMuted}
+                  keyboardType="phone-pad"
+                  returnKeyType="next"
+                  onSubmitEditing={() => senhaRef.current?.focus()}
+                />
+              }
+            />
+            <InsetRow
+              label="Senha"
+              rightContent={
+                <TextInput
+                  ref={senhaRef}
+                  style={styles.inlineInput}
+                  value={senha}
+                  onChangeText={setSenha}
+                  placeholder="Mín. 8 caracteres"
+                  placeholderTextColor={colors.textMuted}
+                  secureTextEntry
+                />
+              }
+              last
+            />
+          </InsetGroupedSection>
+        ) : (
+          /* ═══ Conta existente ═══ */
+          <>
+            <InsetGroupedSection header="BUSCAR POR E-MAIL">
+              <InsetRow
+                label="E-mail"
+                rightContent={
+                  <TextInput
+                    style={styles.inlineInput}
+                    value={searchEmail}
+                    onChangeText={(v) => {
+                      setSearchEmail(v);
+                      setFoundMember(null);
+                      setSearchDone(false);
+                    }}
+                    placeholder="email@exemplo.com"
+                    placeholderTextColor={colors.textMuted}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    returnKeyType="search"
+                    onSubmitEditing={handleSearchEmail}
+                  />
+                }
+                last
               />
-            }
-          />
-          <InsetRow
-            label="E-mail"
-            rightContent={
-              <TextInput
-                ref={emailRef}
-                style={styles.inlineInput}
-                value={email}
-                onChangeText={setEmail}
-                placeholder="email@exemplo.com"
-                placeholderTextColor={colors.textMuted}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                returnKeyType="next"
-                onSubmitEditing={() => telRef.current?.focus()}
-              />
-            }
-          />
-          <InsetRow
-            label="Telefone"
-            rightContent={
-              <TextInput
-                ref={telRef}
-                style={styles.inlineInput}
-                value={telefone}
-                onChangeText={(v) => setTelefone(formatPhone(v))}
-                placeholder="(11) 99999-9999"
-                placeholderTextColor={colors.textMuted}
-                keyboardType="phone-pad"
-                returnKeyType="next"
-                onSubmitEditing={() => senhaRef.current?.focus()}
-              />
-            }
-          />
-          <InsetRow
-            label="Senha"
-            rightContent={
-              <TextInput
-                ref={senhaRef}
-                style={styles.inlineInput}
-                value={senha}
-                onChangeText={setSenha}
-                placeholder="Mín. 8 caracteres"
-                placeholderTextColor={colors.textMuted}
-                secureTextEntry
-              />
-            }
-            last
-          />
-        </InsetGroupedSection>
+            </InsetGroupedSection>
 
-        {/* Parentesco — drill-down row */}
+            {isSearching && (
+              <ActivityIndicator color={colors.admin} style={styles.loader} />
+            )}
+
+            {foundMember && (
+              <InsetGroupedSection header="FAMILIAR ENCONTRADO">
+                <InsetRow label="Nome" value={foundMember.nome} />
+                <InsetRow label="E-mail" value={foundMember.email} />
+                <InsetRow
+                  label="Status"
+                  value={foundMember.pacienteId ? 'Já vinculado' : 'Sem vínculo'}
+                  valueColor={foundMember.pacienteId ? colors.warning : colors.success}
+                  last
+                />
+              </InsetGroupedSection>
+            )}
+
+            {searchDone && !foundMember && (
+              <Text style={styles.notFoundText}>
+                Nenhum familiar encontrado. Use &quot;Nova conta&quot; para criar.
+              </Text>
+            )}
+          </>
+        )}
+
+        {/* Parentesco — compartilhado entre os dois modos */}
         <InsetGroupedSection header="PARENTESCO">
           <InsetRow
             label="Parentesco"
             value={parentesco || 'Selecionar'}
             valueColor={parentesco ? colors.textPrimary : colors.textMuted}
             onPress={() => setShowParentescoList(true)}
+            chevron
             last
           />
         </InsetGroupedSection>
@@ -292,6 +414,9 @@ export const LinkFamilyScreen = () => {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
+  segmentWrapper: {
+    paddingVertical: spacing.md,
+  },
   loader: { marginVertical: spacing.md },
   inlineInput: {
     flex: 1,
@@ -299,5 +424,11 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     textAlign: 'right',
     paddingVertical: 0,
+  },
+  notFoundText: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+    textAlign: 'center',
+    paddingVertical: spacing.md,
   },
 });

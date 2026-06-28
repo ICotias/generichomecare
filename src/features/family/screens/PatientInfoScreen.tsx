@@ -14,9 +14,11 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
+import { useFamilyPatientId } from '../../../core/hooks/useFamilyPatientId';
 import * as patientService from '../../../core/services/patientService';
 import type { Patient } from '../../../core/types';
 import { Ionicons } from '@expo/vector-icons';
+import { PatientPickerBar } from '../../../shared/components/PatientPickerBar';
 import type { PatientInfoStackParamList } from '../../../core/navigation/RootNavigator';
 
 type NavProp = NativeStackNavigationProp<PatientInfoStackParamList, 'PatientInfo'>;
@@ -40,12 +42,16 @@ export const PatientInfoScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const { user } = useAuthStore();
+  const {
+    pacienteId,
+    isSimulating,
+    patients: simPatients,
+    isLoadingPatients,
+    selectPatient,
+  } = useFamilyPatientId();
 
   const [patient, setPatient] = useState<Patient | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  const familyUser = user as typeof user & { pacienteId?: string };
-  const pacienteId = familyUser?.pacienteId;
 
   useFocusEffect(
     useCallback(() => {
@@ -81,10 +87,22 @@ export const PatientInfoScreen = () => {
 
   return (
     <View style={styles.root}>
+      {/* Patient picker (simulação admin) */}
+      {isSimulating && (
+        <View style={{ paddingTop: insets.top }}>
+          <PatientPickerBar
+            patients={simPatients}
+            selectedId={pacienteId}
+            onSelect={selectPatient}
+            isLoading={isLoadingPatients}
+          />
+        </View>
+      )}
+
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingTop: insets.top + spacing.lg, paddingBottom: insets.bottom + spacing.xxl },
+          { paddingTop: isSimulating ? spacing.md : insets.top + spacing.lg, paddingBottom: insets.bottom + spacing.xxl },
         ]}
         showsVerticalScrollIndicator={false}
       >

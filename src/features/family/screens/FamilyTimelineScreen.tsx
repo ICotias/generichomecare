@@ -7,17 +7,23 @@ import {
   ActivityIndicator,
   RefreshControl,
   Platform,
+  TouchableOpacity,
+  Modal,
+  Image,
+  Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
+import { useFamilyPatientId } from '../../../core/hooks/useFamilyPatientId';
 import * as registroService from '../../../core/services/registroService';
 import * as patientService from '../../../core/services/patientService';
-import type { CareRecord, Patient } from '../../../core/types';
+import type { CareRecord, Patient, PhotoRecord } from '../../../core/types';
 import { Ionicons } from '@expo/vector-icons';
 import { EmptyState } from '../../../shared/components/EmptyState';
+import { PatientPickerBar } from '../../../shared/components/PatientPickerBar';
 
 const TYPE_META: Record<string, { label: string; icon: React.ComponentProps<typeof Ionicons>['name']; color: string }> = {
   medicamento: { label: 'Medicamento', icon: 'medkit-outline', color: '#8B5CF6' },
@@ -56,14 +62,19 @@ const getRecordSummary = (record: CareRecord): string => {
 export const FamilyTimelineScreen = () => {
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
+  const {
+    pacienteId,
+    isSimulating,
+    patients: simPatients,
+    isLoadingPatients,
+    selectPatient,
+  } = useFamilyPatientId();
 
   const [records, setRecords] = useState<CareRecord[]>([]);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const familyUser = user as typeof user & { pacienteId?: string };
-  const pacienteId = familyUser?.pacienteId;
+  const [photoModal, setPhotoModal] = useState<{ url: string; label: string } | null>(null);
 
   const load = useCallback(
     async (silent = false) => {
@@ -74,8 +85,15 @@ export const FamilyTimelineScreen = () => {
       if (!silent) setIsLoading(true);
 
       try {
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+
         const [recs, pat] = await Promise.all([
-          registroService.listRecords(user.empresaId, pacienteId, { limitCount: 30 }),
+          registroService.listRecords(user.empresaId, pacienteId, {
+            since: startOfToday,
+            limitCount: 100,
+            visibleToFamilyOnly: true,
+          }),
           patientService.getPatient(user.empresaId, pacienteId),
         ]);
 
@@ -113,19 +131,17 @@ export const FamilyTimelineScreen = () => {
   const renderRecord = ({ item }: { item: CareRecord }) => {
     const meta = TYPE_META[item.type] ?? { label: item.type, icon: 'document-text-outline' as const, color: colors.textMuted };
     const summary = getRecordSummary(item);
+    const isPhoto = item.type === 'foto';
+    const photoUrl = isPhoto ? (item as PhotoRecord).imageUrl : undefined;
 
-    return (
-      <View style={styles.card}>
-        <View style={styles.timeCol}>
-          <Text style={styles.timeText}>{formatTime(item.timestamp)}</Text>
-          <View style={[styles.timeDot, { backgroundColor: meta.color }]} />
-        </View>
-        <View style={styles.cardBody}>
+    const cardContent = (
+      <View style={isPhoto && photoUrl ? styles.cardBodyRow : undefined}>
+        <View style={isPhoto && photoUrl ? styles.cardBodyText : undefined}>
           <View style={styles.cardHeader}>
             <Ionicons name={meta.icon} size={16} color={meta.color} />
             <Text style={styles.cardType}>{meta.label}</Text>
           </View>
-          {summary ? (
+          {!isPhoto && summary ? (
             <Text style={styles.cardSummary} numberOfLines={2}>{summary}</Text>
           ) : null}
           <Text style={styles.cardNurse}>Por {item.profissionalNome}</Text>
@@ -135,6 +151,31 @@ export const FamilyTimelineScreen = () => {
             </Text>
           ) : null}
         </View>
+        {isPhoto && photoUrl && (
+          <Image source={{ uri: photoUrl }} style={styles.photoThumb} resizeMode="cover" />
+        )}
+      </View>
+    );
+
+    return (
+      <View style={styles.card}>
+        <View style={styles.timeCol}>
+          <Text style={styles.timeText}>{formatTime(item.timestamp)}</Text>
+          <View style={[styles.timeDot, { backgroundColor: meta.color }]} />
+        </View>
+        {isPhoto && photoUrl ? (
+          <TouchableOpacity
+            style={styles.cardBody}
+            activeOpacity={0.8}
+            onPress={() => setPhotoModal({ url: photoUrl, label: `Foto · ${formatTime(item.timestamp)}` })}
+          >
+            {cardContent}
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.cardBody}>
+            {cardContent}
+          </View>
+        )}
       </View>
     );
   };
@@ -146,9 +187,19 @@ export const FamilyTimelineScreen = () => {
   });
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top + spacing.lg }]}>
+    <View style={[styles.root, { paddingTop: insets.top + (isSimulating ? 0 : spacing.lg) }]}>
+      {/* Patient picker (simulação admin) */}
+      {isSimulating && (
+        <PatientPickerBar
+          patients={simPatients}
+          selectedId={pacienteId}
+          onSelect={selectPatient}
+          isLoading={isLoadingPatients}
+        />
+      )}
+
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, isSimulating && { marginTop: spacing.md }]}>
         <Text style={styles.greeting}>{getGreeting()},</Text>
         <Text style={styles.name}>{firstName}</Text>
         {patient && (
@@ -193,9 +244,32 @@ export const FamilyTimelineScreen = () => {
           }
         />
       )}
+
+      {/* Fullscreen photo modal */}
+      <Modal visible={!!photoModal} transparent animationType="fade" onRequestClose={() => setPhotoModal(null)}>
+        <View style={styles.photoModalOverlay}>
+          <TouchableOpacity style={styles.photoModalClose} onPress={() => setPhotoModal(null)} activeOpacity={0.8}>
+            <View style={styles.photoModalCloseCircle}>
+              <Ionicons name="close" size={20} color={colors.white} />
+            </View>
+          </TouchableOpacity>
+          {photoModal && (
+            <>
+              <Image
+                source={{ uri: photoModal.url }}
+                style={styles.photoModalImage}
+                resizeMode="contain"
+              />
+              <Text style={styles.photoModalLabel}>{photoModal.label}</Text>
+            </>
+          )}
+        </View>
+      </Modal>
     </View>
   );
 };
+
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
@@ -301,5 +375,54 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+
+  // Photo
+  cardBodyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  cardBodyText: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  photoThumb: {
+    width: 48,
+    height: 48,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.border,
+  },
+
+  // Photo modal
+  photoModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.92)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoModalClose: {
+    position: 'absolute',
+    top: 56,
+    right: 20,
+    zIndex: 10,
+  },
+  photoModalCloseCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoModalImage: {
+    width: SCREEN_W - 32,
+    height: SCREEN_H * 0.65,
+  },
+  photoModalLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: fontSize.sm,
+    marginTop: spacing.md,
+    fontWeight: '500',
   },
 });

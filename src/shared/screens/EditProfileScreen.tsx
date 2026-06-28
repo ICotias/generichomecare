@@ -20,6 +20,7 @@ import { colors, spacing, fontSize, borderRadius } from '../../core/theme/theme'
 import { useAuthStore } from '../../core/hooks/useAuth';
 import { db } from '../../core/config/firebase';
 import { ScreenHeader } from '../components/ui/ScreenHeader';
+import { formatPhone } from '../utils/formatters';
 
 type FieldKey = 'nome' | 'telefone' | 'coren';
 
@@ -153,7 +154,7 @@ export const EditProfileScreen = () => {
                 onSubmitEditing: () => telefoneRef.current?.focus(),
               })}
 
-              {renderField('telefone', 'Telefone', telefone, setTelefone, {
+              {renderField('telefone', 'Telefone', telefone, (v) => setTelefone(formatPhone(v)), {
                 placeholder: '(00) 00000-0000',
                 keyboardType: 'phone-pad',
                 autoCapitalize: 'none',

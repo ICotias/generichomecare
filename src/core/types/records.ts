@@ -16,6 +16,8 @@ export interface BaseRecord {
   timestamp: Date;
   observacoes?: string;
   syncStatus: 'synced' | 'pending';
+  /** Denormalizado: false só para fotos clínicas. Filtra a leitura da família. */
+  visibleToFamily?: boolean;
 }
 
 export interface MedicationRecord extends BaseRecord {

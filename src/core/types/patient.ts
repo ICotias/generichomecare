@@ -15,8 +15,22 @@ export interface Patient {
   observacoes?: string;
   fotoUrl?: string;
   faixaSinaisVitais: VitalSignsRange;
+  /** Quem originou os dados clínicos: a equipe (admin/enfermagem) ou a família */
+  origemDados?: 'equipe' | 'familia';
+  /** UID de quem criou o registro do paciente */
+  criadoPorUid?: string;
+  /** Se a equipe já revisou/validou os dados trazidos pela família */
+  validadoPorEquipe?: boolean;
+  /** Médico responsável informado (proveniência dos parâmetros clínicos) */
+  medicoResponsavel?: ResponsibleDoctor;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface ResponsibleDoctor {
+  nome: string;
+  crm?: string;
+  telefone?: string;
 }
 
 export interface Address {

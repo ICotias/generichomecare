@@ -175,6 +175,7 @@ export interface CreatePatientByFamilyInput {
   observacoes?: string;
   tipoAtendimento?: Patient['tipoAtendimento'];
   contatoEmergencia: EmergencyContact;
+  contatosAdicionais?: EmergencyContact[];
   medicoResponsavel?: ResponsibleDoctor;
   faixaSinaisVitais: VitalSignsRange;
   medicamentos: FamilyMedicationInput[];
@@ -223,6 +224,9 @@ export const createPatientByFamily = async (
   };
   if (input.medicoResponsavel) {
     patientData.medicoResponsavel = input.medicoResponsavel;
+  }
+  if (input.contatosAdicionais && input.contatosAdicionais.length > 0) {
+    patientData.contatosAdicionais = input.contatosAdicionais;
   }
 
   const patientRef = await addDoc(collection(db, Collections.pacientes(empresaId)), patientData);

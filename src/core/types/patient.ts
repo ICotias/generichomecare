@@ -7,6 +7,8 @@ export interface Patient {
   genero: 'masculino' | 'feminino' | 'outro';
   endereco: Address;
   contatoEmergencia: EmergencyContact;
+  /** Contatos de emergência adicionais (além do principal) */
+  contatosAdicionais?: EmergencyContact[];
   diagnosticos: string[];
   alergias: string[];
   tipoAtendimento: 'integral' | 'diurno' | 'noturno' | 'visita';

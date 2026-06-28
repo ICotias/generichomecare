@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  type KeyboardTypeOptions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +23,7 @@ import type {
   VitalSignsRange,
   Patient,
   Prescription,
+  EmergencyContact,
 } from '../../../core/types';
 import type { FamilyMedicationInput } from '../../../core/services/patientService';
 import {
@@ -98,8 +100,14 @@ export const FamilyOnboardingScreen = () => {
   const [medicoNome, setMedicoNome] = useState('');
   const [medicoCrm, setMedicoCrm] = useState('');
   const [medicoTel, setMedicoTel] = useState('');
-  const [contatoNome, setContatoNome] = useState('');
-  const [contatoTel, setContatoTel] = useState('');
+  // Contato principal = o próprio usuário (pré-preenchido, editável)
+  const [contatoNome, setContatoNome] = useState(user?.nome ?? '');
+  const [contatoTel, setContatoTel] = useState(user?.telefone ?? '');
+  // Contatos de emergência adicionais
+  const [contatosAdicionais, setContatosAdicionais] = useState<EmergencyContact[]>([]);
+  const [addNome, setAddNome] = useState('');
+  const [addParentesco, setAddParentesco] = useState('');
+  const [addTel, setAddTel] = useState('');
 
   // Step 5 — confirmação
   const [confirmado, setConfirmado] = useState(false);
@@ -132,6 +140,20 @@ export const FamilyOnboardingScreen = () => {
     setList([...list, v]);
     clear();
   };
+
+  const addContato = () => {
+    if (!addNome.trim()) return;
+    setContatosAdicionais((c) => [
+      ...c,
+      { nome: addNome.trim(), parentesco: addParentesco.trim(), telefone: addTel.trim() },
+    ]);
+    setAddNome('');
+    setAddParentesco('');
+    setAddTel('');
+  };
+
+  const removeContato = (i: number) =>
+    setContatosAdicionais((c) => c.filter((_, idx) => idx !== i));
 
   const addMedicamento = () => {
     if (!medNome.trim()) return;
@@ -167,9 +189,10 @@ export const FamilyOnboardingScreen = () => {
         alergias,
         contatoEmergencia: {
           nome: contatoNome.trim() || user.nome || '',
-          parentesco: user.parentesco ?? '',
+          parentesco: user.parentesco ?? 'Responsável',
           telefone: contatoTel.trim(),
         },
+        contatosAdicionais,
         medicoResponsavel: medicoNome.trim()
           ? {
               nome: medicoNome.trim(),
@@ -235,18 +258,7 @@ export const FamilyOnboardingScreen = () => {
         {step === 0 && (
           <>
             <InsetGroupedSection header="DADOS DO PACIENTE">
-              <InsetRow
-                label="Nome"
-                rightContent={
-                  <TextInput
-                    style={styles.inlineInput}
-                    value={nome}
-                    onChangeText={setNome}
-                    placeholder="Nome completo"
-                    placeholderTextColor={colors.textMuted}
-                  />
-                }
-              />
+              <InputRow label="Nome" value={nome} onChangeText={setNome} placeholder="Nome completo" />
               <InsetRow
                 label="Nascimento"
                 value={dataNascimento ? formatDate(dataNascimento) : 'Selecionar'}
@@ -358,37 +370,16 @@ export const FamilyOnboardingScreen = () => {
             ))}
 
             <InsetGroupedSection header="ADICIONAR MEDICAMENTO">
-              <InsetRow
-                label="Medicamento"
-                rightContent={
-                  <TextInput style={styles.inlineInput} value={medNome} onChangeText={setMedNome} placeholder="Nome" placeholderTextColor={colors.textMuted} />
-                }
-              />
-              <InsetRow
-                label="Dosagem"
-                rightContent={
-                  <TextInput style={styles.inlineInput} value={medDose} onChangeText={setMedDose} placeholder="Ex.: 1 comp / 50mg" placeholderTextColor={colors.textMuted} />
-                }
-              />
+              <InputRow label="Medicamento" value={medNome} onChangeText={setMedNome} placeholder="Nome" />
+              <InputRow label="Dosagem" value={medDose} onChangeText={setMedDose} placeholder="Ex.: 1 comp / 50mg" />
               <InsetRow
                 label="Via"
                 value={VIA_OPTIONS.find((v) => v.id === medVia)?.label ?? 'Oral'}
                 onPress={() => setShowViaList(true)}
                 chevron
               />
-              <InsetRow
-                label="Frequência"
-                rightContent={
-                  <TextInput style={styles.inlineInput} value={medFreq} onChangeText={setMedFreq} placeholder="Ex.: 8/8h" placeholderTextColor={colors.textMuted} />
-                }
-              />
-              <InsetRow
-                label="Horários"
-                rightContent={
-                  <TextInput style={styles.inlineInput} value={medHorarios} onChangeText={setMedHorarios} placeholder="08:00, 16:00" placeholderTextColor={colors.textMuted} />
-                }
-                last
-              />
+              <InputRow label="Frequência" value={medFreq} onChangeText={setMedFreq} placeholder="Ex.: 8/8h" />
+              <InputRow label="Horários" value={medHorarios} onChangeText={setMedHorarios} placeholder="08:00, 16:00" last />
             </InsetGroupedSection>
 
             <TouchableOpacity style={styles.addMedBtn} onPress={addMedicamento} activeOpacity={0.7}>
@@ -402,15 +393,42 @@ export const FamilyOnboardingScreen = () => {
         {step === 4 && (
           <>
             <InsetGroupedSection header="MÉDICO RESPONSÁVEL">
-              <InsetRow label="Nome" rightContent={<TextInput style={styles.inlineInput} value={medicoNome} onChangeText={setMedicoNome} placeholder="Dr(a)." placeholderTextColor={colors.textMuted} />} />
-              <InsetRow label="CRM" rightContent={<TextInput style={styles.inlineInput} value={medicoCrm} onChangeText={setMedicoCrm} placeholder="Opcional" placeholderTextColor={colors.textMuted} />} />
-              <InsetRow label="Telefone" rightContent={<TextInput style={styles.inlineInput} value={medicoTel} onChangeText={setMedicoTel} placeholder="Opcional" placeholderTextColor={colors.textMuted} keyboardType="phone-pad" />} last />
+              <InputRow label="Nome" value={medicoNome} onChangeText={setMedicoNome} placeholder="Dr(a)." />
+              <InputRow label="CRM" value={medicoCrm} onChangeText={setMedicoCrm} placeholder="Opcional" />
+              <InputRow label="Telefone" value={medicoTel} onChangeText={setMedicoTel} placeholder="Opcional" keyboardType="phone-pad" last />
             </InsetGroupedSection>
 
-            <InsetGroupedSection header="CONTATO DE EMERGÊNCIA">
-              <InsetRow label="Nome" rightContent={<TextInput style={styles.inlineInput} value={contatoNome} onChangeText={setContatoNome} placeholder={user?.nome ?? 'Nome'} placeholderTextColor={colors.textMuted} />} />
-              <InsetRow label="Telefone" rightContent={<TextInput style={styles.inlineInput} value={contatoTel} onChangeText={setContatoTel} placeholder="(11) 99999-9999" placeholderTextColor={colors.textMuted} keyboardType="phone-pad" />} last />
+            <Text style={styles.helper}>
+              Você já é o contato de emergência principal. Edite se precisar e adicione outros contatos.
+            </Text>
+            <InsetGroupedSection header="CONTATO PRINCIPAL (VOCÊ)">
+              <InputRow label="Nome" value={contatoNome} onChangeText={setContatoNome} placeholder={user?.nome ?? 'Nome'} />
+              <InputRow label="Telefone" value={contatoTel} onChangeText={setContatoTel} placeholder="(11) 99999-9999" keyboardType="phone-pad" last />
             </InsetGroupedSection>
+
+            {contatosAdicionais.map((c, i) => (
+              <View key={`${c.nome}-${i}`} style={styles.medCard}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.medName}>{c.nome}</Text>
+                  <Text style={styles.medMeta}>
+                    {[c.parentesco, c.telefone].filter(Boolean).join(' · ')}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => removeContato(i)} hitSlop={8}>
+                  <Ionicons name="trash-outline" size={20} color={colors.error} />
+                </TouchableOpacity>
+              </View>
+            ))}
+
+            <InsetGroupedSection header="ADICIONAR OUTRO CONTATO">
+              <InputRow label="Nome" value={addNome} onChangeText={setAddNome} placeholder="Nome" />
+              <InputRow label="Parentesco" value={addParentesco} onChangeText={setAddParentesco} placeholder="Ex.: Filho(a)" />
+              <InputRow label="Telefone" value={addTel} onChangeText={setAddTel} placeholder="(11) 99999-9999" keyboardType="phone-pad" last />
+            </InsetGroupedSection>
+            <TouchableOpacity style={styles.addMedBtn} onPress={addContato} activeOpacity={0.7}>
+              <Ionicons name="add-circle-outline" size={20} color={colors.family} />
+              <Text style={styles.addMedText}>Adicionar contato</Text>
+            </TouchableOpacity>
           </>
         )}
 
@@ -473,6 +491,45 @@ export const FamilyOnboardingScreen = () => {
 // ════════════════════════════════════════════
 // Subcomponentes
 // ════════════════════════════════════════════
+
+/**
+ * Linha de formulário cujo toque em QUALQUER parte foca o TextInput.
+ */
+const InputRow = ({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  keyboardType,
+  last,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (v: string) => void;
+  placeholder?: string;
+  keyboardType?: KeyboardTypeOptions;
+  last?: boolean;
+}) => {
+  const ref = useRef<TextInput>(null);
+  return (
+    <InsetRow
+      label={label}
+      last={last}
+      onPress={() => ref.current?.focus()}
+      rightContent={
+        <TextInput
+          ref={ref}
+          style={styles.inlineInput}
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={colors.textMuted}
+          keyboardType={keyboardType}
+        />
+      }
+    />
+  );
+};
 
 interface AddListProps {
   header: string;

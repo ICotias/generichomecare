@@ -45,8 +45,15 @@ export const createRecord = async (
 ): Promise<string> => {
   const colRef = collection(db, Collections.registros(empresaId, pacienteId));
 
+  // Denormaliza visibilidade para a família. Fotos clínicas ficam restritas;
+  // todo o resto é visível. Esse campo torna a regra de leitura da família
+  // "filtrável" (rules não são filtros — sem ele, uma foto clínica no
+  // resultado derruba a query inteira com permission-denied).
+  const visibleToFamily = !(input.type === 'foto' && input.fotoClinica === true);
+
   const data = {
     ...input,
+    visibleToFamily,
     timestamp: Timestamp.now(),
     syncStatus: 'synced',
   };
@@ -68,6 +75,11 @@ export const listRecords = async (
   options?: {
     type?: RecordType;
     limitCount?: number;
+    /** Retorna apenas registros com timestamp >= since (ex.: início do dia) */
+    since?: Date;
+    /** Família: retorna só registros visíveis (exclui fotos clínicas).
+     *  Necessário para as rules da família (rules não são filtros). */
+    visibleToFamilyOnly?: boolean;
   }
 ): Promise<CareRecord[]> => {
   const colRef = collection(db, Collections.registros(empresaId, pacienteId));
@@ -76,6 +88,12 @@ export const listRecords = async (
 
   if (options?.type) {
     constraints.push(where('type', '==', options.type));
+  }
+  if (options?.visibleToFamilyOnly) {
+    constraints.push(where('visibleToFamily', '==', true));
+  }
+  if (options?.since) {
+    constraints.push(where('timestamp', '>=', Timestamp.fromDate(options.since)));
   }
   constraints.push(orderBy('timestamp', 'desc'));
   if (options?.limitCount) {

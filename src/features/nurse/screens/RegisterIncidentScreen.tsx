@@ -18,7 +18,7 @@ import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import { usePatientWithActiveShift } from '../../../core/hooks/usePatientWithActiveShift';
-import * as registroService from '../../../core/services/registroService';
+import { saveRecordWithFallback } from '../../../core/services/offlineQueue';
 import type { Patient, IncidentRecord } from '../../../core/types';
 
 import { ModalHeader } from '../../../shared/components/ui/ModalHeader';
@@ -88,7 +88,7 @@ export const RegisterIncidentScreen = () => {
 
     setIsSubmitting(true);
     try {
-      await registroService.createRecord(user.empresaId, selectedPatient!.id, {
+      const { online } = await saveRecordWithFallback(user.empresaId, selectedPatient!.id, {
         type: 'intercorrencia',
         pacienteId: selectedPatient!.id,
         empresaId: user.empresaId,
@@ -99,11 +99,15 @@ export const RegisterIncidentScreen = () => {
         descricao: descricao.trim(),
         ...(medidasTomadas.trim() ? { medidasTomadas: medidasTomadas.trim() } : {}),
         notificouFamilia,
-      });
+      }, user.uid, user.role);
 
-      Alert.alert('Registrado', `Intercorrência registrada para ${selectedPatient!.nome}.`, [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      Alert.alert(
+        online ? 'Registrado' : 'Salvo offline',
+        online
+          ? `Intercorrência registrada para ${selectedPatient!.nome}.`
+          : 'Sem conexão. O registro foi salvo e será sincronizado automaticamente quando voltar a ter internet.',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
     } catch (error) {
       Alert.alert('Erro', 'Não foi possível salvar o registro.');
       console.error('RegisterIncident error', error);
@@ -123,7 +127,7 @@ export const RegisterIncidentScreen = () => {
         <View style={[styles.root, { paddingTop: insets.top }]}>
           <ModalHeader
             title="Intercorrência"
-            onCancel={() => (navigation as any).getParent()?.navigate('NurseHomeStack')}
+            onCancel={() => navigation.goBack()}
             onDone={handleSubmit}
             doneLabel="Salvar"
             doneDisabled={isSubmitting}

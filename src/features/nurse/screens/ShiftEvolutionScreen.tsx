@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
+import { useLocation } from '../../../core/hooks/useLocation';
 import * as patientService from '../../../core/services/patientService';
 import * as shiftService from '../../../core/services/shiftService';
 import * as evolucaoService from '../../../core/services/evolucaoService';
@@ -60,9 +61,11 @@ export const ShiftEvolutionScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { user } = useAuthStore();
+  const { getCurrentLocation } = useLocation();
 
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [activeShiftId, setActiveShiftId] = useState<string | null>(null);
   const [form, setForm] = useState<Record<string, string>>({
     situacao: '',
     ocorrencias: '',
@@ -84,10 +87,12 @@ export const ShiftEvolutionScreen = () => {
       ]).then(([list, activeShift]) => {
         const result = list.length > 0 ? list : MOCK_PATIENTS;
         setPatients(result);
-        // Pré-selecionar paciente do plantão ativo
-        if (activeShift?.pacienteId && !selectedPatient) {
-          const match = result.find((p) => p.id === activeShift.pacienteId);
-          if (match) setSelectedPatient(match);
+        if (activeShift) {
+          setActiveShiftId(activeShift.id);
+          if (!selectedPatient) {
+            const match = result.find((p) => p.id === activeShift.pacienteId);
+            if (match) setSelectedPatient(match);
+          }
         }
       }).catch(console.error);
     }, [user?.empresaId, user?.uid])
@@ -119,16 +124,12 @@ export const ShiftEvolutionScreen = () => {
 
     setIsSubmitting(true);
     try {
-      // Busca plantão ativo (opcional — se não tiver, usa 'sem-plantao')
-      const activeShift = await shiftService
-        .getActiveShift(user.empresaId, user.uid)
-        .catch(() => null);
-
+      // 1. Salvar evolução SBAR
       await evolucaoService.createEvolucao({
         empresaId: user.empresaId,
         pacienteId: selectedPatient!.id,
         profissionalId: user.uid,
-        plantaoId: activeShift?.id ?? 'sem-plantao',
+        plantaoId: activeShiftId ?? 'sem-plantao',
         situacao: form.situacao.trim(),
         ocorrencias: form.ocorrencias.trim(),
         pendencias: form.pendencias.trim(),
@@ -136,13 +137,26 @@ export const ShiftEvolutionScreen = () => {
         ...(form.observacoesLivres?.trim() ? { observacoesLivres: form.observacoesLivres.trim() } : {}),
       });
 
+      // 2. Finalizar plantão (checkout)
+      if (activeShiftId) {
+        const location = await getCurrentLocation();
+        if (location) {
+          await shiftService.checkout({
+            shiftId: activeShiftId,
+            empresaId: user.empresaId,
+            latitude: location.latitude,
+            longitude: location.longitude,
+          });
+        }
+      }
+
       Alert.alert(
-        'Evolução registrada',
-        `Passagem de plantão para ${selectedPatient!.nome} salva com sucesso.`,
+        'Plantão finalizado',
+        `Evolução registrada e plantão encerrado com sucesso.`,
         [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     } catch (error) {
-      Alert.alert('Erro', 'Não foi possível salvar a evolução.');
+      Alert.alert('Erro', 'Não foi possível finalizar. Tente novamente.');
       console.error('ShiftEvolution error', error);
     } finally {
       setIsSubmitting(false);

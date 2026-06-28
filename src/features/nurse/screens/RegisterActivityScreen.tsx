@@ -16,7 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import { usePatientWithActiveShift } from '../../../core/hooks/usePatientWithActiveShift';
-import * as registroService from '../../../core/services/registroService';
+import { saveRecordWithFallback } from '../../../core/services/offlineQueue';
 import type { Patient } from '../../../core/types';
 
 import { ModalHeader } from '../../../shared/components/ui/ModalHeader';
@@ -67,6 +67,7 @@ export const RegisterActivityScreen = () => {
   // Modal visibility
   const [showTipoModal, setShowTipoModal] = useState(false);
 
+  const duracaoRef = useRef<TextInput>(null);
   const obsRef = useRef<TextInput>(null);
 
   const validate = (): boolean => {
@@ -89,7 +90,7 @@ export const RegisterActivityScreen = () => {
 
     setIsSubmitting(true);
     try {
-      await registroService.createRecord(user.empresaId, selectedPatient!.id, {
+      const { online } = await saveRecordWithFallback(user.empresaId, selectedPatient!.id, {
         type: 'atividade',
         pacienteId: selectedPatient!.id,
         empresaId: user.empresaId,
@@ -99,11 +100,15 @@ export const RegisterActivityScreen = () => {
         ...(participacao ? { participacao } : {}),
         ...(Number(duracao) ? { duracaoMinutos: Number(duracao) } : {}),
         ...(observacoes.trim() ? { observacoes: observacoes.trim() } : {}),
-      });
+      }, user.uid, user.role);
 
-      Alert.alert('Registrado', `Atividade registrada para ${selectedPatient!.nome}.`, [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      Alert.alert(
+        online ? 'Registrado' : 'Salvo offline',
+        online
+          ? `Atividade registrada para ${selectedPatient!.nome}.`
+          : 'Sem conexão. O registro foi salvo e será sincronizado automaticamente quando voltar a ter internet.',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
     } catch (error) {
       Alert.alert('Erro', 'Não foi possível salvar o registro.');
       console.error('RegisterActivity error', error);
@@ -126,7 +131,7 @@ export const RegisterActivityScreen = () => {
           <View style={{ paddingTop: insets.top }}>
             <ModalHeader
               title="Atividade"
-              onCancel={() => (navigation as any).getParent()?.navigate('NurseHomeStack')}
+              onCancel={() => navigation.goBack()}
               onDone={handleSubmit}
               doneLabel="Salvar"
               doneDisabled={isSubmitting}
@@ -169,8 +174,10 @@ export const RegisterActivityScreen = () => {
             <InsetGroupedSection header="DETALHES">
               <InsetRow
                 label="Duração (min)"
+                onPress={() => duracaoRef.current?.focus()}
                 rightContent={
                   <TextInput
+                    ref={duracaoRef}
                     value={duracao}
                     onChangeText={setDuracao}
                     placeholder="—"
@@ -184,6 +191,7 @@ export const RegisterActivityScreen = () => {
               />
               <InsetRow
                 label="Observações"
+                onPress={() => obsRef.current?.focus()}
                 rightContent={
                   <TextInput
                     ref={obsRef}

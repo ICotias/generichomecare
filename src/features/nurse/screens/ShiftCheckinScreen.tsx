@@ -74,9 +74,12 @@ export const ShiftCheckinScreen = () => {
     }
   }, [user?.empresaId, user?.uid]);
 
-  useEffect(() => {
-    loadActiveShift();
-  }, [loadActiveShift]);
+  useFocusEffect(
+    useCallback(() => {
+      setIsLoadingShift(true);
+      loadActiveShift();
+    }, [loadActiveShift])
+  );
 
   const handleCheckin = async () => {
     if (!user?.empresaId || !user?.uid) return;
@@ -115,46 +118,6 @@ export const ShiftCheckinScreen = () => {
             } catch (error) {
               console.error('Erro no checkin:', error);
               Alert.alert('Erro', 'Não foi possível registrar o checkin. Tente novamente.');
-            } finally {
-              setIsProcessing(false);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleCheckout = async () => {
-    if (!activeShift || !user?.empresaId) return;
-
-    const location = await getCurrentLocation();
-    if (!location) return;
-
-    const checkinTime = format(activeShift.checkinAt, 'HH:mm', { locale: ptBR });
-    const now = new Date();
-    const checkoutTime = format(now, 'HH:mm', { locale: ptBR });
-
-    Alert.alert(
-      'Finalizar Plantão',
-      `Encerrar plantão iniciado às ${checkinTime}?\nHorário de saída: ${checkoutTime}`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Finalizar',
-          style: 'destructive',
-          onPress: async () => {
-            setIsProcessing(true);
-            try {
-              await shiftService.checkout({
-                shiftId: activeShift.id,
-                empresaId: user.empresaId,
-                latitude: location.latitude,
-                longitude: location.longitude,
-              });
-              setActiveShift(null);
-            } catch (error) {
-              console.error('Erro no checkout:', error);
-              Alert.alert('Erro', 'Não foi possível registrar o checkout. Tente novamente.');
             } finally {
               setIsProcessing(false);
             }
@@ -270,22 +233,14 @@ export const ShiftCheckinScreen = () => {
       {/* Bottom action */}
       <View style={[styles.actionArea, { paddingBottom: insets.bottom + spacing.lg }]}>
         {hasActiveShift ? (
-          <View style={styles.activeActions}>
-            <TouchableOpacity
-              style={styles.evolutionButton}
-              onPress={() => (navigation as any).navigate('ShiftEvolution')}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="document-text-outline" size={20} color={colors.primary} />
-              <Text style={styles.evolutionButtonText}>Passagem de Plantão (SBAR)</Text>
-            </TouchableOpacity>
-            <PrimaryButton
-              title="Finalizar Plantão"
-              onPress={handleCheckout}
-              loading={isLoading}
-              variant="danger"
-            />
-          </View>
+          <TouchableOpacity
+            style={styles.sbarButton}
+            onPress={() => (navigation as any).navigate('ShiftEvolution')}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="document-text-outline" size={20} color={colors.white} />
+            <Text style={styles.sbarButtonText}>Finalizar Plantão (SBAR)</Text>
+          </TouchableOpacity>
         ) : (
           <PrimaryButton
             title="Fazer Check-in"
@@ -502,24 +457,19 @@ const styles = StyleSheet.create({
   },
 
   // Action area
-  activeActions: {
-    gap: spacing.sm,
-  },
-  evolutionButton: {
+  sbarButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    paddingVertical: spacing.md,
+    height: 56,
     borderRadius: borderRadius.full,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.primary,
   },
-  evolutionButtonText: {
+  sbarButtonText: {
     fontSize: fontSize.md,
     fontWeight: '600',
-    color: colors.primary,
+    color: colors.white,
   },
   actionArea: {
     paddingHorizontal: spacing.lg,

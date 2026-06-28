@@ -17,7 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import { usePatientWithActiveShift } from '../../../core/hooks/usePatientWithActiveShift';
-import * as registroService from '../../../core/services/registroService';
+import { saveRecordWithFallback } from '../../../core/services/offlineQueue';
 import type { Patient } from '../../../core/types';
 
 import { ModalHeader } from '../../../shared/components/ui/ModalHeader';
@@ -64,6 +64,7 @@ export const RegisterFeedingScreen = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const volumeRef = useRef<TextInput>(null);
   const obsRef = useRef<TextInput>(null);
 
   const validate = (): boolean => {
@@ -91,7 +92,7 @@ export const RegisterFeedingScreen = () => {
       // Map aceitacao to numeric for Firestore compatibility
       const aceitacaoMap: Record<string, number> = { total: 100, parcial: 50, recusa: 0 };
 
-      await registroService.createRecord(user.empresaId, selectedPatient!.id, {
+      const { online } = await saveRecordWithFallback(user.empresaId, selectedPatient!.id, {
         type: 'alimentacao',
         pacienteId: selectedPatient!.id,
         empresaId: user.empresaId,
@@ -102,11 +103,15 @@ export const RegisterFeedingScreen = () => {
         consistencia: via === 'sonda' ? 'enteral' : 'normal',
         hidratacaoMl: Number(volume) || 0,
         ...(observacoes.trim() ? { observacoes: observacoes.trim() } : {}),
-      });
+      }, user.uid, user.role);
 
-      Alert.alert('Registrado', `Alimentacao registrada para ${selectedPatient!.nome}.`, [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      Alert.alert(
+        online ? 'Registrado' : 'Salvo offline',
+        online
+          ? `Alimentacao registrada para ${selectedPatient!.nome}.`
+          : 'Sem conexao. O registro foi salvo e sera sincronizado automaticamente quando voltar a ter internet.',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
     } catch (error) {
       Alert.alert('Erro', 'Nao foi possivel salvar o registro.');
       console.error('RegisterFeeding error', error);
@@ -129,7 +134,7 @@ export const RegisterFeedingScreen = () => {
           {/* Apple-style modal header: Cancelar | Title | Salvar */}
           <ModalHeader
             title="Alimentacao"
-            onCancel={() => (navigation as any).getParent()?.navigate('NurseHomeStack')}
+            onCancel={() => navigation.goBack()}
             onDone={handleSubmit}
             doneLabel="Salvar"
             doneDisabled={isSubmitting}
@@ -193,8 +198,10 @@ export const RegisterFeedingScreen = () => {
             <InsetGroupedSection header="DETALHES">
               <InsetRow
                 label="Volume (ml ou %)"
+                onPress={() => volumeRef.current?.focus()}
                 rightContent={
                   <TextInput
+                    ref={volumeRef}
                     value={volume}
                     onChangeText={setVolume}
                     placeholder="—"
@@ -210,6 +217,7 @@ export const RegisterFeedingScreen = () => {
               <InsetRow
                 label="Observacoes"
                 last
+                onPress={() => obsRef.current?.focus()}
                 rightContent={
                   <TextInput
                     ref={obsRef}

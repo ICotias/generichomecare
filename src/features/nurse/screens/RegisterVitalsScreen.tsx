@@ -17,7 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import { usePatientWithActiveShift } from '../../../core/hooks/usePatientWithActiveShift';
-import * as registroService from '../../../core/services/registroService';
+import { saveRecordWithFallback } from '../../../core/services/offlineQueue';
 import { ModalHeader } from '../../../shared/components/ui/ModalHeader';
 import { InsetGroupedSection } from '../../../shared/components/ui/InsetGroupedSection';
 import { InsetRow } from '../../../shared/components/ui/InsetRow';
@@ -99,7 +99,7 @@ export const RegisterVitalsScreen = () => {
 
     setIsSubmitting(true);
     try {
-      await registroService.createRecord(user.empresaId, selectedPatient!.id, {
+      const { online } = await saveRecordWithFallback(user.empresaId, selectedPatient!.id, {
         type: 'sinaisVitais',
         pacienteId: selectedPatient!.id,
         empresaId: user.empresaId,
@@ -113,13 +113,18 @@ export const RegisterVitalsScreen = () => {
         satO2: spo2Num,
         alerta,
         ...(observacoes.trim() ? { observacoes: observacoes.trim() } : {}),
-      });
+      }, user.uid, user.role);
 
-      const msg = alerta
-        ? 'Sinais vitais registrados. Alguns valores estão fora da faixa esperada.'
-        : 'Sinais vitais registrados com sucesso.';
+      let msg: string;
+      if (!online) {
+        msg = 'Sem conexão. Os sinais vitais foram salvos e serão sincronizados automaticamente quando voltar a ter internet.';
+      } else if (alerta) {
+        msg = 'Sinais vitais registrados. Alguns valores estão fora da faixa esperada.';
+      } else {
+        msg = 'Sinais vitais registrados com sucesso.';
+      }
 
-      Alert.alert('Registrado', msg, [
+      Alert.alert(online ? 'Registrado' : 'Salvo offline', msg, [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (error) {
@@ -189,7 +194,7 @@ export const RegisterVitalsScreen = () => {
           <View style={{ paddingTop: insets.top }}>
             <ModalHeader
               title="Sinais Vitais"
-              onCancel={() => (navigation as any).getParent()?.navigate('NurseHomeStack')}
+              onCancel={() => navigation.goBack()}
               onDone={handleSubmit}
               doneLabel="Salvar"
               doneDisabled={isSubmitting}

@@ -4,8 +4,12 @@
  * Usa o Firebase JS SDK (compat) para upload de arquivos.
  * O bucket default já está configurado no projeto Firebase.
  *
- * Estrutura no Storage:
- *   fotos/{empresaId}/{pacienteId}/{timestamp}_{random}.jpg
+ * Estrutura no Storage (separação física por sensibilidade):
+ *   fotos/{empresaId}/{pacienteId}/publica/{timestamp}_{random}.jpg  → fotos do dia a dia (família pode ver)
+ *   fotos/{empresaId}/{pacienteId}/clinica/{timestamp}_{random}.jpg  → fotos clínicas (só equipe)
+ *
+ * A subpasta é decidida no upload e reforçada pela storage.rules:
+ * a família tem leitura negada em /clinica/ independente do Firestore.
  *
  * IMPORTANTE: firebase/storage precisa estar importado.
  * O Firebase JS SDK já inclui o módulo de storage.
@@ -39,12 +43,17 @@ export const uploadImage = async (
 
 /**
  * Gera um path único para upload de foto de paciente.
+ *
+ * Fotos clínicas vão para a subpasta `clinica/` (acesso restrito à equipe);
+ * as demais para `publica/` (visíveis também à família).
  */
 export const generatePhotoPath = (
   empresaId: string,
-  pacienteId: string
+  pacienteId: string,
+  fotoClinica = false
 ): string => {
   const timestamp = Date.now();
   const random = Math.random().toString(36).slice(2, 8);
-  return `fotos/${empresaId}/${pacienteId}/${timestamp}_${random}.jpg`;
+  const pasta = fotoClinica ? 'clinica' : 'publica';
+  return `fotos/${empresaId}/${pacienteId}/${pasta}/${timestamp}_${random}.jpg`;
 };

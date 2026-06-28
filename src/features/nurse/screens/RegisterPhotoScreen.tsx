@@ -21,11 +21,38 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import { usePatientWithActiveShift } from '../../../core/hooks/usePatientWithActiveShift';
-import * as registroService from '../../../core/services/registroService';
-import * as storageService from '../../../core/services/storageService';
+import { saveRecordWithFallback } from '../../../core/services/offlineQueue';
 import { ModalHeader } from '../../../shared/components/ui/ModalHeader';
 import { InsetGroupedSection } from '../../../shared/components/ui/InsetGroupedSection';
 import { InsetRow } from '../../../shared/components/ui/InsetRow';
+
+// Teto seguro abaixo do limite de 1 MB por documento do Firestore.
+// A imagem é guardada como data URI base64 dentro do próprio registro.
+const MAX_BASE64_CHARS = 700_000; // ~0,7 MB
+
+/**
+ * Redimensiona e comprime a imagem, retornando base64 (JPEG).
+ * Usa expo-image-manipulator quando disponível (resultado menor e previsível);
+ * caso contrário cai no base64 já devolvido pelo image-picker.
+ */
+const prepareBase64 = async (
+  uri: string,
+  fallbackBase64: string | null
+): Promise<string | null> => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ImageManipulator: any = require('expo-image-manipulator');
+    const out = await ImageManipulator.manipulateAsync(
+      uri,
+      [{ resize: { width: 1000 } }],
+      { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+    );
+    if (out?.base64) return out.base64 as string;
+  } catch {
+    // expo-image-manipulator não instalado — usa o base64 do picker
+  }
+  return fallbackBase64;
+};
 
 export const RegisterPhotoScreen = () => {
   const insets = useSafeAreaInsets();
@@ -36,6 +63,7 @@ export const RegisterPhotoScreen = () => {
 
 
   const [imageUri, setImageUri] = useState<string | null>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [fotoClinica, setFotoClinica] = useState(false);
   const [observacoes, setObservacoes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -73,19 +101,22 @@ export const RegisterPhotoScreen = () => {
     const result =
       source === 'camera'
         ? await ImagePicker.launchCameraAsync({
-            quality: 0.7,
+            quality: 0.5,
             allowsEditing: true,
             aspect: [4, 3],
+            base64: true,
           })
         : await ImagePicker.launchImageLibraryAsync({
-            quality: 0.7,
+            quality: 0.5,
             allowsEditing: true,
             aspect: [4, 3],
             mediaTypes: ['images'],
+            base64: true,
           });
 
     if (!result.canceled && result.assets[0]) {
       setImageUri(result.assets[0].uri);
+      setImageBase64(result.assets[0].base64 ?? null);
       setErrors((p) => ({ ...p, image: '' }));
     }
   };
@@ -110,39 +141,48 @@ export const RegisterPhotoScreen = () => {
 
     setIsSubmitting(true);
     try {
-      // Upload image to Firebase Storage
-      const storagePath = storageService.generatePhotoPath(
-        user.empresaId,
-        selectedPatient!.id
-      );
+      // Comprime e converte para base64 (guardado no próprio registro Firestore)
+      const base64 = await prepareBase64(imageUri!, imageBase64);
 
-      let imageUrl = imageUri!;
-      let imagePath = storagePath;
-
-      try {
-        const uploadResult = await storageService.uploadImage(imageUri!, storagePath);
-        imageUrl = uploadResult.downloadUrl;
-        imagePath = uploadResult.storagePath;
-      } catch (uploadErr) {
-        // If upload fails (e.g. Storage not configured), save with local URI as fallback
-        if (__DEV__) console.warn('[RegisterPhoto] Storage upload failed, using local URI:', uploadErr);
+      if (!base64) {
+        Alert.alert('Erro', 'Não foi possível processar a imagem. Tente novamente.');
+        return;
       }
 
-      await registroService.createRecord(user.empresaId, selectedPatient!.id, {
-        type: 'foto',
-        pacienteId: selectedPatient!.id,
-        empresaId: user.empresaId,
-        profissionalId: user.uid,
-        profissionalNome: user.nome,
-        imageUrl,
-        imagePath,
-        fotoClinica,
-        ...(observacoes.trim() ? { observacoes: observacoes.trim() } : {}),
-      });
+      if (base64.length > MAX_BASE64_CHARS) {
+        Alert.alert(
+          'Foto muito grande',
+          'A imagem ficou grande demais para salvar. Tire a foto novamente com menos zoom ou recorte uma área menor.'
+        );
+        return;
+      }
 
-      Alert.alert('Registrado', `Foto registrada para ${selectedPatient!.nome}.`, [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      const imageUrl = `data:image/jpeg;base64,${base64}`;
+
+      const { online } = await saveRecordWithFallback(
+        user.empresaId,
+        selectedPatient!.id,
+        {
+          type: 'foto',
+          pacienteId: selectedPatient!.id,
+          empresaId: user.empresaId,
+          profissionalId: user.uid,
+          profissionalNome: user.nome,
+          imageUrl,
+          fotoClinica,
+          ...(observacoes.trim() ? { observacoes: observacoes.trim() } : {}),
+        },
+        user.uid,
+        user.role
+      );
+
+      Alert.alert(
+        online ? 'Registrado' : 'Salvo offline',
+        online
+          ? `Foto registrada para ${selectedPatient!.nome}.`
+          : 'Sem conexão. A foto foi salva e será sincronizada automaticamente quando voltar a ter internet.',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
     } catch (error) {
       Alert.alert('Erro', 'Não foi possível salvar o registro.');
       console.error('RegisterPhoto error', error);
@@ -162,7 +202,7 @@ export const RegisterPhotoScreen = () => {
           <View style={{ paddingTop: insets.top }}>
             <ModalHeader
               title="Registro Fotográfico"
-              onCancel={() => (navigation as any).getParent()?.navigate('NurseHomeStack')}
+              onCancel={() => navigation.goBack()}
               onDone={handleSubmit}
               doneLabel="Salvar"
               doneDisabled={isSubmitting}

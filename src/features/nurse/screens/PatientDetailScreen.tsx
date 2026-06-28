@@ -7,6 +7,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
+  Modal,
+  Image,
+  Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -122,6 +125,7 @@ export const PatientDetailScreen = () => {
   const [patient, setPatient] = useState<Patient | null>(null);
   const [recordsByType, setRecordsByType] = useState<Record<string, CareRecord[]>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [photoModal, setPhotoModal] = useState<{ url: string; label: string } | null>(null);
 
   const load = useCallback(async () => {
     if (!user?.empresaId || !patientId) return;
@@ -242,22 +246,39 @@ export const PatientDetailScreen = () => {
                 <Text style={styles.sectionTitle}>{section.title}</Text>
               </View>
               <View style={styles.infoCard}>
-                {records.map((rec, idx) => (
-                    <View
+                {records.map((rec, idx) => {
+                  const isPhoto = rec.type === 'foto';
+                  const Wrapper = isPhoto ? TouchableOpacity : View;
+                  const wrapperProps = isPhoto
+                    ? { activeOpacity: 0.7, onPress: () => setPhotoModal({ url: (rec as any).imageUrl, label: getRecordSummary(rec) }) }
+                    : {};
+                  return (
+                    <Wrapper
                       key={rec.id}
                       style={[
                         styles.recordRow,
                         idx === records.length - 1 && styles.infoRowLast,
                       ]}
+                      {...wrapperProps}
                     >
+                      {isPhoto && (rec as any).imageUrl ? (
+                        <Image
+                          source={{ uri: (rec as any).imageUrl }}
+                          style={styles.photoThumb}
+                        />
+                      ) : null}
                       <View style={styles.recordInfo}>
                         <Text style={styles.recordTitle}>{getRecordSummary(rec)}</Text>
                         <Text style={styles.recordMeta}>
                           {format(rec.timestamp, "dd/MM · HH:mm", { locale: ptBR })} · {rec.profissionalNome}
                         </Text>
                       </View>
-                    </View>
-                  ))}
+                      {isPhoto && (
+                        <Ionicons name="expand-outline" size={18} color={colors.textMuted} />
+                      )}
+                    </Wrapper>
+                  );
+                })}
               </View>
             </View>
           );
@@ -360,6 +381,36 @@ export const PatientDetailScreen = () => {
           </View>
         </View>
       </ScrollView>
+
+      {/* Photo viewer modal */}
+      <Modal
+        visible={!!photoModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPhotoModal(null)}
+      >
+        <View style={styles.photoModalOverlay}>
+          <TouchableOpacity
+            style={styles.photoModalClose}
+            onPress={() => setPhotoModal(null)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.photoModalCloseCircle}>
+              <Ionicons name="close" size={22} color={colors.white} />
+            </View>
+          </TouchableOpacity>
+          {photoModal && (
+            <>
+              <Image
+                source={{ uri: photoModal.url }}
+                style={styles.photoModalImage}
+                resizeMode="contain"
+              />
+              <Text style={styles.photoModalLabel}>{photoModal.label}</Text>
+            </>
+          )}
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -594,5 +645,46 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     color: colors.textMuted,
     marginTop: 2,
+  },
+
+  // Photo thumbnail in record row
+  photoThumb: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.border,
+  },
+
+  // Photo viewer modal
+  photoModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.92)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoModalClose: {
+    position: 'absolute',
+    top: 56,
+    right: 20,
+    zIndex: 10,
+  },
+  photoModalCloseCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoModalImage: {
+    width: Dimensions.get('window').width - 32,
+    height: Dimensions.get('window').height * 0.65,
+  },
+  photoModalLabel: {
+    color: colors.white,
+    fontSize: fontSize.md,
+    fontWeight: '600',
+    marginTop: spacing.md,
+    textAlign: 'center',
   },
 });

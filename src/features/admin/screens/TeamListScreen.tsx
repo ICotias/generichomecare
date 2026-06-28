@@ -31,12 +31,13 @@ interface TeamMember {
   status: 'ativo' | 'inativo';
 }
 
-const MOCK_TEAM: TeamMember[] = [
+// Fallback de demonstração — usado APENAS em __DEV__ (vazio em produção).
+const MOCK_TEAM: TeamMember[] = __DEV__ ? [
   { uid: 'mock-1', nome: 'Ana Paula Costa', email: 'ana@homecare.com', telefone: '(11) 99999-1111', coren: 'COREN-SP 123456', status: 'ativo' },
   { uid: 'mock-2', nome: 'Bruno Santos', email: 'bruno@homecare.com', telefone: '(11) 99999-2222', coren: 'COREN-SP 654321', status: 'ativo' },
   { uid: 'mock-3', nome: 'Carla Oliveira', email: 'carla@homecare.com', telefone: '(11) 99999-3333', status: 'ativo' },
   { uid: 'mock-4', nome: 'Diego Lima', email: 'diego@homecare.com', telefone: '(11) 99999-4444', coren: 'COREN-SP 111222', status: 'inativo' },
-];
+] : [];
 
 export const TeamListScreen = () => {
   const insets = useSafeAreaInsets();
@@ -150,7 +151,7 @@ export const TeamListScreen = () => {
         </View>
       </View>
 
-      {usingMock && (
+      {usingMock && __DEV__ && (
         <View style={styles.mockBanner}>
           <Text style={styles.mockText}>Dados de exemplo — profissionais reais aparecerão aqui.</Text>
         </View>

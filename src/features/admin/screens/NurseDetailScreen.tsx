@@ -32,15 +32,18 @@ interface NurseData {
   createdAt?: Date;
 }
 
-const MOCK_NURSE: NurseData = {
-  uid: 'mock-1',
-  nome: 'Ana Paula Costa',
-  email: 'ana@homecare.com',
-  telefone: '(11) 99999-1111',
-  coren: 'COREN-SP 123456',
-  status: 'ativo',
-  createdAt: new Date(2025, 0, 15),
-};
+// Fallback de demonstração — usado APENAS em __DEV__ (null em produção).
+const MOCK_NURSE: NurseData | null = __DEV__
+  ? {
+      uid: 'mock-1',
+      nome: 'Ana Paula Costa',
+      email: 'ana@homecare.com',
+      telefone: '(11) 99999-1111',
+      coren: 'COREN-SP 123456',
+      status: 'ativo',
+      createdAt: new Date(2025, 0, 15),
+    }
+  : null;
 
 export const NurseDetailScreen = () => {
   const insets = useSafeAreaInsets();
@@ -153,7 +156,7 @@ export const NurseDetailScreen = () => {
           <Text style={styles.backText}>Voltar</Text>
         </TouchableOpacity>
 
-        {usingMock && (
+        {usingMock && __DEV__ && (
           <View style={styles.mockBanner}>
             <Text style={styles.mockBannerText}>Dados de exemplo</Text>
           </View>

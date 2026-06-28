@@ -16,10 +16,16 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
 import { Ionicons } from '@expo/vector-icons';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import * as patientService from '../../../core/services/patientService';
+import * as adminUserService from '../../../core/services/adminUserService';
+import * as registroService from '../../../core/services/registroService';
+import type { FamilyMember } from '../../../core/services/adminUserService';
 import type { Patient, VitalSignsRange } from '../../../core/types';
+import type { CareRecord } from '../../../core/types/records';
 import type { PatientMgmtStackParamList } from '../../../core/navigation/RootNavigator';
 
 type NavProp = NativeStackNavigationProp<PatientMgmtStackParamList, 'AdminPatientDetail'>;
@@ -59,6 +65,40 @@ const calcAge = (birth: Date): number => {
   return age;
 };
 
+// ── Histórico de registros: ícone/cor/resumo por tipo ──
+const RECORD_TYPE_CONFIG: Record<
+  string,
+  { icon: React.ComponentProps<typeof Ionicons>['name']; color: string; bg: string }
+> = {
+  medicamento: { icon: 'bandage-outline', color: '#7C3AED', bg: '#F3F0FF' },
+  sinaisVitais: { icon: 'heart-outline', color: '#EF4444', bg: '#FEF2F2' },
+  alimentacao: { icon: 'restaurant-outline', color: '#F59E0B', bg: '#FFFBEB' },
+  atividade: { icon: 'pulse-outline', color: '#10B981', bg: '#F0FDF4' },
+  intercorrencia: { icon: 'alert-circle-outline', color: '#DC2626', bg: '#FEF2F2' },
+  foto: { icon: 'camera-outline', color: '#64748B', bg: '#F1F5F9' },
+};
+
+const DEFAULT_RECORD_CONFIG = { icon: 'document-text-outline' as const, color: colors.textMuted, bg: colors.border };
+
+const getRecordSummary = (rec: CareRecord): string => {
+  switch (rec.type) {
+    case 'medicamento':
+      return `${rec.medicamento} — ${rec.dosagem}${rec.recusado ? ' (recusado)' : ''}`;
+    case 'sinaisVitais':
+      return `PA ${rec.paSistolica}/${rec.paDiastolica} · FC ${rec.fc} · SpO₂ ${rec.satO2}%`;
+    case 'alimentacao':
+      return `Alimentação — ${rec.aceitacao}%`;
+    case 'atividade':
+      return rec.categoria;
+    case 'intercorrencia':
+      return `${rec.tipoIncidente} — ${rec.gravidade}`;
+    case 'foto':
+      return rec.fotoClinica ? 'Foto clínica' : 'Foto';
+    default:
+      return 'Registro';
+  }
+};
+
 export const AdminPatientDetailScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
@@ -73,13 +113,21 @@ export const AdminPatientDetailScreen = () => {
   const [isEditingVitals, setIsEditingVitals] = useState(false);
   const [editedRanges, setEditedRanges] = useState<VitalSignsRange | null>(null);
   const [isSavingVitals, setIsSavingVitals] = useState(false);
+  const [linkedFamily, setLinkedFamily] = useState<FamilyMember[]>([]);
+  const [records, setRecords] = useState<CareRecord[]>([]);
 
   const load = useCallback(async () => {
     if (!user?.empresaId || !patientId) return;
     setIsLoading(true);
     try {
-      const p = await patientService.getPatient(user.empresaId, patientId);
+      const [p, family, recs] = await Promise.all([
+        patientService.getPatient(user.empresaId, patientId),
+        adminUserService.listFamilyByPatient(user.empresaId, patientId),
+        registroService.listRecords(user.empresaId, patientId, { limitCount: 30 }),
+      ]);
       setPatient(p);
+      setLinkedFamily(family);
+      setRecords(recs);
     } catch (err) {
       console.error('load patient error', err);
     } finally {
@@ -144,6 +192,30 @@ export const AdminPatientDetailScreen = () => {
     } finally {
       setIsSavingVitals(false);
     }
+  };
+
+  const handleUnlinkFamily = (member: FamilyMember) => {
+    Alert.alert(
+      'Desvincular familiar',
+      `Deseja desvincular ${member.nome} deste paciente?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Desvincular',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await adminUserService.unlinkFamily(member.uid);
+              setLinkedFamily((prev) => prev.filter((f) => f.uid !== member.uid));
+              Alert.alert('Desvinculado', `${member.nome} foi desvinculado com sucesso.`);
+            } catch (err) {
+              Alert.alert('Erro', 'Não foi possível desvincular o familiar.');
+              console.error('unlink family error', err);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const updateRange = (key: keyof VitalSignsRange, value: string) => {
@@ -283,6 +355,46 @@ export const AdminPatientDetailScreen = () => {
           <InfoRow label="Telefone" value={patient.contatoEmergencia.telefone} />
         </Section>
 
+        {/* Familiares vinculados */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Familiares vinculados</Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('LinkFamily', { patientId })}
+              activeOpacity={0.7}
+              hitSlop={8}
+            >
+              <Ionicons name="add-circle-outline" size={20} color={colors.family} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.sectionCard}>
+            {linkedFamily.length === 0 ? (
+              <Text style={styles.emptyTag}>Nenhum familiar vinculado</Text>
+            ) : (
+              linkedFamily.map((member, idx) => (
+                <View
+                  key={member.uid}
+                  style={[styles.familyRow, idx < linkedFamily.length - 1 && styles.familyRowBorder]}
+                >
+                  <View style={styles.familyInfo}>
+                    <Text style={styles.familyName}>{member.nome}</Text>
+                    <Text style={styles.familyMeta}>
+                      {member.parentesco ?? 'Familiar'} · {member.email}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleUnlinkFamily(member)}
+                    activeOpacity={0.7}
+                    hitSlop={8}
+                  >
+                    <Ionicons name="close-circle-outline" size={20} color={colors.error} />
+                  </TouchableOpacity>
+                </View>
+              ))
+            )}
+          </View>
+        </View>
+
         {/* Dados clínicos */}
         <Section title="Diagnósticos">
           <TagList items={patient.diagnosticos} />
@@ -303,6 +415,45 @@ export const AdminPatientDetailScreen = () => {
             <Text style={styles.obsText}>{patient.observacoes}</Text>
           </Section>
         ) : null}
+
+        {/* Histórico de registros */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Histórico de registros</Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('ExportReport', { patientId })}
+              activeOpacity={0.7}
+              hitSlop={8}
+            >
+              <Text style={styles.exportLink}>Exportar PDF</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.sectionCard}>
+            {records.length === 0 ? (
+              <Text style={styles.emptyTag}>Nenhum registro ainda</Text>
+            ) : (
+              records.map((rec, idx) => {
+                const cfg = RECORD_TYPE_CONFIG[rec.type] ?? DEFAULT_RECORD_CONFIG;
+                return (
+                  <View
+                    key={rec.id}
+                    style={[styles.recordRow, idx < records.length - 1 && styles.familyRowBorder]}
+                  >
+                    <View style={[styles.recordIcon, { backgroundColor: cfg.bg }]}>
+                      <Ionicons name={cfg.icon} size={16} color={cfg.color} />
+                    </View>
+                    <View style={styles.recordInfo}>
+                      <Text style={styles.recordTitle}>{getRecordSummary(rec)}</Text>
+                      <Text style={styles.recordMeta}>
+                        {format(rec.timestamp, "dd/MM · HH:mm", { locale: ptBR })} · {rec.profissionalNome}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })
+            )}
+          </View>
+        </View>
 
         {/* Sinais vitais ranges */}
         <View style={styles.section}>
@@ -624,6 +775,63 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.textMuted,
     fontStyle: 'italic',
+  },
+
+  // Family rows
+  familyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm + 2,
+  },
+  familyRowBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  familyInfo: {
+    flex: 1,
+  },
+  familyName: {
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  familyMeta: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+
+  // Histórico de registros
+  exportLink: {
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  recordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm + 2,
+  },
+  recordIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  recordInfo: {
+    flex: 1,
+  },
+  recordTitle: {
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  recordMeta: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    marginTop: 2,
   },
 
   // Status actions

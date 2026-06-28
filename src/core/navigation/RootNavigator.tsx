@@ -15,6 +15,8 @@ import { LgpdConsentScreen } from '../../shared/screens/LgpdConsentScreen';
 // ── Auth ──
 import { LoginScreen } from '../../features/nurse/screens/LoginScreen';
 import { SetupEmpresaScreen } from '../../features/admin/screens/SetupEmpresaScreen';
+import { ChangePasswordScreen } from '../../shared/screens/ChangePasswordScreen';
+import { FamilyOnboardingScreen } from '../../features/family/screens/FamilyOnboardingScreen';
 
 // ── Nurse screens ──
 import { NurseHomeScreen } from '../../features/nurse/screens/NurseHomeScreen';
@@ -44,6 +46,7 @@ import { PatientListScreen } from '../../features/admin/screens/PatientListScree
 import { CreatePatientScreen } from '../../features/admin/screens/CreatePatientScreen';
 import { AdminPatientDetailScreen } from '../../features/admin/screens/AdminPatientDetailScreen';
 import { LinkFamilyScreen } from '../../features/admin/screens/LinkFamilyScreen';
+import { InviteFamilyScreen } from '../../features/admin/screens/InviteFamilyScreen';
 import { TeamListScreen } from '../../features/admin/screens/TeamListScreen';
 import { CreateNurseScreen } from '../../features/admin/screens/CreateNurseScreen';
 import { NurseDetailScreen } from '../../features/admin/screens/NurseDetailScreen';
@@ -142,7 +145,6 @@ export type AdminTabParamList = {
 
 export type DashboardStackParamList = {
   AdminDashboard: undefined;
-  ExportReport: { patientId?: string };
   Financial: undefined;
 };
 
@@ -151,6 +153,7 @@ export type PatientMgmtStackParamList = {
   CreatePatient: undefined;
   AdminPatientDetail: { patientId?: string };
   LinkFamily: { patientId?: string };
+  InviteFamily: undefined;
   ExportReport: { patientId?: string };
 };
 
@@ -318,7 +321,6 @@ const DashboardStackNav = createNativeStackNavigator<DashboardStackParamList>();
 const DashboardStack = () => (
   <DashboardStackNav.Navigator screenOptions={{ headerShown: false }}>
     <DashboardStackNav.Screen name="AdminDashboard" component={AdminDashboardScreen} />
-    <DashboardStackNav.Screen name="ExportReport" component={ExportReportScreen} />
     <DashboardStackNav.Screen name="Financial" component={FinancialScreen} />
   </DashboardStackNav.Navigator>
 );
@@ -330,6 +332,7 @@ const PatientMgmtStack = () => (
     <PatientMgmtStackNav.Screen name="CreatePatient" component={CreatePatientScreen} options={{ presentation: 'modal' }} />
     <PatientMgmtStackNav.Screen name="AdminPatientDetail" component={AdminPatientDetailScreen} />
     <PatientMgmtStackNav.Screen name="LinkFamily" component={LinkFamilyScreen} options={{ presentation: 'modal' }} />
+    <PatientMgmtStackNav.Screen name="InviteFamily" component={InviteFamilyScreen} options={{ presentation: 'modal' }} />
     <PatientMgmtStackNav.Screen name="ExportReport" component={ExportReportScreen} />
   </PatientMgmtStackNav.Navigator>
 );
@@ -379,8 +382,21 @@ const AdminTabNavigator = () => (
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 
 export const RootNavigator = () => {
-  const { isLoading, isAuthenticated, role, user, originalRole } = useAuthStore();
+  const { isLoading, isAuthenticated, role, user, originalRole, isSimulating } = useAuthStore();
   const needsEmpresaSetup = originalRole === 'admin' && !user?.empresaId;
+
+  // Troca de senha obrigatória (conta criada pelo admin com senha temporária)
+  const needsPasswordChange =
+    isAuthenticated && !needsEmpresaSetup && !isSimulating && user?.mustChangePassword === true;
+
+  // Família real sem paciente vinculado → wizard de cadastro (não durante simulação)
+  const needsFamilyOnboarding =
+    isAuthenticated &&
+    !needsEmpresaSetup &&
+    !isSimulating &&
+    !needsPasswordChange &&
+    originalRole === 'family' &&
+    !user?.pacienteId;
 
   // LGPD consent check — user must accept before using app
   const needsLgpd = isAuthenticated && !needsEmpresaSetup && !user?.lgpdConsentAt;
@@ -404,6 +420,14 @@ export const RootNavigator = () => {
 
   if (showLgpd) {
     return <LgpdConsentScreen onAccepted={() => setLgpdAccepted(true)} />;
+  }
+
+  if (needsPasswordChange) {
+    return <ChangePasswordScreen />;
+  }
+
+  if (needsFamilyOnboarding) {
+    return <FamilyOnboardingScreen />;
   }
 
   return (

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   collection,
   getDocs,
@@ -18,12 +19,18 @@ import {
   where,
   Timestamp,
 } from 'firebase/firestore';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 import { db } from '../../../core/config/firebase';
 import { Collections } from '../../../shared/constants/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
+import * as registroService from '../../../core/services/registroService';
+import type { DashboardStackParamList } from '../../../core/navigation/RootNavigator';
+
+type NavProp = NativeStackNavigationProp<DashboardStackParamList, 'AdminDashboard'>;
 
 // ════════════════════════════════════════════
 // Types
@@ -47,18 +54,43 @@ const EMPTY_METRICS: DashboardMetrics = {
   intercorrenciasHoje: 0,
 };
 
+interface RecentIncident {
+  id: string;
+  pacienteNome: string;
+  tipoIncidente: string;
+  gravidade: string;
+  timestamp: Date;
+}
+
+interface ActiveShiftInfo {
+  id: string;
+  pacienteNome: string;
+  profissionalNome: string;
+  checkinAt: Date;
+}
+
+const GRAVIDADE_COLOR: Record<string, string> = {
+  leve: colors.success,
+  moderado: colors.warning,
+  grave: colors.error,
+};
+
 // ════════════════════════════════════════════
 // Mock metrics for dev
 // ════════════════════════════════════════════
 
-const MOCK_METRICS: DashboardMetrics = {
-  totalPacientes: 4,
-  pacientesAtivos: 3,
-  totalProfissionais: 6,
-  plantoesHoje: 2,
-  registrosHoje: 18,
-  intercorrenciasHoje: 1,
-};
+// Fallback de demonstração — usado APENAS em __DEV__.
+// Em produção resolve para EMPTY_METRICS (zeros), sem banner.
+const MOCK_METRICS: DashboardMetrics = __DEV__
+  ? {
+      totalPacientes: 4,
+      pacientesAtivos: 3,
+      totalProfissionais: 6,
+      plantoesHoje: 2,
+      registrosHoje: 18,
+      intercorrenciasHoje: 1,
+    }
+  : EMPTY_METRICS;
 
 // ════════════════════════════════════════════
 // Component
@@ -66,10 +98,12 @@ const MOCK_METRICS: DashboardMetrics = {
 
 export const AdminDashboardScreen = () => {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<NavProp>();
   const { user } = useAuthStore();
-  const navigation = useNavigation();
 
   const [metrics, setMetrics] = useState<DashboardMetrics>(EMPTY_METRICS);
+  const [recentIncidents, setRecentIncidents] = useState<RecentIncident[]>([]);
+  const [activeShifts, setActiveShifts] = useState<ActiveShiftInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [usingMock, setUsingMock] = useState(false);
@@ -103,6 +137,10 @@ export const AdminDashboardScreen = () => {
       const patSnap = await getDocs(collection(db, Collections.pacientes(empresaId)));
       const totalPacientes = patSnap.size;
       const pacientesAtivos = patSnap.docs.filter((d) => d.data().status === 'ativo').length;
+      const nomeById: Record<string, string> = {};
+      patSnap.docs.forEach((d) => {
+        nomeById[d.id] = d.data().nome ?? 'Paciente';
+      });
 
       // Fetch professionals
       const profQ = query(
@@ -113,17 +151,34 @@ export const AdminDashboardScreen = () => {
       const profSnap = await getDocs(profQ);
       const totalProfissionais = profSnap.size;
 
-      // Today shifts
+      // Plantões em andamento agora
+      const activeQ = query(
+        collection(db, Collections.plantoes(empresaId)),
+        where('status', '==', 'em_andamento')
+      );
+      const activeSnap = await getDocs(activeQ);
+      const active: ActiveShiftInfo[] = activeSnap.docs.map((d) => {
+        const x = d.data();
+        return {
+          id: d.id,
+          pacienteNome: x.pacienteNome ?? nomeById[x.pacienteId] ?? 'Paciente',
+          profissionalNome: x.profissionalNome ?? 'Profissional',
+          checkinAt: x.checkinAt?.toDate?.() ?? new Date(),
+        };
+      });
+
+      // Plantões iniciados hoje (contagem)
       const shiftQ = query(
         collection(db, Collections.plantoes(empresaId)),
-        where('checkinTime', '>=', todayTs)
+        where('checkinAt', '>=', todayTs)
       );
       const shiftSnap = await getDocs(shiftQ);
       const plantoesHoje = shiftSnap.size;
 
-      // Today records — count across all patients
+      // Registros de hoje (contagem) + intercorrências recentes (cross-paciente)
       let registrosHoje = 0;
       let intercorrenciasHoje = 0;
+      const incidents: RecentIncident[] = [];
 
       for (const patDoc of patSnap.docs) {
         const regQ = query(
@@ -133,7 +188,27 @@ export const AdminDashboardScreen = () => {
         const regSnap = await getDocs(regQ);
         registrosHoje += regSnap.size;
         intercorrenciasHoje += regSnap.docs.filter((d) => d.data().type === 'intercorrencia').length;
+
+        const incs = await registroService.listRecords(empresaId, patDoc.id, {
+          type: 'intercorrencia',
+          limitCount: 3,
+        });
+        incs.forEach((rec) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const r = rec as any;
+          incidents.push({
+            id: rec.id,
+            pacienteNome: nomeById[patDoc.id] ?? 'Paciente',
+            tipoIncidente: r.tipoIncidente ?? 'Intercorrência',
+            gravidade: r.gravidade ?? '',
+            timestamp: rec.timestamp,
+          });
+        });
       }
+
+      incidents.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+      setRecentIncidents(incidents.slice(0, 5));
+      setActiveShifts(active);
 
       const data: DashboardMetrics = {
         totalPacientes,
@@ -194,7 +269,7 @@ export const AdminDashboardScreen = () => {
           <Text style={styles.dateLabel}>{dateLabel}</Text>
         </View>
 
-        {usingMock && (
+        {usingMock && __DEV__ && (
           <View style={styles.mockBanner}>
             <Text style={styles.mockText}>Dados de exemplo — métricas reais aparecerão aqui.</Text>
           </View>
@@ -232,40 +307,81 @@ export const AdminDashboardScreen = () => {
               />
             </View>
 
-            {/* Quick actions */}
-            <Text style={styles.sectionTitle}>AÇÕES RÁPIDAS</Text>
-            <View style={styles.actionsCol}>
-              <ActionRow
-                label="Ver lista de pacientes"
-                hint="Pacientes → Lista"
-                onPress={() => (navigation as any).navigate('PatientMgmtStack', { screen: 'PatientList' })}
-              />
-              <ActionRow
-                label="Cadastrar profissional"
-                hint="Equipe → Novo"
-                onPress={() => (navigation as any).navigate('TeamStack', { screen: 'CreateNurse' })}
-              />
-              <ActionRow
-                label="Vincular família"
-                hint="Pacientes → Vincular"
-                onPress={() => (navigation as any).navigate('PatientMgmtStack', { screen: 'LinkFamily' })}
-              />
-              <ActionRow
-                label="Gerenciar escalas"
-                hint="Equipe → Escalas"
-                onPress={() => (navigation as any).navigate('TeamStack', { screen: 'Schedule' })}
-              />
-              <ActionRow
-                label="Financeiro"
-                hint="Receitas, despesas e PDF"
-                onPress={() => (navigation as any).navigate('Financial')}
-              />
-              <ActionRow
-                label="Exportar relatório"
-                hint="Paciente → Exportar PDF"
-                onPress={() => (navigation as any).navigate('ExportReport')}
-              />
+            {/* Plantões em andamento agora */}
+            <Text style={styles.sectionTitle}>PLANTÕES EM ANDAMENTO</Text>
+            <View style={styles.listCard}>
+              {activeShifts.length === 0 ? (
+                <Text style={styles.emptyText}>Nenhum plantão em andamento.</Text>
+              ) : (
+                activeShifts.map((s, idx) => (
+                  <View
+                    key={s.id}
+                    style={[styles.listRow, idx < activeShifts.length - 1 && styles.listRowBorder]}
+                  >
+                    <View style={[styles.listIcon, { backgroundColor: colors.admin + '1A' }]}>
+                      <Ionicons name="time-outline" size={16} color={colors.admin} />
+                    </View>
+                    <View style={styles.listInfo}>
+                      <Text style={styles.listTitle}>{s.pacienteNome}</Text>
+                      <Text style={styles.listMeta}>
+                        {s.profissionalNome} · desde {format(s.checkinAt, 'HH:mm', { locale: ptBR })}
+                      </Text>
+                    </View>
+                  </View>
+                ))
+              )}
             </View>
+
+            {/* Intercorrências recentes */}
+            <Text style={styles.sectionTitle}>INTERCORRÊNCIAS RECENTES</Text>
+            <View style={styles.listCard}>
+              {recentIncidents.length === 0 ? (
+                <Text style={styles.emptyText}>Nenhuma intercorrência registrada.</Text>
+              ) : (
+                recentIncidents.map((inc, idx) => (
+                  <View
+                    key={inc.id}
+                    style={[styles.listRow, idx < recentIncidents.length - 1 && styles.listRowBorder]}
+                  >
+                    <View style={[styles.listIcon, { backgroundColor: '#FEF2F2' }]}>
+                      <Ionicons name="alert-circle-outline" size={16} color={colors.error} />
+                    </View>
+                    <View style={styles.listInfo}>
+                      <Text style={styles.listTitle}>{inc.pacienteNome}</Text>
+                      <Text style={styles.listMeta}>
+                        {inc.tipoIncidente}
+                        {inc.gravidade ? ` · ${inc.gravidade}` : ''} ·{' '}
+                        {format(inc.timestamp, 'dd/MM HH:mm', { locale: ptBR })}
+                      </Text>
+                    </View>
+                    {inc.gravidade ? (
+                      <View
+                        style={[
+                          styles.gravidadeDot,
+                          { backgroundColor: GRAVIDADE_COLOR[inc.gravidade] ?? colors.textMuted },
+                        ]}
+                      />
+                    ) : null}
+                  </View>
+                ))
+              )}
+            </View>
+
+            {/* Financeiro */}
+            <TouchableOpacity
+              style={styles.financeCard}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('Financial')}
+            >
+              <View style={styles.financeIcon}>
+                <Ionicons name="cash-outline" size={22} color={colors.white} />
+              </View>
+              <View style={styles.financeInfo}>
+                <Text style={styles.financeTitle}>Financeiro</Text>
+                <Text style={styles.financeHint}>Receitas, despesas e relatório do mês</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
           </>
         )}
       </ScrollView>
@@ -313,16 +429,6 @@ const StatCard = ({
     <Text style={[styles.statValue, isAlert && styles.statValueAlert]}>{value}</Text>
     <Text style={styles.statLabel}>{label}</Text>
   </View>
-);
-
-const ActionRow = ({ label, hint, onPress }: { label: string; hint: string; onPress?: () => void }) => (
-  <TouchableOpacity style={styles.actionRow} activeOpacity={0.7} onPress={onPress}>
-    <View>
-      <Text style={styles.actionLabel}>{label}</Text>
-      <Text style={styles.actionHint}>{hint}</Text>
-    </View>
-    <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-  </TouchableOpacity>
 );
 
 // ════════════════════════════════════════════
@@ -378,6 +484,68 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
 
+  // Listas (plantões / intercorrências)
+  listCard: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  listRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm + 2,
+  },
+  listRowBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  listIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  listInfo: { flex: 1 },
+  listTitle: { fontSize: fontSize.sm, fontWeight: '600', color: colors.textPrimary },
+  listMeta: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },
+  emptyText: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+    fontStyle: 'italic',
+    paddingVertical: spacing.md,
+    textAlign: 'center',
+  },
+  gravidadeDot: { width: 8, height: 8, borderRadius: 4 },
+
+  // Financeiro card
+  financeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  financeIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.admin,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  financeInfo: { flex: 1 },
+  financeTitle: { fontSize: fontSize.md, fontWeight: '700', color: colors.textPrimary },
+  financeHint: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },
+
   // Stats
   statsRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
   statCard: {
@@ -394,19 +562,4 @@ const styles = StyleSheet.create({
   statValue: { fontSize: fontSize.xxl, fontWeight: '800', color: colors.textPrimary },
   statValueAlert: { color: '#DC2626' },
   statLabel: { fontSize: fontSize.xs, color: colors.textSecondary, fontWeight: '500', marginTop: 2 },
-
-  // Actions
-  actionsCol: { gap: spacing.sm, marginBottom: spacing.lg },
-  actionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  actionLabel: { fontSize: fontSize.md, fontWeight: '600', color: colors.textPrimary },
-  actionHint: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },
 });

@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
@@ -153,6 +154,16 @@ export const PatientListScreen = () => {
         </TouchableOpacity>
       </View>
 
+      {/* Convidar família — fluxo principal: a família entra e cadastra o paciente */}
+      <TouchableOpacity
+        style={styles.inviteButton}
+        onPress={() => navigation.navigate('InviteFamily')}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="person-add-outline" size={18} color={colors.primary} />
+        <Text style={styles.inviteButtonText}>Convidar família</Text>
+      </TouchableOpacity>
+
       {/* Search */}
       <View style={styles.searchContainer}>
         <TextInput
@@ -238,6 +249,26 @@ const styles = StyleSheet.create({
   },
   addButtonText: {
     color: colors.white,
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+  },
+
+  // Convidar família (CTA do fluxo principal)
+  inviteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primary + '14',
+    borderWidth: 1,
+    borderColor: colors.primary + '33',
+  },
+  inviteButtonText: {
+    color: colors.primary,
     fontSize: fontSize.sm,
     fontWeight: '600',
   },

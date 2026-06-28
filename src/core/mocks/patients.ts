@@ -3,10 +3,11 @@ import { DEFAULT_VITAL_SIGNS } from '../services/patientService';
 
 /**
  * Dados mocados para demonstração.
- * Usados como fallback quando o Firebase retorna lista vazia.
- * Remover ou desabilitar quando houver dados reais suficientes.
+ * Usados como fallback APENAS em desenvolvimento (__DEV__).
+ * Em produção, MOCK_PATIENTS é uma lista vazia — as telas mostram
+ * o estado vazio real em vez de pacientes fictícios.
  */
-export const MOCK_PATIENTS: Patient[] = [
+const MOCK_PATIENTS_DEV: Patient[] = [
   {
     id: 'mock-1',
     empresaId: 'demo',
@@ -135,3 +136,5 @@ export const MOCK_PATIENTS: Patient[] = [
     updatedAt: new Date('2026-03-15'),
   },
 ];
+
+export const MOCK_PATIENTS: Patient[] = __DEV__ ? MOCK_PATIENTS_DEV : [];

@@ -46,12 +46,13 @@ const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const TURNO_LABELS = { manha: 'Manhã', tarde: 'Tarde', noite: 'Noite' };
 const TURNO_COLORS = { manha: '#F59E0B', tarde: '#3B82F6', noite: '#6366F1' };
 
-const MOCK_SCHEDULE: ScheduleEntry[] = [
+// Fallback de demonstração — usado APENAS em __DEV__ (vazio em produção).
+const MOCK_SCHEDULE: ScheduleEntry[] = __DEV__ ? [
   { id: 'm1', profissionalNome: 'Ana Paula', pacienteNome: 'Maria Souza', horaInicio: '07:00', horaFim: '13:00', turno: 'manha' },
   { id: 'm2', profissionalNome: 'Bruno Santos', pacienteNome: 'Maria Souza', horaInicio: '19:00', horaFim: '07:00', turno: 'noite' },
   { id: 'm3', profissionalNome: 'Ana Paula', pacienteNome: 'João Silva', horaInicio: '07:00', horaFim: '13:00', turno: 'manha' },
   { id: 'm4', profissionalNome: 'Carla Oliveira', pacienteNome: 'Antônia Ferreira', horaInicio: '13:00', horaFim: '19:00', turno: 'tarde' },
-];
+] : [];
 
 const getTurno = (horaInicio: string): 'manha' | 'tarde' | 'noite' => {
   const hour = parseInt(horaInicio.split(':')[0], 10);
@@ -270,7 +271,7 @@ export const ScheduleScreen = () => {
         })}
       </View>
 
-      {usingMock && (
+      {usingMock && __DEV__ && (
         <View style={styles.mockBanner}>
           <Text style={styles.mockText}>Dados de exemplo — cadastre escalas reais no Firestore.</Text>
         </View>

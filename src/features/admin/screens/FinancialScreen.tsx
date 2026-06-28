@@ -47,7 +47,8 @@ interface FinancialEntry {
   categoria: string;
 }
 
-const MOCK_ENTRIES: FinancialEntry[] = [
+// Fallback de demonstração — usado APENAS em __DEV__ (vazio em produção).
+const MOCK_ENTRIES: FinancialEntry[] = __DEV__ ? [
   { id: '1', descricao: 'Mensalidade — Maria Souza', tipo: 'receita', valor: 8500, data: new Date(2026, 3, 1), categoria: 'Mensalidade' },
   { id: '2', descricao: 'Mensalidade — João Silva', tipo: 'receita', valor: 7200, data: new Date(2026, 3, 1), categoria: 'Mensalidade' },
   { id: '3', descricao: 'Mensalidade — Antônia Ferreira', tipo: 'receita', valor: 6800, data: new Date(2026, 3, 5), categoria: 'Mensalidade' },
@@ -56,7 +57,7 @@ const MOCK_ENTRIES: FinancialEntry[] = [
   { id: '6', descricao: 'Salário — Carla Oliveira', tipo: 'despesa', valor: 4000, data: new Date(2026, 3, 5), categoria: 'Folha' },
   { id: '7', descricao: 'Materiais de enfermagem', tipo: 'despesa', valor: 1200, data: new Date(2026, 3, 10), categoria: 'Materiais' },
   { id: '8', descricao: 'Transporte equipe', tipo: 'despesa', valor: 800, data: new Date(2026, 3, 12), categoria: 'Transporte' },
-];
+] : [];
 
 // ════════════════════════════════════════════
 // Component
@@ -319,7 +320,7 @@ export const FinancialScreen = () => {
         </View>
       </ScrollView>
 
-      {usingMock && (
+      {usingMock && __DEV__ && (
         <View style={styles.mockBanner}>
           <Text style={styles.mockBannerText}>Dados de exemplo — lançamentos reais serão configuráveis.</Text>
         </View>

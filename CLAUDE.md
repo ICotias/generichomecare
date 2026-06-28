@@ -93,7 +93,7 @@ Ao criar/modificar fluxos de usuário, sempre verificar:
 - Loading states em todos os botões de ação
 - Safe area insets via `useSafeAreaInsets()`
 
-### 5. Zero placeholders — Nenhum elemento de UI sem funcionalidade
+### 6. Zero placeholders — Nenhum elemento de UI sem funcionalidade
 **Regra absoluta:** NUNCA criar um botão, link, menu ou qualquer elemento tocável sem funcionalidade real. Se a funcionalidade não pode ser implementada agora, NÃO crie o elemento visual.
 
 **Proibido:**

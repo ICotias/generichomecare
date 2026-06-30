@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
-import { useAuthStore } from '../../../core/hooks/useAuth';
+import { useAuthStore, canSimulateRoles } from '../../../core/hooks/useAuth';
 import { UserRole } from '../../../core/types';
 import type { AdminProfileStackParamList } from '../../../core/navigation/RootNavigator';
 
@@ -81,30 +81,34 @@ export const AdminProfileScreen = () => {
           <MenuRow icon="help-circle-outline" label="Central de Ajuda" onPress={() => (navigation as any).navigate('Help')} />
         </View>
 
-        {/* Role Switcher */}
-        <Text style={styles.sectionLabel}>SIMULAR PERFIL</Text>
-        <Text style={styles.sectionHint}>
-          Visualize o app como enfermeiro ou familiar para testar.
-        </Text>
-        <View style={styles.roleGrid}>
-          {ROLE_OPTIONS.map(({ role: optionRole, label, styleKey }) => {
-            const isActive = role === optionRole;
-            return (
-              <TouchableOpacity
-                key={optionRole}
-                style={[styles.roleCard, isActive && roleStyles[styleKey].activeCard]}
-                onPress={() => simulateRole(optionRole)}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.roleDot, roleStyles[styleKey].dot]} />
-                <Text style={[styles.roleLabel, isActive && roleStyles[styleKey].activeLabel]}>
-                  {label}
-                </Text>
-                {isActive && <Text style={styles.activeTag}>Ativo</Text>}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        {/* Role Switcher — somente para o e-mail autorizado (super-admin de testes) */}
+        {canSimulateRoles(user?.email) && (
+          <>
+            <Text style={styles.sectionLabel}>SIMULAR PERFIL</Text>
+            <Text style={styles.sectionHint}>
+              Visualize o app como enfermeiro ou familiar para testar.
+            </Text>
+            <View style={styles.roleGrid}>
+              {ROLE_OPTIONS.map(({ role: optionRole, label, styleKey }) => {
+                const isActive = role === optionRole;
+                return (
+                  <TouchableOpacity
+                    key={optionRole}
+                    style={[styles.roleCard, isActive && roleStyles[styleKey].activeCard]}
+                    onPress={() => simulateRole(optionRole)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.roleDot, roleStyles[styleKey].dot]} />
+                    <Text style={[styles.roleLabel, isActive && roleStyles[styleKey].activeLabel]}>
+                      {label}
+                    </Text>
+                    {isActive && <Text style={styles.activeTag}>Ativo</Text>}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </>
+        )}
 
         {/* Logout */}
         <TouchableOpacity style={styles.logoutButton} onPress={signOut} activeOpacity={0.8}>

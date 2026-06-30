@@ -10,6 +10,16 @@ import { auth, db } from '../config/firebase';
 import { AppUser, UserRole } from '../types';
 import { logAudit } from '../services/auditService';
 
+/**
+ * Único e-mail autorizado a simular outras roles (admin → enfermeiro/família).
+ * Admins comuns NÃO têm acesso a esse recurso.
+ */
+export const SIMULATION_ADMIN_EMAIL = 'iago.admin@test.com';
+
+/** Verdadeiro se o usuário pode simular outras roles */
+export const canSimulateRoles = (email?: string | null): boolean =>
+  (email ?? '').trim().toLowerCase() === SIMULATION_ADMIN_EMAIL;
+
 /** Detecta role pelo email (fallback para primeiro login sem doc Firestore) */
 const inferRoleFromEmail = (email: string): UserRole => {
   const lower = email.toLowerCase();
@@ -96,9 +106,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
   },
 
-  // Simular role diferente (apenas para admin)
+  // Simular role diferente — restrito ao e-mail autorizado (super-admin de testes)
   simulateRole: (role) => {
-    const { originalRole } = get();
+    const { originalRole, user } = get();
+    if (!canSimulateRoles(user?.email)) return; // admin comum não simula
     set({
       role,
       isSimulating: role !== originalRole,

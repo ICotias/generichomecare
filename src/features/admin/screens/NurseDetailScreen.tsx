@@ -55,6 +55,7 @@ export const NurseDetailScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [usingMock, setUsingMock] = useState(false);
   const [isDeactivating, setIsDeactivating] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
 
   const handleDeactivate = () => {
     if (!nurseId || usingMock) {
@@ -82,6 +83,38 @@ export const NurseDetailScreen = () => {
               Alert.alert('Erro', 'Não foi possível desativar o profissional. Tente novamente.');
             } finally {
               setIsDeactivating(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleRemove = () => {
+    if (!nurseId || usingMock) {
+      Alert.alert('Ação indisponível', 'Não é possível excluir dados de exemplo.');
+      return;
+    }
+    Alert.alert(
+      'Excluir da equipe',
+      `Remover ${nurse?.nome ?? 'este profissional'} da equipe? Ele deixará de aparecer na lista.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            setIsRemoving(true);
+            try {
+              await updateDoc(doc(db, Collections.USUARIOS, nurseId), { ativo: false, status: 'excluido' });
+              Alert.alert('Removido', 'O profissional foi removido da equipe.', [
+                { text: 'OK', onPress: () => navigation.goBack() },
+              ]);
+            } catch (err) {
+              console.error('Erro ao excluir profissional:', err);
+              Alert.alert('Erro', 'Não foi possível excluir o profissional. Tente novamente.');
+            } finally {
+              setIsRemoving(false);
             }
           },
         },
@@ -208,6 +241,25 @@ export const NurseDetailScreen = () => {
             )}
           </TouchableOpacity>
         )}
+
+        {/* Remover da equipe */}
+        {!usingMock && (
+          <TouchableOpacity
+            style={[styles.removeBtn, isRemoving && styles.deactivateBtnDisabled]}
+            onPress={handleRemove}
+            activeOpacity={0.85}
+            disabled={isRemoving}
+          >
+            {isRemoving ? (
+              <ActivityIndicator color={colors.white} />
+            ) : (
+              <>
+                <Ionicons name="trash-outline" size={20} color={colors.white} />
+                <Text style={styles.removeBtnText}>Excluir da equipe</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </View>
   );
@@ -306,5 +358,20 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     fontWeight: '600',
     color: colors.error,
+  },
+  removeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.error,
+  },
+  removeBtnText: {
+    fontSize: fontSize.md,
+    fontWeight: '700',
+    color: colors.white,
   },
 });

@@ -63,17 +63,20 @@ export const TeamListScreen = () => {
         where('role', '==', 'nurse')
       );
       const snap = await getDocs(q);
-      const list: TeamMember[] = snap.docs.map((d) => {
-        const data = d.data();
-        return {
-          uid: d.id,
-          nome: data.nome ?? '',
-          email: data.email ?? '',
-          telefone: data.telefone,
-          coren: data.coren,
-          status: data.status ?? 'ativo',
-        };
-      });
+      const list: TeamMember[] = snap.docs
+        .map((d) => {
+          const data = d.data();
+          return {
+            uid: d.id,
+            nome: data.nome ?? '',
+            email: data.email ?? '',
+            telefone: data.telefone,
+            coren: data.coren,
+            status: data.status ?? 'ativo',
+          };
+        })
+        // Excluídos da equipe não aparecem na lista
+        .filter((m) => m.status !== 'excluido');
 
       if (list.length > 0) {
         setMembers(list);

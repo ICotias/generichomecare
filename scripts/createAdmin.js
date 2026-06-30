@@ -7,7 +7,7 @@
  * localmente, com a sua chave de service account; nunca no app/cliente).
  *
  * ── Pré-requisitos ──
- *   1. npm install firebase-admin
+ *   1. yarn add -D firebase-admin
  *   2. Gerar a chave de service account:
  *        Firebase Console > Configurações do projeto > Contas de serviço
  *        > "Gerar nova chave privada" → salve como  service-account.json  na raiz do projeto.
@@ -23,7 +23,9 @@
  *   node scripts/createAdmin.js novo.admin@clinica.com Senha123 "Maria Gestora"
  */
 const path = require('path');
-const admin = require('firebase-admin');
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getAuth } = require('firebase-admin/auth');
+const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 
 const [email, senha, nome, empresaId = ''] = process.argv.slice(2);
 
@@ -53,11 +55,11 @@ try {
   process.exit(1);
 }
 
-admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+initializeApp({ credential: cert(serviceAccount) });
 
 (async () => {
-  const auth = admin.auth();
-  const db = admin.firestore();
+  const auth = getAuth();
+  const db = getFirestore();
   const emailNorm = email.trim().toLowerCase();
 
   // 1. cria ou recupera o usuário no Auth
@@ -77,7 +79,7 @@ admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
   }
 
   // 2. grava o perfil no Firestore (merge: não apaga campos existentes)
-  const now = admin.firestore.FieldValue.serverTimestamp();
+  const now = FieldValue.serverTimestamp();
   await db.collection('usuarios').doc(uid).set(
     {
       email: emailNorm,

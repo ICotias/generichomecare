@@ -33,6 +33,11 @@ yarn-error.*
 # local env files
 .env*.local
 
+# Firebase service account keys (NUNCA comitar)
+service-account.json
+*-service-account.json
+google-play-service-account.json
+
 # typescript
 *.tsbuildinfo
 

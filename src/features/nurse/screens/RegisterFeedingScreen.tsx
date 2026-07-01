@@ -132,15 +132,17 @@ export const RegisterFeedingScreen = () => {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <View style={styles.root}>
           {/* Apple-style modal header: Cancelar | Title | Salvar */}
-          <ModalHeader
-            title="Alimentacao"
-            onCancel={() => navigation.goBack()}
-            onDone={handleSubmit}
-            doneLabel="Salvar"
-            doneDisabled={isSubmitting}
-            isLoading={isSubmitting}
-            accentColor={colors.primary}
-          />
+          <View style={{ paddingTop: insets.top }}>
+            <ModalHeader
+              title="Alimentação"
+              onCancel={() => navigation.goBack()}
+              onDone={handleSubmit}
+              doneLabel="Salvar"
+              doneDisabled={isSubmitting}
+              isLoading={isSubmitting}
+              accentColor={colors.primary}
+            />
+          </View>
 
           <ScrollView
             contentContainerStyle={[

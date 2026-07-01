@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -37,6 +38,7 @@ try { Share = require('react-native-share'); } catch { /* not installed */ }
 // ════════════════════════════════════════════
 
 const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+const SCREEN_W = Dimensions.get('window').width;
 
 interface FinancialEntry {
   id: string;
@@ -58,6 +60,19 @@ export const FinancialScreen = () => {
   const currentYear = new Date().getFullYear();
 
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+
+  // Carrossel de meses: centralizar o mês selecionado
+  const monthScrollRef = useRef<ScrollView>(null);
+  const chipLayouts = useRef<Record<number, { x: number; w: number }>>({});
+  const scrollToMonth = useCallback((idx: number, animated: boolean) => {
+    const c = chipLayouts.current[idx];
+    if (!c) return;
+    const target = c.x + c.w / 2 - SCREEN_W / 2;
+    monthScrollRef.current?.scrollTo({ x: Math.max(0, target), animated });
+  }, []);
+  useEffect(() => {
+    scrollToMonth(selectedMonth, true);
+  }, [selectedMonth, scrollToMonth]);
   const [entries, setEntries] = useState<FinancialEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -280,6 +295,7 @@ export const FinancialScreen = () => {
 
       {/* Month selector */}
       <ScrollView
+        ref={monthScrollRef}
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.monthScroll}
@@ -292,6 +308,11 @@ export const FinancialScreen = () => {
               key={idx}
               style={[styles.monthChip, active && styles.monthChipActive]}
               onPress={() => handleMonthChange(idx)}
+              onLayout={(e) => {
+                const { x, width } = e.nativeEvent.layout;
+                chipLayouts.current[idx] = { x, w: width };
+                if (idx === selectedMonth) scrollToMonth(idx, false);
+              }}
               activeOpacity={0.7}
             >
               <Text style={[styles.monthText, active && styles.monthTextActive]}>{label}</Text>

@@ -47,18 +47,6 @@ interface FinancialEntry {
   categoria: string;
 }
 
-// Fallback de demonstração — usado APENAS em __DEV__ (vazio em produção).
-const MOCK_ENTRIES: FinancialEntry[] = __DEV__ ? [
-  { id: '1', descricao: 'Mensalidade — Maria Souza', tipo: 'receita', valor: 8500, data: new Date(2026, 3, 1), categoria: 'Mensalidade' },
-  { id: '2', descricao: 'Mensalidade — João Silva', tipo: 'receita', valor: 7200, data: new Date(2026, 3, 1), categoria: 'Mensalidade' },
-  { id: '3', descricao: 'Mensalidade — Antônia Ferreira', tipo: 'receita', valor: 6800, data: new Date(2026, 3, 5), categoria: 'Mensalidade' },
-  { id: '4', descricao: 'Salário — Ana Paula Costa', tipo: 'despesa', valor: 4500, data: new Date(2026, 3, 5), categoria: 'Folha' },
-  { id: '5', descricao: 'Salário — Bruno Santos', tipo: 'despesa', valor: 4200, data: new Date(2026, 3, 5), categoria: 'Folha' },
-  { id: '6', descricao: 'Salário — Carla Oliveira', tipo: 'despesa', valor: 4000, data: new Date(2026, 3, 5), categoria: 'Folha' },
-  { id: '7', descricao: 'Materiais de enfermagem', tipo: 'despesa', valor: 1200, data: new Date(2026, 3, 10), categoria: 'Materiais' },
-  { id: '8', descricao: 'Transporte equipe', tipo: 'despesa', valor: 800, data: new Date(2026, 3, 12), categoria: 'Transporte' },
-] : [];
-
 // ════════════════════════════════════════════
 // Component
 // ════════════════════════════════════════════
@@ -73,7 +61,6 @@ export const FinancialScreen = () => {
   const [entries, setEntries] = useState<FinancialEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [usingMock, setUsingMock] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
   // Create modal state
@@ -154,8 +141,7 @@ export const FinancialScreen = () => {
   const loadEntries = useCallback(
     async (month: number) => {
       if (!user?.empresaId) {
-        setEntries(MOCK_ENTRIES.filter((e) => e.data.getMonth() === month));
-        setUsingMock(true);
+        setEntries([]);
         setIsLoading(false);
         return;
       }
@@ -166,27 +152,18 @@ export const FinancialScreen = () => {
           currentYear,
           month
         );
-
-        if (records.length > 0) {
-          setEntries(
-            records.map((r) => ({
-              id: r.id,
-              descricao: r.descricao,
-              tipo: r.tipo,
-              valor: r.valor,
-              data: r.data,
-              categoria: r.categoria,
-            }))
-          );
-          setUsingMock(false);
-        } else {
-          // Fallback to mock for the selected month
-          setEntries(MOCK_ENTRIES.filter((e) => e.data.getMonth() === month));
-          setUsingMock(true);
-        }
+        setEntries(
+          records.map((r) => ({
+            id: r.id,
+            descricao: r.descricao,
+            tipo: r.tipo,
+            valor: r.valor,
+            data: r.data,
+            categoria: r.categoria,
+          }))
+        );
       } catch {
-        setEntries(MOCK_ENTRIES.filter((e) => e.data.getMonth() === month));
-        setUsingMock(true);
+        setEntries([]);
       } finally {
         setIsLoading(false);
       }
@@ -302,29 +279,26 @@ export const FinancialScreen = () => {
       </View>
 
       {/* Month selector */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.monthScroll}>
-        <View style={styles.monthRow}>
-          {MONTHS.map((label, idx) => {
-            const active = selectedMonth === idx;
-            return (
-              <TouchableOpacity
-                key={idx}
-                style={[styles.monthChip, active && styles.monthChipActive]}
-                onPress={() => handleMonthChange(idx)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.monthText, active && styles.monthTextActive]}>{label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.monthScroll}
+        contentContainerStyle={styles.monthRow}
+      >
+        {MONTHS.map((label, idx) => {
+          const active = selectedMonth === idx;
+          return (
+            <TouchableOpacity
+              key={idx}
+              style={[styles.monthChip, active && styles.monthChipActive]}
+              onPress={() => handleMonthChange(idx)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.monthText, active && styles.monthTextActive]}>{label}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
-
-      {usingMock && __DEV__ && (
-        <View style={styles.mockBanner}>
-          <Text style={styles.mockBannerText}>Dados de exemplo — lançamentos reais serão configuráveis.</Text>
-        </View>
-      )}
 
       {isLoading ? (
         <View style={styles.loadingCenter}>
@@ -510,8 +484,8 @@ const styles = StyleSheet.create({
   loadingCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
   // Month
-  monthScroll: { maxHeight: 50, paddingLeft: spacing.lg, marginVertical: spacing.sm },
-  monthRow: { flexDirection: 'row', gap: spacing.xs },
+  monthScroll: { flexGrow: 0, marginVertical: spacing.sm },
+  monthRow: { paddingHorizontal: spacing.lg, paddingVertical: spacing.xs, gap: spacing.xs, alignItems: 'center' },
   monthChip: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
@@ -523,16 +497,6 @@ const styles = StyleSheet.create({
   monthChipActive: { backgroundColor: colors.admin, borderColor: colors.admin },
   monthText: { fontSize: fontSize.sm, fontWeight: '500', color: colors.textPrimary },
   monthTextActive: { color: colors.white },
-
-  mockBanner: {
-    backgroundColor: '#FEF3C7',
-    borderRadius: borderRadius.md,
-    padding: spacing.sm,
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-    alignItems: 'center',
-  },
-  mockBannerText: { fontSize: fontSize.xs, color: '#92400E', fontWeight: '500' },
 
   scrollContent: { paddingHorizontal: spacing.lg },
 

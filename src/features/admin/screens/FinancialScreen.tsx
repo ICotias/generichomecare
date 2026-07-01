@@ -485,17 +485,19 @@ const styles = StyleSheet.create({
 
   // Month
   monthScroll: { flexGrow: 0, marginVertical: spacing.sm },
-  monthRow: { paddingHorizontal: spacing.lg, paddingVertical: spacing.xs, gap: spacing.xs, alignItems: 'center' },
+  monthRow: { paddingHorizontal: spacing.lg, gap: spacing.xs },
   monthChip: {
+    height: 36,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
     borderRadius: borderRadius.full,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
   },
   monthChipActive: { backgroundColor: colors.admin, borderColor: colors.admin },
-  monthText: { fontSize: fontSize.sm, fontWeight: '500', color: colors.textPrimary },
+  monthText: { fontSize: fontSize.sm, lineHeight: 18, fontWeight: '500', color: colors.textPrimary },
   monthTextActive: { color: colors.white },
 
   scrollContent: { paddingHorizontal: spacing.lg },

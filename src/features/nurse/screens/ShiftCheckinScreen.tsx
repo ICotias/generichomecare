@@ -20,8 +20,8 @@ import { useAuthStore } from '../../../core/hooks/useAuth';
 import { useLocation } from '../../../core/hooks/useLocation';
 import * as shiftService from '../../../core/services/shiftService';
 import * as patientService from '../../../core/services/patientService';
+import * as scheduleService from '../../../core/services/scheduleService';
 import { Shift, Patient } from '../../../core/types';
-import { MOCK_PATIENTS } from '../../../core/mocks/patients';
 import { PrimaryButton } from '../../../shared/components/ui';
 
 export const ShiftCheckinScreen = () => {
@@ -42,21 +42,32 @@ export const ShiftCheckinScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
-      if (!user?.empresaId) return;
+      if (!user?.empresaId || !user?.uid) return;
       setIsLoadingPatients(true);
-      patientService
-        .listPatients(user.empresaId)
-        .then((list) => {
-          const result = list.length > 0 ? list : MOCK_PATIENTS;
-          setPatients(result);
-          setSelectedPatient((prev) => prev ?? (result.length > 0 ? result[0] : null));
+      // O enfermeiro só pode iniciar plantão com pacientes da SUA escala.
+      Promise.all([
+        patientService.listPatients(user.empresaId),
+        scheduleService.listSchedulesForNurse(user.empresaId, user.uid),
+      ])
+        .then(([list, escala]) => {
+          const scheduledIds = new Set(escala.map((e) => e.pacienteId));
+          const scheduled = list.filter((p) => scheduledIds.has(p.id));
+          setPatients(scheduled);
+          setSelectedPatient((prev) =>
+            prev && scheduled.some((p) => p.id === prev.id)
+              ? prev
+              : scheduled.length > 0
+                ? scheduled[0]
+                : null
+          );
         })
-        .catch(() => {
-          setPatients(MOCK_PATIENTS);
-          setSelectedPatient((prev) => prev ?? MOCK_PATIENTS[0]);
+        .catch((e) => {
+          console.error('ShiftCheckin load error', e);
+          setPatients([]);
+          setSelectedPatient(null);
         })
         .finally(() => setIsLoadingPatients(false));
-    }, [user?.empresaId])
+    }, [user?.empresaId, user?.uid])
   );
 
   const loadActiveShift = useCallback(async () => {
@@ -196,30 +207,36 @@ export const ShiftCheckinScreen = () => {
               Selecione o paciente e inicie seu plantão
             </Text>
 
-            {/* Patient selector */}
+            {/* Patient selector — apenas pacientes da escala do enfermeiro */}
             <View style={styles.patientSelector}>
-              <Text style={styles.sectionLabel}>PACIENTE</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.patientChipRow}
-              >
-                {patients.filter((p) => p.status === 'ativo').map((p) => {
-                  const isSelected = selectedPatient?.id === p.id;
-                  return (
-                    <TouchableOpacity
-                      key={p.id}
-                      style={[styles.patientChip, isSelected && styles.patientChipActive]}
-                      onPress={() => setSelectedPatient(p)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.patientChipText, isSelected && styles.patientChipTextActive]}>
-                        {p.nome}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
+              <Text style={styles.sectionLabel}>PACIENTE (DA SUA ESCALA)</Text>
+              {patients.filter((p) => p.status === 'ativo').length === 0 ? (
+                <Text style={styles.noScheduleText}>
+                  Você não tem pacientes na sua escala. Fale com o administrador para ser escalado antes de iniciar um plantão.
+                </Text>
+              ) : (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.patientChipRow}
+                >
+                  {patients.filter((p) => p.status === 'ativo').map((p) => {
+                    const isSelected = selectedPatient?.id === p.id;
+                    return (
+                      <TouchableOpacity
+                        key={p.id}
+                        style={[styles.patientChip, isSelected && styles.patientChipActive]}
+                        onPress={() => setSelectedPatient(p)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.patientChipText, isSelected && styles.patientChipTextActive]}>
+                          {p.nome}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              )}
             </View>
 
             <View style={styles.locationRow}>
@@ -434,6 +451,13 @@ const styles = StyleSheet.create({
   },
   patientChipRow: {
     gap: spacing.sm,
+  },
+  noScheduleText: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: spacing.sm,
   },
   patientChip: {
     paddingHorizontal: spacing.md,

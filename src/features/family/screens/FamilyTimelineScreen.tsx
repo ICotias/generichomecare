@@ -13,7 +13,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
@@ -61,6 +61,8 @@ const getRecordSummary = (record: CareRecord): string => {
 
 export const FamilyTimelineScreen = () => {
   const insets = useSafeAreaInsets();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const navigation = useNavigation<any>();
   const { user } = useAuthStore();
   const {
     pacienteId,
@@ -210,6 +212,26 @@ export const FamilyTimelineScreen = () => {
         <Text style={styles.today}>{todayLabel}</Text>
       </View>
 
+      {/* Cadastro pendente — família precisa completar os dados do paciente criado pelo admin */}
+      {!isSimulating && patient && patient.cadastroCompleto === false && (
+        <TouchableOpacity
+          style={styles.pendingCard}
+          activeOpacity={0.85}
+          onPress={() => pacienteId && navigation.navigate('CompletePatient', { patientId: pacienteId })}
+        >
+          <View style={styles.pendingIcon}>
+            <Ionicons name="clipboard-outline" size={20} color={colors.white} />
+          </View>
+          <View style={styles.pendingTextWrap}>
+            <Text style={styles.pendingTitle}>Cadastro pendente</Text>
+            <Text style={styles.pendingSub}>
+              Complete os dados de {patient.nome} para começar o acompanhamento.
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.family} />
+        </TouchableOpacity>
+      )}
+
       {/* Content */}
       {isLoading ? (
         <View style={styles.centered}>
@@ -274,6 +296,31 @@ const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   header: { paddingHorizontal: spacing.lg, marginBottom: spacing.md },
+
+  // Cadastro pendente
+  pendingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.family + '14',
+    borderWidth: 1,
+    borderColor: colors.family + '40',
+  },
+  pendingIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.family,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pendingTextWrap: { flex: 1 },
+  pendingTitle: { fontSize: fontSize.md, fontWeight: '700', color: colors.textPrimary },
+  pendingSub: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 2 },
   greeting: {
     fontSize: fontSize.title,
     fontWeight: '700',

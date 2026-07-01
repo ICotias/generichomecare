@@ -335,6 +335,15 @@ export const AdminPatientDetailScreen = () => {
           </View>
         </View>
 
+        {patient.cadastroCompleto === false && (
+          <View style={styles.pendingBanner}>
+            <Ionicons name="time-outline" size={18} color={colors.warning} />
+            <Text style={styles.pendingBannerText}>
+              Cadastro pendente — aguardando a família completar os dados clínicos.
+            </Text>
+          </View>
+        )}
+
         {/* Dados pessoais */}
         <Section title="Dados pessoais">
           <InfoRow label="Nome" value={patient.nome} />
@@ -657,6 +666,21 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.textPrimary,
     letterSpacing: 0.35,
+  },
+  pendingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.warning + '1A',
+  },
+  pendingBannerText: {
+    flex: 1,
+    fontSize: fontSize.sm,
+    color: colors.textPrimary,
+    lineHeight: 18,
   },
   metaRow: {
     flexDirection: 'row',

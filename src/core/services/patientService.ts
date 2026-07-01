@@ -175,6 +175,7 @@ export interface CreatePatientByFamilyInput {
   observacoes?: string;
   tipoAtendimento?: Patient['tipoAtendimento'];
   contatoEmergencia: EmergencyContact;
+  contatosAdicionais?: EmergencyContact[];
   medicoResponsavel?: ResponsibleDoctor;
   faixaSinaisVitais: VitalSignsRange;
   medicamentos: FamilyMedicationInput[];
@@ -193,6 +194,98 @@ const EMPTY_ADDRESS: Address = {
  * porque as Firestore rules das prescrições dependem do `pacienteId` já
  * vinculado no doc do usuário — um batch não enxergaria esse estado.
  */
+/**
+ * Cria o "stub" do paciente pelo ADMIN: apenas dados pessoais básicos.
+ * Fica marcado como cadastroCompleto: false até a família completar os
+ * dados clínicos. NÃO vincula família aqui (o vínculo é feito à parte,
+ * via adminUserService.linkExistingFamily).
+ */
+export interface CreatePatientStubInput {
+  nome: string;
+  dataNascimento: Date;
+  genero: Patient['genero'];
+  cpf?: string;
+  contatoEmergencia?: EmergencyContact;
+}
+
+export const createPatientStub = async (
+  empresaId: string,
+  criadoPorUid: string,
+  input: CreatePatientStubInput
+): Promise<string> => {
+  const now = Timestamp.now();
+  const data: Record<string, unknown> = {
+    empresaId,
+    nome: input.nome,
+    dataNascimento: Timestamp.fromDate(input.dataNascimento),
+    cpf: input.cpf ?? '',
+    genero: input.genero,
+    endereco: EMPTY_ADDRESS,
+    contatoEmergencia: input.contatoEmergencia ?? { nome: '', parentesco: '', telefone: '' },
+    diagnosticos: [],
+    alergias: [],
+    tipoAtendimento: 'integral',
+    status: 'ativo',
+    faixaSinaisVitais: DEFAULT_VITAL_SIGNS,
+    origemDados: 'familia',
+    criadoPorUid,
+    validadoPorEquipe: false,
+    cadastroCompleto: false,
+    createdAt: now,
+    updatedAt: now,
+  };
+  const ref = await addDoc(collection(db, Collections.pacientes(empresaId)), data);
+  return ref.id;
+};
+
+/**
+ * A família COMPLETA um paciente-stub já existente (criado pelo admin).
+ * Atualiza os dados clínicos, marca cadastroCompleto: true e cria as prescrições.
+ */
+export const completePatientByFamily = async (
+  empresaId: string,
+  pacienteId: string,
+  input: CreatePatientByFamilyInput
+): Promise<void> => {
+  const now = Timestamp.now();
+
+  const patch: Record<string, unknown> = {
+    nome: input.nome,
+    dataNascimento: Timestamp.fromDate(input.dataNascimento),
+    genero: input.genero,
+    diagnosticos: input.diagnosticos,
+    alergias: input.alergias,
+    tipoAtendimento: input.tipoAtendimento ?? 'integral',
+    observacoes: input.observacoes ?? '',
+    faixaSinaisVitais: input.faixaSinaisVitais,
+    contatoEmergencia: input.contatoEmergencia,
+    cadastroCompleto: true,
+    updatedAt: now,
+  };
+  if (input.medicoResponsavel) patch.medicoResponsavel = input.medicoResponsavel;
+  if (input.contatosAdicionais && input.contatosAdicionais.length > 0) {
+    patch.contatosAdicionais = input.contatosAdicionais;
+  }
+
+  await updateDoc(doc(db, Collections.pacientes(empresaId), pacienteId), patch);
+
+  // Prescrições (medicamentos de uso contínuo)
+  for (const m of input.medicamentos) {
+    const presData: Record<string, unknown> = {
+      pacienteId,
+      medicamento: m.medicamento,
+      dosagem: m.dosagem,
+      via: m.via,
+      frequencia: m.frequencia,
+      horarios: m.horarios,
+      dataInicio: now,
+      ativo: true,
+    };
+    if (m.observacoes) presData.observacoes = m.observacoes;
+    await addDoc(collection(db, Collections.prescricoes(empresaId, pacienteId)), presData);
+  }
+};
+
 export const createPatientByFamily = async (
   empresaId: string,
   uid: string,
@@ -223,6 +316,9 @@ export const createPatientByFamily = async (
   };
   if (input.medicoResponsavel) {
     patientData.medicoResponsavel = input.medicoResponsavel;
+  }
+  if (input.contatosAdicionais && input.contatosAdicionais.length > 0) {
+    patientData.contatosAdicionais = input.contatosAdicionais;
   }
 
   const patientRef = await addDoc(collection(db, Collections.pacientes(empresaId)), patientData);

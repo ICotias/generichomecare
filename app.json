@@ -37,15 +37,15 @@
       "package": "com.generichomecare.app",
       "versionCode": 1,
       "permissions": [
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION",
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "RECEIVE_BOOT_COMPLETED",
-        "VIBRATE"
-      ],
-      "googleServicesFile": "./google-services.json"
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "expo-dev-client",
@@ -61,16 +61,14 @@
           "photosPermission": "HomeCare precisa acessar suas fotos para anexar registros fotográficos.",
           "cameraPermission": "HomeCare precisa acessar a câmera para registrar fotos clínicas dos pacientes."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "extra": {
       "eas": {
-        "projectId": "your-eas-project-id"
+        "projectId": "96305929-159f-4d4e-8a28-cf7e32d23976"
       }
     },
-    "owner": "generichomecare",
-    "updates": {
-      "url": "https://u.expo.dev/your-eas-project-id"
-    }
+    "owner": "iagocotias"
   }
 }

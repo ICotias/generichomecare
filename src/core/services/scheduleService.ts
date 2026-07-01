@@ -95,6 +95,38 @@ export const listSchedules = async (
 };
 
 /**
+ * Lista as escalas ATIVAS de um profissional específico (todos os dias),
+ * ordenadas por dia da semana e horário. Usado na "escalinha" do enfermeiro.
+ */
+export const listSchedulesForNurse = async (
+  empresaId: string,
+  profissionalId: string
+): Promise<(Schedule & { profissionalNome: string; pacienteNome: string })[]> => {
+  const colRef = collection(db, Collections.escalas(empresaId));
+  // Só filtro de igualdade (usa índice automático); ordenação feita em memória.
+  const q = query(colRef, where('profissionalId', '==', profissionalId));
+  const snap = await getDocs(q);
+  return snap.docs
+    .map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        empresaId: data.empresaId,
+        pacienteId: data.pacienteId,
+        profissionalId: data.profissionalId,
+        profissionalNome: data.profissionalNome ?? '',
+        pacienteNome: data.pacienteNome ?? '',
+        diaSemana: data.diaSemana,
+        horaInicio: data.horaInicio,
+        horaFim: data.horaFim,
+        ativo: data.ativo,
+      };
+    })
+    .filter((s) => s.ativo)
+    .sort((a, b) => a.diaSemana - b.diaSemana || a.horaInicio.localeCompare(b.horaInicio));
+};
+
+/**
  * Remove (desativa) uma escala.
  */
 export const deleteSchedule = async (

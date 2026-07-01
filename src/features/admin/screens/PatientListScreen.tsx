@@ -132,6 +132,12 @@ export const PatientListScreen = () => {
             {item.diagnosticos.join(', ')}
           </Text>
         )}
+        {item.cadastroCompleto === false && (
+          <View style={styles.pendingTag}>
+            <Ionicons name="time-outline" size={13} color={colors.warning} />
+            <Text style={styles.pendingTagText}>Aguardando família</Text>
+          </View>
+        )}
       </TouchableOpacity>
     );
   };
@@ -338,6 +344,22 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.textMuted,
     marginTop: spacing.xs,
+  },
+  pendingTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.warning + '1A',
+  },
+  pendingTagText: {
+    fontSize: fontSize.xs,
+    fontWeight: '600',
+    color: colors.warning,
   },
 
   // Status badge

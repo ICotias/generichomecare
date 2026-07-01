@@ -46,13 +46,6 @@ const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const TURNO_LABELS = { manha: 'Manhã', tarde: 'Tarde', noite: 'Noite' };
 const TURNO_COLORS = { manha: '#F59E0B', tarde: '#3B82F6', noite: '#6366F1' };
 
-// Fallback de demonstração — usado APENAS em __DEV__ (vazio em produção).
-const MOCK_SCHEDULE: ScheduleEntry[] = __DEV__ ? [
-  { id: 'm1', profissionalNome: 'Ana Paula', pacienteNome: 'Maria Souza', horaInicio: '07:00', horaFim: '13:00', turno: 'manha' },
-  { id: 'm2', profissionalNome: 'Bruno Santos', pacienteNome: 'Maria Souza', horaInicio: '19:00', horaFim: '07:00', turno: 'noite' },
-  { id: 'm3', profissionalNome: 'Ana Paula', pacienteNome: 'João Silva', horaInicio: '07:00', horaFim: '13:00', turno: 'manha' },
-  { id: 'm4', profissionalNome: 'Carla Oliveira', pacienteNome: 'Antônia Ferreira', horaInicio: '13:00', horaFim: '19:00', turno: 'tarde' },
-] : [];
 
 const getTurno = (horaInicio: string): 'manha' | 'tarde' | 'noite' => {
   const hour = parseInt(horaInicio.split(':')[0], 10);
@@ -84,7 +77,6 @@ export const ScheduleScreen = () => {
   const [entries, setEntries] = useState<ScheduleEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [usingMock, setUsingMock] = useState(false);
 
   // Selectable lists
   const [profissionais, setProfissionais] = useState<SelectionItem[]>([]);
@@ -178,33 +170,25 @@ export const ScheduleScreen = () => {
   const loadSchedules = useCallback(
     async (day: number) => {
       if (!user?.empresaId) {
-        setEntries(MOCK_SCHEDULE);
-        setUsingMock(true);
+        setEntries([]);
         setIsLoading(false);
         return;
       }
 
       try {
         const schedules = await scheduleService.listSchedules(user.empresaId, day);
-        if (schedules.length > 0) {
-          setEntries(
-            schedules.map((s) => ({
-              id: s.id,
-              profissionalNome: s.profissionalNome,
-              pacienteNome: s.pacienteNome,
-              horaInicio: s.horaInicio,
-              horaFim: s.horaFim,
-              turno: getTurno(s.horaInicio),
-            }))
-          );
-          setUsingMock(false);
-        } else {
-          setEntries(MOCK_SCHEDULE);
-          setUsingMock(true);
-        }
+        setEntries(
+          schedules.map((s) => ({
+            id: s.id,
+            profissionalNome: s.profissionalNome,
+            pacienteNome: s.pacienteNome,
+            horaInicio: s.horaInicio,
+            horaFim: s.horaFim,
+            turno: getTurno(s.horaInicio),
+          }))
+        );
       } catch {
-        setEntries(MOCK_SCHEDULE);
-        setUsingMock(true);
+        setEntries([]);
       } finally {
         setIsLoading(false);
       }
@@ -270,12 +254,6 @@ export const ScheduleScreen = () => {
           );
         })}
       </View>
-
-      {usingMock && __DEV__ && (
-        <View style={styles.mockBanner}>
-          <Text style={styles.mockText}>Dados de exemplo — cadastre escalas reais no Firestore.</Text>
-        </View>
-      )}
 
       {isLoading ? (
         <View style={styles.loadingCenter}>
@@ -452,16 +430,6 @@ const styles = StyleSheet.create({
   dayNum: { fontSize: fontSize.lg, fontWeight: '700', color: colors.textPrimary, marginTop: 4 },
   dayNumActive: { color: colors.white },
   dayNumToday: { color: colors.admin },
-
-  mockBanner: {
-    backgroundColor: '#FEF3C7',
-    borderRadius: borderRadius.md,
-    padding: spacing.sm,
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-    alignItems: 'center',
-  },
-  mockText: { fontSize: fontSize.xs, color: '#92400E', fontWeight: '500' },
 
   scrollContent: { paddingHorizontal: spacing.lg },
   emptyText: { fontSize: fontSize.md, color: colors.textMuted, textAlign: 'center', marginTop: spacing.xxl },

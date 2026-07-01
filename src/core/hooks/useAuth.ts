@@ -10,6 +10,16 @@ import { auth, db } from '../config/firebase';
 import { AppUser, UserRole } from '../types';
 import { logAudit } from '../services/auditService';
 
+/**
+ * Único e-mail autorizado a simular outras roles (admin → enfermeiro/família).
+ * Admins comuns NÃO têm acesso a esse recurso.
+ */
+export const SIMULATION_ADMIN_EMAIL = 'iago.admin@test.com';
+
+/** Verdadeiro se o usuário pode simular outras roles */
+export const canSimulateRoles = (email?: string | null): boolean =>
+  (email ?? '').trim().toLowerCase() === SIMULATION_ADMIN_EMAIL;
+
 /** Detecta role pelo email (fallback para primeiro login sem doc Firestore) */
 const inferRoleFromEmail = (email: string): UserRole => {
   const lower = email.toLowerCase();
@@ -34,6 +44,8 @@ interface AuthState {
   setLoading: (loading: boolean) => void;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  /** Re-lê o doc usuarios/{uid} e atualiza o store (ex.: admin vinculou paciente) */
+  refreshUser: () => Promise<void>;
   initialize: () => () => void;
   simulateRole: (role: UserRole) => void;
   stopSimulation: () => void;
@@ -96,9 +108,37 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
   },
 
-  // Simular role diferente (apenas para admin)
+  // Re-lê o perfil do Firestore e atualiza o store (sem depender de re-login)
+  refreshUser: async () => {
+    const fb = auth.currentUser;
+    if (!fb) return;
+    try {
+      const userDoc = await getDoc(doc(db, 'usuarios', fb.uid));
+      if (!userDoc.exists()) return;
+      const data = userDoc.data();
+      get().setUser({
+        uid: fb.uid,
+        email: fb.email ?? '',
+        nome: data.nome ?? '',
+        role: data.role ?? 'nurse',
+        empresaId: data.empresaId ?? '',
+        telefone: data.telefone ?? '',
+        pacienteId: data.pacienteId ?? undefined,
+        parentesco: data.parentesco ?? undefined,
+        mustChangePassword: data.mustChangePassword ?? false,
+        lgpdConsentAt: data.lgpdConsentAt?.toDate?.() ?? undefined,
+        createdAt: data.createdAt?.toDate?.() ?? new Date(),
+        updatedAt: data.updatedAt?.toDate?.() ?? new Date(),
+      });
+    } catch (e) {
+      if (__DEV__) console.warn('refreshUser error', e);
+    }
+  },
+
+  // Simular role diferente — restrito ao e-mail autorizado (super-admin de testes)
   simulateRole: (role) => {
-    const { originalRole } = get();
+    const { originalRole, user } = get();
+    if (!canSimulateRoles(user?.email)) return; // admin comum não simula
     set({
       role,
       isSimulating: role !== originalRole,

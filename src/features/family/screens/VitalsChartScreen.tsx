@@ -21,7 +21,7 @@ import { useFamilyPatientId } from '../../../core/hooks/useFamilyPatientId';
 import * as registroService from '../../../core/services/registroService';
 import * as patientService from '../../../core/services/patientService';
 import type { VitalSignsRecord, CareRecord } from '../../../core/types';
-import type { Patient, VitalSignsRange } from '../../../core/types';
+import type { Patient } from '../../../core/types';
 import { PatientPickerBar } from '../../../shared/components/PatientPickerBar';
 
 // ════════════════════════════════════════════
@@ -106,13 +106,7 @@ export const VitalsChartScreen = () => {
 
   const ranges = patient?.faixaSinaisVitais;
 
-  // ── Mock data when no real records ──
-  const displayVitals =
-    vitals.length > 0
-      ? vitals
-      : generateMockVitals(period, ranges);
-
-  const labels = displayVitals.map((v) => formatShortDate(v.timestamp));
+  const labels = vitals.map((v) => formatShortDate(v.timestamp));
   // Show max 6 labels to avoid clutter
   const labelInterval = Math.max(1, Math.floor(labels.length / 6));
   const displayLabels = labels.map((l, i) => (i % labelInterval === 0 ? l : ''));
@@ -167,66 +161,58 @@ export const VitalsChartScreen = () => {
           contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + spacing.xxl }]}
           showsVerticalScrollIndicator={false}
         >
-          {vitals.length === 0 && (
-            <View style={styles.mockBanner}>
-              <Text style={styles.mockText}>
-                Dados de exemplo — registros reais aparecerão aqui.
+          {vitals.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Ionicons name="pulse-outline" size={40} color={colors.textMuted} />
+              <Text style={styles.emptyTitle}>Sem registros de sinais vitais</Text>
+              <Text style={styles.emptyText}>
+                As aferições feitas pela equipe neste período aparecerão aqui em gráficos.
               </Text>
             </View>
-          )}
+          ) : (
+            <>
+              {/* Pressão Arterial */}
+              <ChartCard
+                title="Pressão Arterial"
+                unit="mmHg"
+                datasets={[
+                  { data: vitals.map((v) => v.paSistolica), color: () => '#EF4444', label: 'Sistólica' },
+                  { data: vitals.map((v) => v.paDiastolica), color: () => '#3B82F6', label: 'Diastólica' },
+                ]}
+                labels={displayLabels}
+                ranges={ranges ? { min: ranges.paDiastolicaMin, max: ranges.paSistolicaMax } : undefined}
+              />
 
-          {/* Pressão Arterial */}
-          <ChartCard
-            title="Pressão Arterial"
-            unit="mmHg"
-            datasets={[
-              { data: displayVitals.map((v) => v.paSistolica), color: () => '#EF4444', label: 'Sistólica' },
-              { data: displayVitals.map((v) => v.paDiastolica), color: () => '#3B82F6', label: 'Diastólica' },
-            ]}
-            labels={displayLabels}
-            ranges={ranges ? {
-              min: ranges.paDiastolicaMin,
-              max: ranges.paSistolicaMax,
-            } : undefined}
-          />
+              {/* FC */}
+              <ChartCard
+                title="Frequência Cardíaca"
+                unit="bpm"
+                datasets={[{ data: vitals.map((v) => v.fc), color: () => '#EF4444', label: 'FC' }]}
+                labels={displayLabels}
+                ranges={ranges ? { min: ranges.fcMin, max: ranges.fcMax } : undefined}
+              />
 
-          {/* FC */}
-          <ChartCard
-            title="Frequência Cardíaca"
-            unit="bpm"
-            datasets={[
-              { data: displayVitals.map((v) => v.fc), color: () => '#EF4444', label: 'FC' },
-            ]}
-            labels={displayLabels}
-            ranges={ranges ? { min: ranges.fcMin, max: ranges.fcMax } : undefined}
-          />
+              {/* Temperatura */}
+              <ChartCard
+                title="Temperatura"
+                unit="°C"
+                datasets={[{ data: vitals.map((v) => v.temperatura), color: () => '#F59E0B', label: 'Temp' }]}
+                labels={displayLabels}
+                ranges={ranges ? { min: ranges.tempMin, max: ranges.tempMax } : undefined}
+                decimalPlaces={1}
+              />
 
-          {/* Temperatura */}
-          <ChartCard
-            title="Temperatura"
-            unit="°C"
-            datasets={[
-              { data: displayVitals.map((v) => v.temperatura), color: () => '#F59E0B', label: 'Temp' },
-            ]}
-            labels={displayLabels}
-            ranges={ranges ? { min: ranges.tempMin, max: ranges.tempMax } : undefined}
-            decimalPlaces={1}
-          />
+              {/* SpO₂ */}
+              <ChartCard
+                title="Saturação O₂"
+                unit="%"
+                datasets={[{ data: vitals.map((v) => v.satO2), color: () => '#06B6D4', label: 'SpO₂' }]}
+                labels={displayLabels}
+                ranges={ranges ? { min: ranges.satO2Min, max: 100 } : undefined}
+              />
 
-          {/* SpO₂ */}
-          <ChartCard
-            title="Saturação O₂"
-            unit="%"
-            datasets={[
-              { data: displayVitals.map((v) => v.satO2), color: () => '#06B6D4', label: 'SpO₂' },
-            ]}
-            labels={displayLabels}
-            ranges={ranges ? { min: ranges.satO2Min, max: 100 } : undefined}
-          />
-
-          {/* Last reading summary */}
-          {displayVitals.length > 0 && (
-            <LastReadingCard reading={displayVitals[displayVitals.length - 1]} />
+              <LastReadingCard reading={vitals[vitals.length - 1]} />
+            </>
           )}
         </ScrollView>
       )}
@@ -370,55 +356,6 @@ const VitalBadge = ({ label, value, color }: { label: string; value: string; col
 );
 
 // ════════════════════════════════════════════
-// Mock data generator
-// ════════════════════════════════════════════
-
-const generateMockVitals = (days: number, ranges?: VitalSignsRange | null): VitalSignsRecord[] => {
-  const result: VitalSignsRecord[] = [];
-  const now = new Date();
-
-  for (let i = days; i >= 0; i -= 1) {
-    const ts = new Date(now);
-    ts.setDate(ts.getDate() - i);
-    ts.setHours(8 + Math.floor(Math.random() * 4), Math.floor(Math.random() * 60));
-
-    const paSistolica = ranges
-      ? randomInRange(ranges.paSistolicaMin, ranges.paSistolicaMax)
-      : randomInRange(110, 140);
-    const paDiastolica = ranges
-      ? randomInRange(ranges.paDiastolicaMin, ranges.paDiastolicaMax)
-      : randomInRange(70, 90);
-
-    result.push({
-      id: `mock-${i}`,
-      pacienteId: '',
-      empresaId: '',
-      profissionalId: '',
-      profissionalNome: 'Enf. Exemplo',
-      type: 'sinaisVitais',
-      timestamp: ts,
-      syncStatus: 'synced',
-      paSistolica,
-      paDiastolica,
-      fc: ranges ? randomInRange(ranges.fcMin, ranges.fcMax) : randomInRange(60, 90),
-      fr: ranges ? randomInRange(ranges.frMin, ranges.frMax) : randomInRange(14, 20),
-      temperatura: ranges
-        ? parseFloat(randomFloatInRange(ranges.tempMin, ranges.tempMax).toFixed(1))
-        : parseFloat(randomFloatInRange(36.0, 37.5).toFixed(1)),
-      satO2: ranges ? randomInRange(ranges.satO2Min, 100) : randomInRange(94, 99),
-      alerta: false,
-    });
-  }
-  return result;
-};
-
-const randomInRange = (min: number, max: number) =>
-  Math.floor(Math.random() * (max - min + 1)) + min;
-
-const randomFloatInRange = (min: number, max: number) =>
-  Math.random() * (max - min) + min;
-
-// ════════════════════════════════════════════
 // Styles
 // ════════════════════════════════════════════
 
@@ -452,15 +389,19 @@ const styles = StyleSheet.create({
   // Scroll
   scrollContent: { paddingHorizontal: spacing.lg },
 
-  // Mock banner
-  mockBanner: {
-    backgroundColor: '#FEF3C7',
+  // Empty state
+  emptyCard: {
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
-    padding: spacing.sm,
-    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.xl,
     alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
   },
-  mockText: { fontSize: fontSize.xs, color: '#92400E', fontWeight: '500' },
+  emptyTitle: { fontSize: fontSize.lg, fontWeight: '600', color: colors.textPrimary },
+  emptyText: { fontSize: fontSize.sm, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },
 
   // Chart card
   chartCard: {

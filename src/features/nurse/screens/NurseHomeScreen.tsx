@@ -18,12 +18,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import * as patientService from '../../../core/services/patientService';
-import type { Patient } from '../../../core/types';
+import * as scheduleService from '../../../core/services/scheduleService';
+import type { Patient, Schedule } from '../../../core/types';
 import type { NurseHomeStackParamList } from '../../../core/navigation/RootNavigator';
 import { EmptyState } from '../../../shared/components/EmptyState';
 import { MOCK_PATIENTS } from '../../../core/mocks/patients';
 
 type NavProp = NativeStackNavigationProp<NurseHomeStackParamList, 'NurseHome'>;
+
+const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+type NurseSchedule = Schedule & { profissionalNome: string; pacienteNome: string };
 
 const TIPO_LABELS: Record<Patient['tipoAtendimento'], string> = {
   integral: '24h',
@@ -53,6 +58,7 @@ export const NurseHomeScreen = () => {
   const { user } = useAuthStore();
 
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [escala, setEscala] = useState<NurseSchedule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [search, setSearch] = useState('');
@@ -70,6 +76,12 @@ export const NurseHomeScreen = () => {
       try {
         const list = await patientService.listPatients(user.empresaId);
         setPatients(list.length > 0 ? list : MOCK_PATIENTS);
+        if (user.uid) {
+          scheduleService
+            .listSchedulesForNurse(user.empresaId, user.uid)
+            .then(setEscala)
+            .catch((e) => console.error('NurseHome escala error', e));
+        }
       } catch (err) {
         setError('Não foi possível carregar os pacientes.');
         console.error('NurseHome loadPatients error', err);
@@ -78,7 +90,7 @@ export const NurseHomeScreen = () => {
         setIsRefreshing(false);
       }
     },
-    [user?.empresaId]
+    [user?.empresaId, user?.uid]
   );
 
   useFocusEffect(
@@ -147,6 +159,34 @@ export const NurseHomeScreen = () => {
     );
   };
 
+  // ── Escalinha do enfermeiro (ListHeaderComponent) ──
+  const today = new Date().getDay();
+  const renderEscalaHeader = () => {
+    if (escala.length === 0) return null;
+    return (
+      <View style={styles.escalaCard}>
+        <Text style={styles.escalaTitle}>MINHA ESCALA</Text>
+        {escala.map((e) => {
+          const isToday = e.diaSemana === today;
+          return (
+            <View key={e.id} style={[styles.escalaRow, isToday && styles.escalaRowToday]}>
+              <View style={[styles.escalaDay, isToday && styles.escalaDayToday]}>
+                <Text style={[styles.escalaDayText, isToday && styles.escalaDayTextToday]}>
+                  {WEEKDAYS[e.diaSemana]}
+                </Text>
+              </View>
+              <View style={styles.escalaInfo}>
+                <Text style={styles.escalaPatient} numberOfLines={1}>{e.pacienteNome}</Text>
+                <Text style={styles.escalaTime}>{e.horaInicio} — {e.horaFim}</Text>
+              </View>
+              {isToday && <Text style={styles.escalaHoje}>Hoje</Text>}
+            </View>
+          );
+        })}
+      </View>
+    );
+  };
+
   // ════════════════════════════════════════════
 
   return (
@@ -201,6 +241,7 @@ export const NurseHomeScreen = () => {
           data={filtered}
           keyExtractor={(item) => item.id}
           renderItem={renderPatient}
+          ListHeaderComponent={renderEscalaHeader()}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -281,6 +322,49 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xxl,
   },
+
+  // Escalinha
+  escalaCard: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  escalaTitle: {
+    fontSize: fontSize.xs,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    letterSpacing: 1,
+    marginBottom: spacing.sm,
+  },
+  escalaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.sm,
+  },
+  escalaRowToday: {
+    backgroundColor: colors.primary + '0F',
+    paddingHorizontal: spacing.sm,
+  },
+  escalaDay: {
+    width: 40,
+    height: 32,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  escalaDayToday: { backgroundColor: colors.primary },
+  escalaDayText: { fontSize: fontSize.xs, fontWeight: '700', color: colors.textSecondary },
+  escalaDayTextToday: { color: colors.white },
+  escalaInfo: { flex: 1 },
+  escalaPatient: { fontSize: fontSize.sm, fontWeight: '600', color: colors.textPrimary },
+  escalaTime: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 1 },
+  escalaHoje: { fontSize: fontSize.xs, fontWeight: '700', color: colors.primary },
 
   // Card — borda esquerda colorida
   card: {

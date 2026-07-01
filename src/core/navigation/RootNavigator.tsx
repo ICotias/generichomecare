@@ -17,6 +17,7 @@ import { LoginScreen } from '../../features/nurse/screens/LoginScreen';
 import { SetupEmpresaScreen } from '../../features/admin/screens/SetupEmpresaScreen';
 import { ChangePasswordScreen } from '../../shared/screens/ChangePasswordScreen';
 import { FamilyOnboardingScreen } from '../../features/family/screens/FamilyOnboardingScreen';
+import { FamilyWaitingScreen } from '../../features/family/screens/FamilyWaitingScreen';
 
 // ── Nurse screens ──
 import { NurseHomeScreen } from '../../features/nurse/screens/NurseHomeScreen';
@@ -72,6 +73,8 @@ export type RootStackParamList = {
   SetupEmpresa: undefined;
   NurseTabs: undefined;
   FamilyTabs: undefined;
+  FamilyWaiting: undefined;
+  CompletePatient: { patientId: string };
   AdminTabs: undefined;
 };
 
@@ -389,8 +392,9 @@ export const RootNavigator = () => {
   const needsPasswordChange =
     isAuthenticated && !needsEmpresaSetup && !isSimulating && user?.mustChangePassword === true;
 
-  // Família real sem paciente vinculado → wizard de cadastro (não durante simulação)
-  const needsFamilyOnboarding =
+  // Família real sem paciente vinculado → tela de espera (o admin cria/vincula o paciente).
+  // Não durante simulação.
+  const familyWaitingForPatient =
     isAuthenticated &&
     !needsEmpresaSetup &&
     !isSimulating &&
@@ -426,10 +430,6 @@ export const RootNavigator = () => {
     return <ChangePasswordScreen />;
   }
 
-  if (needsFamilyOnboarding) {
-    return <FamilyOnboardingScreen />;
-  }
-
   return (
     <View style={styles.root}>
       <SimulationBanner />
@@ -439,13 +439,22 @@ export const RootNavigator = () => {
             <RootStack.Screen name="Login" component={LoginScreen} />
           ) : needsEmpresaSetup ? (
             <RootStack.Screen name="SetupEmpresa" component={SetupEmpresaScreen} />
+          ) : familyWaitingForPatient ? (
+            <RootStack.Screen name="FamilyWaiting" component={FamilyWaitingScreen} />
           ) : (
             <>
               {role === 'nurse' && (
                 <RootStack.Screen name="NurseTabs" component={NurseTabNavigator} />
               )}
               {role === 'family' && (
-                <RootStack.Screen name="FamilyTabs" component={FamilyTabNavigator} />
+                <>
+                  <RootStack.Screen name="FamilyTabs" component={FamilyTabNavigator} />
+                  <RootStack.Screen
+                    name="CompletePatient"
+                    component={FamilyOnboardingScreen}
+                    options={{ presentation: 'modal' }}
+                  />
+                </>
               )}
               {role === 'admin' && (
                 <RootStack.Screen name="AdminTabs" component={AdminTabNavigator} />

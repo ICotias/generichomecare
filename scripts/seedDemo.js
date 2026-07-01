@@ -197,27 +197,6 @@ async function upsertAuthUser(email, nome) {
   }
   console.log('Escalas criadas (os 5 enfermeiros escalados para hoje + dias variados).');
 
-  // ── 4b. Financeiro (mês atual) ──
-  const fnow = new Date();
-  const finDate = (dia) => Timestamp.fromDate(new Date(fnow.getFullYear(), fnow.getMonth(), dia));
-  for (const pt of patients) {
-    await financeiroCol.add({
-      empresaId, tipo: 'receita', categoria: 'Mensalidade',
-      descricao: 'Mensalidade — ' + pt.nome, valor: rand(6000, 9000),
-      data: finDate(rand(1, 5)), pacienteId: pt.id, createdAt: now,
-    });
-  }
-  for (const n of nurses) {
-    await financeiroCol.add({
-      empresaId, tipo: 'despesa', categoria: 'Folha',
-      descricao: 'Salário — ' + n.nome, valor: rand(3800, 4800),
-      data: finDate(5), profissionalId: n.uid, createdAt: now,
-    });
-  }
-  await financeiroCol.add({ empresaId, tipo: 'despesa', categoria: 'Materiais', descricao: 'Materiais de enfermagem', valor: rand(900, 1600), data: finDate(10), createdAt: now });
-  await financeiroCol.add({ empresaId, tipo: 'despesa', categoria: 'Transporte', descricao: 'Transporte da equipe', valor: rand(500, 900), data: finDate(12), createdAt: now });
-  console.log('Financeiro do mês atual criado (mensalidades + folha + despesas).');
-
   // ── 5. Registros da semana + plantões ──
   const batcher = makeBatcher();
   let plantaoCount = 0;

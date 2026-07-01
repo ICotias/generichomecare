@@ -72,6 +72,7 @@ export type RootStackParamList = {
   SetupEmpresa: undefined;
   NurseTabs: undefined;
   FamilyTabs: undefined;
+  FamilyOnboarding: undefined;
   CompletePatient: { patientId: string };
   AdminTabs: undefined;
 };
@@ -427,10 +428,6 @@ export const RootNavigator = () => {
     return <ChangePasswordScreen />;
   }
 
-  if (needsFamilyOnboarding) {
-    return <FamilyOnboardingScreen />;
-  }
-
   return (
     <View style={styles.root}>
       <SimulationBanner />
@@ -440,6 +437,8 @@ export const RootNavigator = () => {
             <RootStack.Screen name="Login" component={LoginScreen} />
           ) : needsEmpresaSetup ? (
             <RootStack.Screen name="SetupEmpresa" component={SetupEmpresaScreen} />
+          ) : needsFamilyOnboarding ? (
+            <RootStack.Screen name="FamilyOnboarding" component={FamilyOnboardingScreen} />
           ) : (
             <>
               {role === 'nurse' && (

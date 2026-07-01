@@ -327,6 +327,7 @@ export const FinancialScreen = () => {
         </View>
       ) : (
         <ScrollView
+          style={styles.contentScroll}
           contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + spacing.xxl }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -505,7 +506,8 @@ const styles = StyleSheet.create({
   loadingCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
   // Month
-  monthScroll: { flexGrow: 0, marginVertical: spacing.sm },
+  monthScroll: { height: 36, flexGrow: 0, flexShrink: 0, marginVertical: spacing.sm },
+  contentScroll: { flex: 1 },
   monthRow: { paddingHorizontal: spacing.lg, gap: spacing.xs },
   monthChip: {
     height: 36,

@@ -293,6 +293,33 @@ export const listFamilyByPatient = async (
 };
 
 /**
+ * Lista contas de família da empresa que AINDA não têm paciente vinculado.
+ * Usado pelo admin ao criar um paciente (que precisa ser vinculado a uma
+ * família já existente).
+ */
+export const listUnlinkedFamily = async (empresaId: string): Promise<FamilyMember[]> => {
+  const q = query(
+    collection(db, Collections.USUARIOS),
+    where('empresaId', '==', empresaId),
+    where('role', '==', 'family')
+  );
+  const snap = await getDocs(q);
+  return snap.docs
+    .map((d) => {
+      const data = d.data();
+      return {
+        uid: d.id,
+        nome: data.nome ?? '',
+        email: data.email ?? '',
+        telefone: data.telefone,
+        parentesco: data.parentesco,
+        pacienteId: data.pacienteId,
+      };
+    })
+    .filter((f) => !f.pacienteId);
+};
+
+/**
  * Busca um familiar existente (role=family) pelo email na mesma empresa.
  * Retorna null se não encontrar.
  */

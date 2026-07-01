@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   type KeyboardTypeOptions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
@@ -67,6 +68,11 @@ const formatDate = (d: Date) =>
 
 export const FamilyOnboardingScreen = () => {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<{ goBack: () => void }>();
+  const route = useRoute();
+  // Se veio com patientId, é "modo completar" (paciente-stub criado pelo admin).
+  const completePatientId = (route.params as { patientId?: string } | undefined)?.patientId;
+  const isComplete = !!completePatientId;
   const { user, setUser } = useAuthStore();
 
   const [step, setStep] = useState(0);
@@ -111,6 +117,23 @@ export const FamilyOnboardingScreen = () => {
 
   // Step 5 — confirmação
   const [confirmado, setConfirmado] = useState(false);
+
+  // Modo completar: pré-preenche os dados pessoais já informados pelo admin (stub)
+  useEffect(() => {
+    if (!isComplete || !user?.empresaId || !completePatientId) return;
+    patientService
+      .getPatient(user.empresaId, completePatientId)
+      .then((p) => {
+        if (!p) return;
+        setNome(p.nome ?? '');
+        setDataNascimento(p.dataNascimento ?? null);
+        setGenero(p.genero ?? 'masculino');
+        if (p.diagnosticos?.length) setDiagnosticos(p.diagnosticos);
+        if (p.alergias?.length) setAlergias(p.alergias);
+        if (p.faixaSinaisVitais) setRanges(p.faixaSinaisVitais);
+      })
+      .catch((e) => console.error('FamilyOnboarding: erro ao carregar stub', e));
+  }, [isComplete, completePatientId, user?.empresaId]);
 
   // ── Validação por passo ──
   const canAdvance = (): boolean => {
@@ -181,7 +204,7 @@ export const FamilyOnboardingScreen = () => {
     if (!user?.empresaId || !user?.uid || !dataNascimento) return;
     setSaving(true);
     try {
-      const newId = await patientService.createPatientByFamily(user.empresaId, user.uid, {
+      const input = {
         nome: nome.trim(),
         dataNascimento,
         genero,
@@ -202,9 +225,18 @@ export const FamilyOnboardingScreen = () => {
           : undefined,
         faixaSinaisVitais: ranges,
         medicamentos,
-      });
-      // Atualiza o store → RootNavigator passa a renderizar as abas da família
-      setUser({ ...user, pacienteId: newId });
+      };
+
+      if (isComplete && completePatientId) {
+        // Completa o paciente-stub criado pelo admin (já vinculado à família)
+        await patientService.completePatientByFamily(user.empresaId, completePatientId, input);
+        navigation.goBack();
+      } else {
+        // Fluxo legado: a própria família cria o paciente do zero
+        const newId = await patientService.createPatientByFamily(user.empresaId, user.uid, input);
+        // Atualiza o store → RootNavigator passa a renderizar as abas da família
+        setUser({ ...user, pacienteId: newId });
+      }
     } catch (e) {
       console.error('FamilyOnboarding finish error', e);
       Alert.alert(

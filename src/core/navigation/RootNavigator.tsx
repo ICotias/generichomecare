@@ -72,6 +72,7 @@ export type RootStackParamList = {
   SetupEmpresa: undefined;
   NurseTabs: undefined;
   FamilyTabs: undefined;
+  CompletePatient: { patientId: string };
   AdminTabs: undefined;
 };
 
@@ -445,7 +446,14 @@ export const RootNavigator = () => {
                 <RootStack.Screen name="NurseTabs" component={NurseTabNavigator} />
               )}
               {role === 'family' && (
-                <RootStack.Screen name="FamilyTabs" component={FamilyTabNavigator} />
+                <>
+                  <RootStack.Screen name="FamilyTabs" component={FamilyTabNavigator} />
+                  <RootStack.Screen
+                    name="CompletePatient"
+                    component={FamilyOnboardingScreen}
+                    options={{ presentation: 'modal' }}
+                  />
+                </>
               )}
               {role === 'admin' && (
                 <RootStack.Screen name="AdminTabs" component={AdminTabNavigator} />

@@ -23,6 +23,11 @@ export interface Patient {
   criadoPorUid?: string;
   /** Se a equipe já revisou/validou os dados trazidos pela família */
   validadoPorEquipe?: boolean;
+  /**
+   * Falso quando o admin criou apenas o "stub" (dados pessoais) e a família
+   * ainda precisa completar os dados clínicos. True após a família concluir.
+   */
+  cadastroCompleto?: boolean;
   /** Médico responsável informado (proveniência dos parâmetros clínicos) */
   medicoResponsavel?: ResponsibleDoctor;
   createdAt: Date;

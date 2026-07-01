@@ -13,7 +13,12 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "eslint . --max-warnings 0",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "seed:all": "node scripts/seedDemo.js",
+    "seed:escalas": "node scripts/seedEscalas.js",
+    "admin:create": "node scripts/createAdmin.js",
+    "admin:list-empresas": "node scripts/listEmpresas.js",
+    "admin:find-user": "node scripts/findUser.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

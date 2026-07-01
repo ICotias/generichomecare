@@ -50,7 +50,11 @@ export const ShiftCheckinScreen = () => {
         scheduleService.listSchedulesForNurse(user.empresaId, user.uid),
       ])
         .then(([list, escala]) => {
-          const scheduledIds = new Set(escala.map((e) => e.pacienteId));
+          // Só os pacientes escalados para HOJE (dia da semana atual)
+          const today = new Date().getDay();
+          const scheduledIds = new Set(
+            escala.filter((e) => e.diaSemana === today).map((e) => e.pacienteId)
+          );
           const scheduled = list.filter((p) => scheduledIds.has(p.id));
           setPatients(scheduled);
           setSelectedPatient((prev) =>
@@ -209,10 +213,10 @@ export const ShiftCheckinScreen = () => {
 
             {/* Patient selector — apenas pacientes da escala do enfermeiro */}
             <View style={styles.patientSelector}>
-              <Text style={styles.sectionLabel}>PACIENTE (DA SUA ESCALA)</Text>
+              <Text style={styles.sectionLabel}>PACIENTE (ESCALA DE HOJE)</Text>
               {patients.filter((p) => p.status === 'ativo').length === 0 ? (
                 <Text style={styles.noScheduleText}>
-                  Você não tem pacientes na sua escala. Fale com o administrador para ser escalado antes de iniciar um plantão.
+                  Você não tem plantão agendado para hoje. Fale com o administrador se acha que deveria estar escalado.
                 </Text>
               ) : (
                 <ScrollView

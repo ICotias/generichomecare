@@ -2,7 +2,12 @@
   "name": "homecareapp",
   "version": "1.0.0",
   "main": "index.ts",
+  "engines": {
+    "yarn": ">=1.22.0",
+    "npm": "please-use-yarn"
+  },
   "scripts": {
+    "preinstall": "npx only-allow yarn",
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",

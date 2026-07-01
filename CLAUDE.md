@@ -4,7 +4,7 @@
 App React Native (Expo SDK 54, dev-client) com Firebase JS SDK (Auth, Firestore, Storage), Zustand, React Navigation v7, TypeScript strict.
 
 ## Regras Gerais
-- Sempre usar **yarn** (nunca npm)
+- **Gerenciador de pacotes: SOMENTE yarn.** Nunca `npm`/`pnpm` para instalar dependências — use `yarn`, `yarn add`, `yarn add -D`, `yarn remove`. (`npx <bin>` é aceitável só para executar binários, ex.: `npx expo`/`npx tsc`, nunca para instalar.) Bloqueio técnico: o script `preinstall` (`only-allow yarn`) faz `npm install`/`pnpm install` falharem.
 - Avisar sobre necessidade de deploy Firebase quando alterar rules/indexes
 - Sempre fornecer código Firebase (rules, indexes) quando modificar estrutura Firestore
 - Push notifications bloqueadas até conta paga Apple Developer

@@ -44,6 +44,8 @@ interface AuthState {
   setLoading: (loading: boolean) => void;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  /** Re-lê o doc usuarios/{uid} e atualiza o store (ex.: admin vinculou paciente) */
+  refreshUser: () => Promise<void>;
   initialize: () => () => void;
   simulateRole: (role: UserRole) => void;
   stopSimulation: () => void;
@@ -104,6 +106,33 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       isSimulating: false,
       simulatedPatientId: null,
     });
+  },
+
+  // Re-lê o perfil do Firestore e atualiza o store (sem depender de re-login)
+  refreshUser: async () => {
+    const fb = auth.currentUser;
+    if (!fb) return;
+    try {
+      const userDoc = await getDoc(doc(db, 'usuarios', fb.uid));
+      if (!userDoc.exists()) return;
+      const data = userDoc.data();
+      get().setUser({
+        uid: fb.uid,
+        email: fb.email ?? '',
+        nome: data.nome ?? '',
+        role: data.role ?? 'nurse',
+        empresaId: data.empresaId ?? '',
+        telefone: data.telefone ?? '',
+        pacienteId: data.pacienteId ?? undefined,
+        parentesco: data.parentesco ?? undefined,
+        mustChangePassword: data.mustChangePassword ?? false,
+        lgpdConsentAt: data.lgpdConsentAt?.toDate?.() ?? undefined,
+        createdAt: data.createdAt?.toDate?.() ?? new Date(),
+        updatedAt: data.updatedAt?.toDate?.() ?? new Date(),
+      });
+    } catch (e) {
+      if (__DEV__) console.warn('refreshUser error', e);
+    }
   },
 
   // Simular role diferente — restrito ao e-mail autorizado (super-admin de testes)

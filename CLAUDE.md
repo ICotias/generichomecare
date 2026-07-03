@@ -9,6 +9,8 @@ App React Native (Expo SDK 54, dev-client) com Firebase JS SDK (Auth, Firestore,
 - Sempre fornecer código Firebase (rules, indexes) quando modificar estrutura Firestore
 - Push notifications bloqueadas até conta paga Apple Developer
 - O desenvolvedor é **Iago** (não Kai)
+- **Documentar scripts:** sempre que criar um novo script em `scripts/`, adicionar a entrada correspondente no `SCRIPTS.md` (o que faz, comando, argumentos), na seção certa.
+- **Texto human friendly:** todo texto escrito para o usuário, seja no chat ou em entregáveis (LPs, documentos, apresentações, código voltado ao usuário), deve soar natural e humano. Nunca usar travessão (—), meia risca (–) nem hífen de estilo no meio de frases. Preferir frases curtas separadas, vírgulas, parênteses ou dois pontos.
 
 ## Regras de Qualidade — Checklist Obrigatório
 

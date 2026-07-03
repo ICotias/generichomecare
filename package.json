@@ -15,6 +15,7 @@
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "seed:all": "node scripts/seedDemo.js",
+    "seed:teste": "node scripts/seedPacienteTeste.js",
     "seed:escalas": "node scripts/seedEscalas.js",
     "admin:create": "node scripts/createAdmin.js",
     "admin:list-empresas": "node scripts/listEmpresas.js",

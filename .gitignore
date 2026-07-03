@@ -31,12 +31,21 @@ yarn-error.*
 *.pem
 
 # local env files
-.env*.local
+.env
+.env.*
+!.env.example
 
 # Firebase service account keys (NUNCA comitar)
 service-account.json
+serviceAccountKey.json
 *-service-account.json
+*serviceaccount*.json
 google-play-service-account.json
+
+# Android release keystore (NUNCA comitar)
+*.jks
+*.keystore
+!android/app/debug.keystore
 
 # typescript
 *.tsbuildinfo

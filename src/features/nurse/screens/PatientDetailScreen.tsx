@@ -203,6 +203,10 @@ export const PatientDetailScreen = () => {
           </View>
         </View>
 
+        {/* Guia do Paciente — informações fixas definidas pela família */}
+        <Text style={styles.guideTitle}>Guia do Paciente</Text>
+        <Text style={styles.guideSubtitle}>Informações fixas definidas pela família</Text>
+
         {/* Alergias destaque (card amarelo) */}
         {patient.alergias.length > 0 && (
           <View style={styles.alertSection}>
@@ -219,70 +223,6 @@ export const PatientDetailScreen = () => {
             </View>
           </View>
         )}
-
-        {/* Guia do Plantão — registros agrupados por tipo */}
-        <Text style={styles.guideTitle}>Guia do Paciente</Text>
-        <Text style={styles.guideSubtitle}>Últimos registros por categoria</Text>
-
-        {GUIDE_SECTIONS.every((s) => (recordsByType[s.type] ?? []).length === 0) && (
-          <View style={styles.emptyGuideCard}>
-            <Ionicons name="document-text-outline" size={40} color={colors.textMuted} />
-            <Text style={styles.emptyGuideTitle}>Nenhum registro encontrado</Text>
-            <Text style={styles.emptyGuideMsg}>
-              Os registros feitos durante os plantões aparecerão aqui como guia para os próximos profissionais.
-            </Text>
-          </View>
-        )}
-
-        {GUIDE_SECTIONS.filter((s) => (recordsByType[s.type] ?? []).length > 0).map((section) => {
-          const records = recordsByType[section.type] ?? [];
-          const config = RECORD_TYPE_CONFIG[section.type];
-          return (
-            <View key={section.type} style={styles.guideSection}>
-              <View style={styles.guideSectionHeader}>
-                <View style={[styles.guideSectionIcon, { backgroundColor: config.bg }]}>
-                  <Ionicons name={config.icon} size={16} color={config.color} />
-                </View>
-                <Text style={styles.sectionTitle}>{section.title}</Text>
-              </View>
-              <View style={styles.infoCard}>
-                {records.map((rec, idx) => {
-                  const isPhoto = rec.type === 'foto';
-                  const Wrapper = isPhoto ? TouchableOpacity : View;
-                  const wrapperProps = isPhoto
-                    ? { activeOpacity: 0.7, onPress: () => setPhotoModal({ url: (rec as any).imageUrl, label: getRecordSummary(rec) }) }
-                    : {};
-                  return (
-                    <Wrapper
-                      key={rec.id}
-                      style={[
-                        styles.recordRow,
-                        idx === records.length - 1 && styles.infoRowLast,
-                      ]}
-                      {...wrapperProps}
-                    >
-                      {isPhoto && (rec as any).imageUrl ? (
-                        <Image
-                          source={{ uri: (rec as any).imageUrl }}
-                          style={styles.photoThumb}
-                        />
-                      ) : null}
-                      <View style={styles.recordInfo}>
-                        <Text style={styles.recordTitle}>{getRecordSummary(rec)}</Text>
-                        <Text style={styles.recordMeta}>
-                          {format(rec.timestamp, "dd/MM · HH:mm", { locale: ptBR })} · {rec.profissionalNome}
-                        </Text>
-                      </View>
-                      {isPhoto && (
-                        <Ionicons name="expand-outline" size={18} color={colors.textMuted} />
-                      )}
-                    </Wrapper>
-                  );
-                })}
-              </View>
-            </View>
-          );
-        })}
 
         {/* Diagnósticos */}
         {patient.diagnosticos.length > 0 && (
@@ -380,6 +320,70 @@ export const PatientDetailScreen = () => {
             <Text style={styles.infoValue}>{patient.faixaSinaisVitais.satO2Min}%</Text>
           </View>
         </View>
+
+        {/* Histórico recente — últimos registros por categoria */}
+        <Text style={styles.guideTitle}>Histórico recente</Text>
+        <Text style={styles.guideSubtitle}>Últimos registros dos plantões</Text>
+
+        {GUIDE_SECTIONS.every((s) => (recordsByType[s.type] ?? []).length === 0) && (
+          <View style={styles.emptyGuideCard}>
+            <Ionicons name="document-text-outline" size={40} color={colors.textMuted} />
+            <Text style={styles.emptyGuideTitle}>Nenhum registro ainda</Text>
+            <Text style={styles.emptyGuideMsg}>
+              Os registros feitos durante os plantões aparecerão aqui como histórico recente.
+            </Text>
+          </View>
+        )}
+
+        {GUIDE_SECTIONS.filter((s) => (recordsByType[s.type] ?? []).length > 0).map((section) => {
+          const records = recordsByType[section.type] ?? [];
+          const config = RECORD_TYPE_CONFIG[section.type];
+          return (
+            <View key={section.type} style={styles.guideSection}>
+              <View style={styles.guideSectionHeader}>
+                <View style={[styles.guideSectionIcon, { backgroundColor: config.bg }]}>
+                  <Ionicons name={config.icon} size={16} color={config.color} />
+                </View>
+                <Text style={styles.sectionTitle}>{section.title}</Text>
+              </View>
+              <View style={styles.infoCard}>
+                {records.map((rec, idx) => {
+                  const isPhoto = rec.type === 'foto';
+                  const Wrapper = isPhoto ? TouchableOpacity : View;
+                  const wrapperProps = isPhoto
+                    ? { activeOpacity: 0.7, onPress: () => setPhotoModal({ url: (rec as any).imageUrl, label: getRecordSummary(rec) }) }
+                    : {};
+                  return (
+                    <Wrapper
+                      key={rec.id}
+                      style={[
+                        styles.recordRow,
+                        idx === records.length - 1 && styles.infoRowLast,
+                      ]}
+                      {...wrapperProps}
+                    >
+                      {isPhoto && (rec as any).imageUrl ? (
+                        <Image
+                          source={{ uri: (rec as any).imageUrl }}
+                          style={styles.photoThumb}
+                        />
+                      ) : null}
+                      <View style={styles.recordInfo}>
+                        <Text style={styles.recordTitle}>{getRecordSummary(rec)}</Text>
+                        <Text style={styles.recordMeta}>
+                          {format(rec.timestamp, "dd/MM · HH:mm", { locale: ptBR })} · {rec.profissionalNome}
+                        </Text>
+                      </View>
+                      {isPhoto && (
+                        <Ionicons name="expand-outline" size={18} color={colors.textMuted} />
+                      )}
+                    </Wrapper>
+                  );
+                })}
+              </View>
+            </View>
+          );
+        })}
       </ScrollView>
 
       {/* Photo viewer modal */}

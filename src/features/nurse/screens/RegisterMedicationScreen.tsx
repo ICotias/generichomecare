@@ -207,6 +207,7 @@ export const RegisterMedicationScreen = () => {
                     minuteInterval={5}
                     onChange={(_event: any, selectedDate: Date | undefined) => {
                       if (selectedDate) setHorario(selectedDate);
+                      if (Platform.OS === 'android') setShowTimePicker(false);
                     }}
                     locale="pt-BR"
                   />

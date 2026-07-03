@@ -233,15 +233,19 @@ service cloud.firestore {
       }
 
       // ─── Escalas ───
+      // Leitura só para equipe (nurse/admin). Família não acessa escalas,
+      // para não expor a agenda de outros pacientes da empresa.
       match /escalas/{escalaId} {
-        allow read: if belongsToCompany(empresaId);
+        allow read: if belongsToCompany(empresaId) && (hasRole('nurse') || hasRole('admin'));
         allow create, update: if hasRole('admin') && belongsToCompany(empresaId);
         allow delete: if hasRole('admin') && belongsToCompany(empresaId);
       }
 
       // ─── Plantões ───
       match /plantoes/{plantaoId} {
-        allow read: if belongsToCompany(empresaId);
+        // Leitura só para equipe (nurse/admin). Família não acessa plantões,
+        // para não expor os plantões de outros pacientes da empresa.
+        allow read: if belongsToCompany(empresaId) && (hasRole('nurse') || hasRole('admin'));
 
         // Enfermeiro faz checkin — cria o plantão
         allow create: if hasRole('nurse')

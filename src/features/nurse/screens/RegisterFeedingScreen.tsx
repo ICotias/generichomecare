@@ -113,7 +113,7 @@ export const RegisterFeedingScreen = () => {
         [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     } catch (error) {
-      Alert.alert('Erro', 'Nao foi possivel salvar o registro.');
+      Alert.alert('Erro', 'Não foi possível salvar o registro.');
       console.error('RegisterFeeding error', error);
     } finally {
       setIsSubmitting(false);
@@ -154,9 +154,9 @@ export const RegisterFeedingScreen = () => {
           >
 
             {/* Tipo de Refeicao */}
-            <InsetGroupedSection header="TIPO DE REFEICAO">
+            <InsetGroupedSection header="TIPO DE REFEIÇÃO">
               <InsetRow
-                label="Refeicao"
+                label="Refeição"
                 value={refeicaoLabel}
                 placeholder="Selecione"
                 onPress={() => setShowRefeicaoModal(true)}
@@ -239,7 +239,7 @@ export const RegisterFeedingScreen = () => {
           {/* Selection modals */}
           <SelectionListModal
             visible={showRefeicaoModal}
-            title="Tipo de Refeicao"
+            title="Tipo de Refeição"
             items={REFEICAO_ITEMS}
             selectedId={tipoRefeicao || null}
             onSelect={(item) => {

@@ -349,7 +349,7 @@ export const ScheduleScreen = () => {
                       mode="time"
                       display="spinner"
                       minuteInterval={5}
-                      onChange={(_: any, d: Date | undefined) => { if (d) setHoraInicio(d); }}
+                      onChange={(_: any, d: Date | undefined) => { if (d) setHoraInicio(d); if (Platform.OS === 'android') setShowInicioPicker(false); }}
                       locale="pt-BR"
                     />
                   </View>
@@ -368,7 +368,7 @@ export const ScheduleScreen = () => {
                       mode="time"
                       display="spinner"
                       minuteInterval={5}
-                      onChange={(_: any, d: Date | undefined) => { if (d) setHoraFim(d); }}
+                      onChange={(_: any, d: Date | undefined) => { if (d) setHoraFim(d); if (Platform.OS === 'android') setShowFimPicker(false); }}
                       locale="pt-BR"
                     />
                   </View>

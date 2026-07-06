@@ -3,6 +3,15 @@
 ## Projeto
 App React Native (Expo SDK 54, dev-client) com Firebase JS SDK (Auth, Firestore, Storage), Zustand, React Navigation v7, TypeScript strict.
 
+## Contexto do projeto
+HomeCare é um app de gestão de cuidado domiciliar com três perfis: empresa (admin), enfermeiro e família. O enfermeiro registra o plantão pelo celular, com funcionamento offline. A família acompanha o cuidado em tempo real. A gestão administra pacientes, equipe, escalas e financeiro.
+
+Pegadinhas conhecidas:
+- Fotos são guardadas como base64 dentro do Firestore, não no Storage. O `getStorage`/`storageService`/`storage.rules` estão dormentes.
+- No Android o `DateTimePicker` é um diálogo modal e precisa ser fechado no `onChange` (`if (Platform.OS === 'android') setShow...(false)`), senão reabre em loop.
+- Push notifications estão fora do MVP (dependem de conta paga Apple).
+- O app usa Firebase JS SDK no cliente; os scripts em `scripts/` usam o Admin SDK com `service-account.json` (nunca versionar).
+
 ## Regras Gerais
 - **Gerenciador de pacotes: SOMENTE yarn.** Nunca `npm`/`pnpm` para instalar dependências — use `yarn`, `yarn add`, `yarn add -D`, `yarn remove`. (`npx <bin>` é aceitável só para executar binários, ex.: `npx expo`/`npx tsc`, nunca para instalar.) Bloqueio técnico: o script `preinstall` (`only-allow yarn`) faz `npm install`/`pnpm install` falharem.
 - Avisar sobre necessidade de deploy Firebase quando alterar rules/indexes
@@ -11,6 +20,48 @@ App React Native (Expo SDK 54, dev-client) com Firebase JS SDK (Auth, Firestore,
 - O desenvolvedor é **Iago** (não Kai)
 - **Documentar scripts:** sempre que criar um novo script em `scripts/`, adicionar a entrada correspondente no `SCRIPTS.md` (o que faz, comando, argumentos), na seção certa.
 - **Texto human friendly:** todo texto escrito para o usuário, seja no chat ou em entregáveis (LPs, documentos, apresentações, código voltado ao usuário), deve soar natural e humano. Nunca usar travessão (—), meia risca (–) nem hífen de estilo no meio de frases. Preferir frases curtas separadas, vírgulas, parênteses ou dois pontos.
+
+## Comandos
+- Rodar no device: `npx expo run:ios --device` / `npx expo run:android --device` (dev-client). Metro: `npx expo start --dev-client`.
+- Build na nuvem: `npx eas build -p android --profile preview` (gera APK). iPhone físico via cabo com Xcode (conta gratuita, validade de 7 dias).
+- Checagem de tipos: `yarn typecheck` (`tsc --noEmit`)
+- Lint: `yarn lint` (ESLint, `--max-warnings 0`)
+- Seed de dados: `yarn seed:all`, `yarn seed:teste`, `yarn seed:escalas`
+- Diagnóstico Expo: `npx expo-doctor`
+- Deploy de regras: `firebase deploy --only firestore:rules`
+
+## Workflow
+- **Portão de qualidade:** após qualquer mudança, rodar `yarn typecheck` e `yarn lint` e corrigir as falhas antes de concluir a tarefa. Não há Jest configurado; typecheck e lint são o gate.
+- Mudanças que toquem 3 ou mais arquivos: apresentar o plano e aguardar aprovação antes de editar.
+- Instalar libs de Expo ou nativas com `npx expo install <lib>` (respeita o yarn por baixo e escolhe a versão compatível com o SDK). Libs puras de JS com `yarn add`. Nunca `npm` nem `pnpm` (o `preinstall` bloqueia).
+- Ao usar a API de uma lib externa, conferir a doc da versão instalada, não confiar só na memória.
+
+## Estrutura
+- `src/features/{admin,nurse,family}/screens/` — telas por perfil
+- `src/core/services/` — chamadas ao Firebase e lógica de negócio (ex.: `registroService`, `offlineQueue`, `scheduleService`, `shiftService`, `auditService`)
+- `src/core/hooks/` — hooks (`useAuth`, `useOfflineSync`, `usePatientWithActiveShift`)
+- `src/core/types/` — tipos compartilhados
+- `src/core/navigation/` — `RootNavigator` (React Navigation v7: native-stack + bottom-tabs, renderização condicional por role)
+- `src/core/theme/` — tokens de tema (`theme.ts`)
+- `src/core/config/` — `firebase.ts`
+- `src/shared/components/ui/` — design system (`ModalHeader`, `InsetGroupedSection`, `InsetRow`, `SelectionListModal`)
+- `src/shared/constants/` — `firestore.ts` (paths das coleções)
+- `scripts/` — scripts de admin e seed (Admin SDK); documentar no `SCRIPTS.md`
+
+## Convenções
+- Código e identificadores em inglês; copy visível ao usuário em português (ver regra de texto human friendly).
+- Commits: Conventional Commits (`feat:`, `fix:`, `chore:`, `refactor:`).
+- Branches: `feat/nome-descritivo`, `fix/nome-descritivo`.
+- Formulários com `react-hook-form` + `zod`; todo input com `keyboardType` correto.
+- Estilos com `StyleSheet.create`, sem estilo inline solto.
+- Safe area via `useSafeAreaInsets()` em toda tela nova.
+
+## Não fazer
+- Não usar `any`. Casos extremos usam `unknown` + type guard.
+- Não instalar dependência nova sem consultar o Iago.
+- Não editar `android/` e `ios/` à mão (gerados pelo prebuild). Regenerar com `npx expo prebuild`. Exceção: ajuste de assinatura no Xcode.
+- Libs que exigem código nativo novo precisam de rebuild do dev-client, não bastam no Metro. Avisar quando for o caso.
+- Nunca versionar `service-account.json`, `.env` nem qualquer segredo.
 
 ## Regras de Qualidade — Checklist Obrigatório
 

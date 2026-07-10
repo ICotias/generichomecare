@@ -7,6 +7,7 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  Image,
   ActivityIndicator,
   TouchableWithoutFeedback,
   Keyboard,
@@ -130,7 +131,11 @@ export const LoginScreen = () => {
           {/* Logo */}
           <View style={styles.logoArea}>
             <View style={styles.logoBox}>
-              <Text style={styles.logoIcon}>❤️‍🩹</Text>
+              <Image
+                source={require('../../../../assets/logo.png')}
+                style={styles.logoImg}
+                resizeMode="contain"
+              />
             </View>
             <Text style={styles.appName}>HomeCare</Text>
             <Text style={styles.tagline}>Gerenciamento de cuidados{'\n'}domiciliares simplificado</Text>
@@ -241,7 +246,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 18,
-    backgroundColor: colors.primary,
+    backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.md,
@@ -255,8 +260,9 @@ const styles = StyleSheet.create({
       android: { elevation: 4 },
     }),
   },
-  logoIcon: {
-    fontSize: 32,
+  logoImg: {
+    width: 72,
+    height: 72,
   },
   appName: {
     fontSize: fontSize.xxl,

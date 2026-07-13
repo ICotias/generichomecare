@@ -34,7 +34,7 @@ export const PatientPickerBar = ({
     <View style={styles.container}>
       <View style={styles.labelRow}>
         <Ionicons name="eye-outline" size={14} color={colors.admin} />
-        <Text style={styles.label}>Simulando — Paciente:</Text>
+        <Text style={styles.label}>Simulando. Paciente:</Text>
       </View>
       <ScrollView
         horizontal

@@ -15,11 +15,11 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
-import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
+import { colors, spacing, fontSize } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import { usePatientWithActiveShift } from '../../../core/hooks/usePatientWithActiveShift';
-import { saveRecordWithFallback } from '../../../core/services/offlineQueue';
-import type { Patient, IncidentRecord } from '../../../core/types';
+import { useSaveRecord } from '../../../core/hooks/useSaveRecord';
+import type { IncidentRecord } from '../../../core/types';
 
 import { ModalHeader } from '../../../shared/components/ui/ModalHeader';
 import { InsetGroupedSection } from '../../../shared/components/ui/InsetGroupedSection';
@@ -51,8 +51,9 @@ export const RegisterIncidentScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { user } = useAuthStore();
+  const { isSubmitting, save } = useSaveRecord('RegisterIncident error');
 
-  const { patients, selectedPatient, setSelectedPatient } = usePatientWithActiveShift(user?.empresaId, user?.uid);
+  const { selectedPatient } = usePatientWithActiveShift(user?.empresaId, user?.uid);
   const [showTipoModal, setShowTipoModal] = useState(false);
 
   const [tipoIncidente, setTipoIncidente] = useState<IncidentRecord['tipoIncidente'] | ''>('');
@@ -60,7 +61,6 @@ export const RegisterIncidentScreen = () => {
   const [descricao, setDescricao] = useState('');
   const [medidasTomadas, setMedidasTomadas] = useState('');
   const [notificouFamilia, setNotificouFamilia] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const descRef = useRef<TextInput>(null);
@@ -81,39 +81,26 @@ export const RegisterIncidentScreen = () => {
     return true;
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     Keyboard.dismiss();
     if (!validate()) return;
-    if (!user?.empresaId || !user?.uid) return;
 
-    setIsSubmitting(true);
-    try {
-      const { online } = await saveRecordWithFallback(user.empresaId, selectedPatient!.id, {
+    save({
+      pacienteId: selectedPatient!.id,
+      successMessage: `Intercorrência registrada para ${selectedPatient!.nome}.`,
+      build: () => ({
         type: 'intercorrencia',
         pacienteId: selectedPatient!.id,
-        empresaId: user.empresaId,
-        profissionalId: user.uid,
-        profissionalNome: user.nome,
+        empresaId: user!.empresaId,
+        profissionalId: user!.uid,
+        profissionalNome: user!.nome,
         tipoIncidente: tipoIncidente as IncidentRecord['tipoIncidente'],
         gravidade: gravidade as IncidentRecord['gravidade'],
         descricao: descricao.trim(),
         ...(medidasTomadas.trim() ? { medidasTomadas: medidasTomadas.trim() } : {}),
         notificouFamilia,
-      }, user.uid, user.role);
-
-      Alert.alert(
-        online ? 'Registrado' : 'Salvo offline',
-        online
-          ? `Intercorrência registrada para ${selectedPatient!.nome}.`
-          : 'Sem conexão. O registro foi salvo e será sincronizado automaticamente quando voltar a ter internet.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
-    } catch (error) {
-      Alert.alert('Erro', 'Não foi possível salvar o registro.');
-      console.error('RegisterIncident error', error);
-    } finally {
-      setIsSubmitting(false);
-    }
+      }),
+    });
   };
 
   const selectedTipoLabel = TIPO_OPTIONS.find((o) => o.value === tipoIncidente)?.label;

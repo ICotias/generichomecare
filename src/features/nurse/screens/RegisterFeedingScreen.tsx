@@ -14,11 +14,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
-import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
+import { colors, spacing, fontSize } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import { usePatientWithActiveShift } from '../../../core/hooks/usePatientWithActiveShift';
-import { saveRecordWithFallback } from '../../../core/services/offlineQueue';
-import type { Patient } from '../../../core/types';
+import { useSaveRecord } from '../../../core/hooks/useSaveRecord';
 
 import { ModalHeader } from '../../../shared/components/ui/ModalHeader';
 import { InsetGroupedSection } from '../../../shared/components/ui/InsetGroupedSection';
@@ -52,8 +51,9 @@ export const RegisterFeedingScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { user } = useAuthStore();
+  const { isSubmitting, save } = useSaveRecord('RegisterFeeding error');
 
-  const { patients, selectedPatient, setSelectedPatient } = usePatientWithActiveShift(user?.empresaId, user?.uid);
+  const { selectedPatient } = usePatientWithActiveShift(user?.empresaId, user?.uid);
   const [showRefeicaoModal, setShowRefeicaoModal] = useState(false);
 
   const [tipoRefeicao, setTipoRefeicao] = useState('');
@@ -61,7 +61,6 @@ export const RegisterFeedingScreen = () => {
   const [via, setVia] = useState('');
   const [volume, setVolume] = useState('');
   const [observacoes, setObservacoes] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const volumeRef = useRef<TextInput>(null);
@@ -82,42 +81,31 @@ export const RegisterFeedingScreen = () => {
     return true;
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     Keyboard.dismiss();
     if (!validate()) return;
-    if (!user?.empresaId || !user?.uid) return;
 
-    setIsSubmitting(true);
-    try {
-      // Map aceitacao to numeric for Firestore compatibility
-      const aceitacaoMap: Record<string, number> = { total: 100, parcial: 50, recusa: 0 };
+    save({
+      pacienteId: selectedPatient!.id,
+      successMessage: `Alimentação registrada para ${selectedPatient!.nome}.`,
+      build: () => {
+        // Map aceitacao to numeric for Firestore compatibility
+        const aceitacaoMap: Record<string, number> = { total: 100, parcial: 50, recusa: 0 };
 
-      const { online } = await saveRecordWithFallback(user.empresaId, selectedPatient!.id, {
-        type: 'alimentacao',
-        pacienteId: selectedPatient!.id,
-        empresaId: user.empresaId,
-        profissionalId: user.uid,
-        profissionalNome: user.nome,
-        tipoRefeicao,
-        aceitacao: aceitacaoMap[aceitacao] ?? 0,
-        consistencia: via === 'sonda' ? 'enteral' : 'normal',
-        hidratacaoMl: Number(volume) || 0,
-        ...(observacoes.trim() ? { observacoes: observacoes.trim() } : {}),
-      }, user.uid, user.role);
-
-      Alert.alert(
-        online ? 'Registrado' : 'Salvo offline',
-        online
-          ? `Alimentacao registrada para ${selectedPatient!.nome}.`
-          : 'Sem conexao. O registro foi salvo e sera sincronizado automaticamente quando voltar a ter internet.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
-    } catch (error) {
-      Alert.alert('Erro', 'Não foi possível salvar o registro.');
-      console.error('RegisterFeeding error', error);
-    } finally {
-      setIsSubmitting(false);
-    }
+        return {
+          type: 'alimentacao',
+          pacienteId: selectedPatient!.id,
+          empresaId: user!.empresaId,
+          profissionalId: user!.uid,
+          profissionalNome: user!.nome,
+          tipoRefeicao,
+          aceitacao: aceitacaoMap[aceitacao] ?? 0,
+          consistencia: via === 'sonda' ? 'enteral' : 'normal',
+          hidratacaoMl: Number(volume) || 0,
+          ...(observacoes.trim() ? { observacoes: observacoes.trim() } : {}),
+        };
+      },
+    });
   };
 
   // --- Derived display values ---
@@ -206,7 +194,7 @@ export const RegisterFeedingScreen = () => {
                     ref={volumeRef}
                     value={volume}
                     onChangeText={setVolume}
-                    placeholder="—"
+                    placeholder="0"
                     placeholderTextColor={colors.textMuted}
                     style={styles.inlineInput}
                     keyboardType="numeric"
@@ -225,7 +213,7 @@ export const RegisterFeedingScreen = () => {
                     ref={obsRef}
                     value={observacoes}
                     onChangeText={setObservacoes}
-                    placeholder="—"
+                    placeholder="Opcional"
                     placeholderTextColor={colors.textMuted}
                     style={styles.inlineInput}
                     editable={!isSubmitting}

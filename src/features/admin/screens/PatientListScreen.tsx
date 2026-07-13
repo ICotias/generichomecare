@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { differenceInYears } from 'date-fns';
 import {
   View,
   Text,
@@ -94,13 +95,7 @@ export const PatientListScreen = () => {
     ? patients.filter((p) => p.nome.toLowerCase().includes(search.toLowerCase().trim()))
     : patients;
 
-  const calcAge = (birth: Date): number => {
-    const now = new Date();
-    let age = now.getFullYear() - birth.getFullYear();
-    const m = now.getMonth() - birth.getMonth();
-    if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
-    return age;
-  };
+  const calcAge = (birth: Date): number => differenceInYears(new Date(), birth);
 
   // ── Card renderer ──
   const renderPatient = ({ item }: { item: Patient }) => {

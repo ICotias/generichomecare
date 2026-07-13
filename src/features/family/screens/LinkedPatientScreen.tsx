@@ -12,6 +12,8 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity } from 'react-native';
 
+import { differenceInYears } from 'date-fns';
+
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import { useFamilyPatientId } from '../../../core/hooks/useFamilyPatientId';
@@ -19,15 +21,7 @@ import * as patientService from '../../../core/services/patientService';
 import type { Patient } from '../../../core/types';
 import { PatientPickerBar } from '../../../shared/components/PatientPickerBar';
 
-const calcAge = (birthDate: Date): number => {
-  const today = new Date();
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const m = today.getMonth() - birthDate.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-    age--;
-  }
-  return age;
-};
+const calcAge = (birthDate: Date): number => differenceInYears(new Date(), birthDate);
 
 const ATENDIMENTO_LABELS: Record<string, string> = {
   integral: 'Integral (24h)',

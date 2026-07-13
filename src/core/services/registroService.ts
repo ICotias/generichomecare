@@ -53,6 +53,10 @@ export const createRecord = async (
 
   const data = {
     ...input,
+    // Garante empresaId/pacienteId no doc: além do caminho, são campos usados
+    // por consultas collectionGroup (ex.: dashboard) e pelas regras.
+    empresaId,
+    pacienteId,
     visibleToFamily,
     timestamp: Timestamp.now(),
     syncStatus: 'synced',

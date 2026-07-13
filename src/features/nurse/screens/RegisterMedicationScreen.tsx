@@ -14,13 +14,12 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
-import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
+import { colors, spacing, fontSize } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import { usePatientWithActiveShift } from '../../../core/hooks/usePatientWithActiveShift';
-import { saveRecordWithFallback } from '../../../core/services/offlineQueue';
-import type { Patient } from '../../../core/types';
+import { useSaveRecord } from '../../../core/hooks/useSaveRecord';
 
 import { ModalHeader } from '../../../shared/components/ui/ModalHeader';
 import { InsetGroupedSection } from '../../../shared/components/ui/InsetGroupedSection';
@@ -53,9 +52,10 @@ export const RegisterMedicationScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { user } = useAuthStore();
+  const { isSubmitting, save } = useSaveRecord('RegisterMedication error');
 
   // Patient selector (pré-seleciona paciente do plantão ativo)
-  const { patients, selectedPatient, setSelectedPatient } = usePatientWithActiveShift(user?.empresaId, user?.uid);
+  const { selectedPatient } = usePatientWithActiveShift(user?.empresaId, user?.uid);
 
 
   // Form
@@ -67,7 +67,6 @@ export const RegisterMedicationScreen = () => {
   const [showViaPicker, setShowViaPicker] = useState(false);
   const [observacoes, setObservacoes] = useState('');
   const [recusado, setRecusado] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const medicamentoRef = useRef<TextInput>(null);
@@ -88,40 +87,27 @@ export const RegisterMedicationScreen = () => {
     return true;
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     Keyboard.dismiss();
     if (!validate()) return;
-    if (!user?.empresaId || !user?.uid) return;
 
-    setIsSubmitting(true);
-    try {
-      const { online } = await saveRecordWithFallback(user.empresaId, selectedPatient!.id, {
+    save({
+      pacienteId: selectedPatient!.id,
+      successMessage: `Medicamento registrado para ${selectedPatient!.nome}.`,
+      build: () => ({
         type: 'medicamento',
         pacienteId: selectedPatient!.id,
-        empresaId: user.empresaId,
-        profissionalId: user.uid,
-        profissionalNome: user.nome,
+        empresaId: user!.empresaId,
+        profissionalId: user!.uid,
+        profissionalNome: user!.nome,
         medicamento: medicamento.trim(),
         dosagem: dosagem.trim(),
         via,
         prescricaoId: '',
         recusado,
         ...(observacoes.trim() ? { observacoes: observacoes.trim() } : {}),
-      }, user.uid, user.role);
-
-      Alert.alert(
-        online ? 'Registrado' : 'Salvo offline',
-        online
-          ? `Medicamento registrado para ${selectedPatient!.nome}.`
-          : 'Sem conexão. O registro foi salvo e será sincronizado automaticamente quando voltar a ter internet.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
-    } catch (error) {
-      Alert.alert('Erro', 'Não foi possível salvar o registro.');
-      console.error('RegisterMedication error', error);
-    } finally {
-      setIsSubmitting(false);
-    }
+      }),
+    });
   };
 
   // Get the label for the selected via
@@ -205,7 +191,7 @@ export const RegisterMedicationScreen = () => {
                     mode="time"
                     display="spinner"
                     minuteInterval={5}
-                    onChange={(_event: any, selectedDate: Date | undefined) => {
+                    onChange={(_event: DateTimePickerEvent, selectedDate: Date | undefined) => {
                       if (selectedDate) setHorario(selectedDate);
                       if (Platform.OS === 'android') setShowTimePicker(false);
                     }}

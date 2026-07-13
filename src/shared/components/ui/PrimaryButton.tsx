@@ -6,7 +6,7 @@ import {
   Platform,
   ViewStyle,
 } from 'react-native';
-import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
+import { colors, fontSize, borderRadius } from '../../../core/theme/theme';
 
 interface PrimaryButtonProps {
   title: string;

@@ -17,10 +17,10 @@ import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import { usePatientWithActiveShift } from '../../../core/hooks/usePatientWithActiveShift';
-import { saveRecordWithFallback } from '../../../core/services/offlineQueue';
+import { useSaveRecord } from '../../../core/hooks/useSaveRecord';
+import type { VitalSignsRange } from '../../../core/types';
 import { ModalHeader } from '../../../shared/components/ui/ModalHeader';
 import { InsetGroupedSection } from '../../../shared/components/ui/InsetGroupedSection';
-import { InsetRow } from '../../../shared/components/ui/InsetRow';
 
 const isOutOfRange = (val: number, min: number, max: number) =>
   val > 0 && (val < min || val > max);
@@ -29,8 +29,9 @@ export const RegisterVitalsScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { user } = useAuthStore();
+  const { isSubmitting, save } = useSaveRecord('RegisterVitals error');
 
-  const { patients, selectedPatient, setSelectedPatient } = usePatientWithActiveShift(user?.empresaId, user?.uid);
+  const { selectedPatient } = usePatientWithActiveShift(user?.empresaId, user?.uid);
 
 
   const [paSist, setPaSist] = useState('');
@@ -42,7 +43,6 @@ export const RegisterVitalsScreen = () => {
   const [glicemia, setGlicemia] = useState('');
   const [dor, setDor] = useState('');
   const [observacoes, setObservacoes] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const paDiastRef = useRef<TextInput>(null);
@@ -75,12 +75,11 @@ export const RegisterVitalsScreen = () => {
     return true;
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     Keyboard.dismiss();
     if (!validate()) return;
-    if (!user?.empresaId || !user?.uid) return;
 
-    const ranges = selectedPatient!.faixaSinaisVitais ?? {} as any;
+    const ranges = selectedPatient!.faixaSinaisVitais ?? ({} as Partial<VitalSignsRange>);
     const paSistNum = Number(paSist);
     const paDiastNum = Number(paDiast);
     const fcNum = Number(fc);
@@ -97,14 +96,17 @@ export const RegisterVitalsScreen = () => {
          spo2Num < ranges.satO2Min)
       : false;
 
-    setIsSubmitting(true);
-    try {
-      const { online } = await saveRecordWithFallback(user.empresaId, selectedPatient!.id, {
+    save({
+      pacienteId: selectedPatient!.id,
+      successMessage: alerta
+        ? 'Sinais vitais registrados. Alguns valores estão fora da faixa esperada.'
+        : 'Sinais vitais registrados com sucesso.',
+      build: () => ({
         type: 'sinaisVitais',
         pacienteId: selectedPatient!.id,
-        empresaId: user.empresaId,
-        profissionalId: user.uid,
-        profissionalNome: user.nome,
+        empresaId: user!.empresaId,
+        profissionalId: user!.uid,
+        profissionalNome: user!.nome,
         paSistolica: paSistNum,
         paDiastolica: paDiastNum,
         fc: fcNum,
@@ -113,26 +115,8 @@ export const RegisterVitalsScreen = () => {
         satO2: spo2Num,
         alerta,
         ...(observacoes.trim() ? { observacoes: observacoes.trim() } : {}),
-      }, user.uid, user.role);
-
-      let msg: string;
-      if (!online) {
-        msg = 'Sem conexão. Os sinais vitais foram salvos e serão sincronizados automaticamente quando voltar a ter internet.';
-      } else if (alerta) {
-        msg = 'Sinais vitais registrados. Alguns valores estão fora da faixa esperada.';
-      } else {
-        msg = 'Sinais vitais registrados com sucesso.';
-      }
-
-      Alert.alert(online ? 'Registrado' : 'Salvo offline', msg, [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
-    } catch (error) {
-      Alert.alert('Erro', 'Não foi possível salvar o registro.');
-      console.error('RegisterVitals error', error);
-    } finally {
-      setIsSubmitting(false);
-    }
+      }),
+    });
   };
 
   // ── Vital field renderer ──
@@ -164,7 +148,7 @@ export const RegisterVitalsScreen = () => {
           setter(v);
           setErrors((p) => ({ ...p, [errorKey]: '' }));
         }}
-        placeholder="—"
+        placeholder="0"
         placeholderTextColor={colors.textMuted}
         keyboardType="numeric"
         returnKeyType={opts.nextRef ? 'next' : 'done'}
@@ -303,11 +287,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginBottom: spacing.lg,
     lineHeight: 22,
-  },
-  sectionError: {
-    marginTop: -spacing.md,
-    marginBottom: spacing.md,
-    marginLeft: spacing.md,
   },
   label: {
     fontSize: fontSize.sm,

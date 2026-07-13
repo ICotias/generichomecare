@@ -27,34 +27,10 @@ import { SelectionListModal } from '../../../shared/components/ui/SelectionListM
 import type { SelectionItem } from '../../../shared/components/ui/SelectionListModal';
 import { SegmentedControl } from '../../../shared/components/ui/SegmentedControl';
 import { formatPhone } from '../../../shared/utils/formatters';
+import { mapAuthError } from '../../../shared/utils/authErrors';
+import { PARENTESCO_OPTIONS } from '../../../shared/constants/parentesco';
 
 type RouteType = RouteProp<{ LinkFamily: { patientId?: string } }, 'LinkFamily'>;
-
-const mapFirebaseError = (error: unknown): string => {
-  const code = (error as { code?: string })?.code ?? '';
-  switch (code) {
-    case 'auth/email-already-in-use':
-      return 'Já existe uma conta com este e-mail';
-    case 'auth/invalid-email':
-      return 'E-mail inválido';
-    case 'auth/weak-password':
-      return 'Senha muito fraca';
-    case 'auth/network-request-failed':
-      return 'Falha de rede. Verifique sua conexão';
-    default:
-      return (error instanceof Error ? error.message : '') || 'Erro desconhecido ao vincular família';
-  }
-};
-
-const PARENTESCO_OPTIONS: SelectionItem[] = [
-  { id: 'filho', label: 'Filho(a)' },
-  { id: 'conjuge', label: 'Cônjuge' },
-  { id: 'neto', label: 'Neto(a)' },
-  { id: 'irmao', label: 'Irmão(ã)' },
-  { id: 'sobrinho', label: 'Sobrinho(a)' },
-  { id: 'cuidador', label: 'Cuidador(a)' },
-  { id: 'outro', label: 'Outro' },
-];
 
 const MODE_SEGMENTS = [
   { key: 'new', label: 'Nova conta' },
@@ -170,7 +146,7 @@ export const LinkFamilyScreen = () => {
     setIsSaving(true);
     try {
       if (mode === 'new') {
-        const result = await adminUserService.createFamilyAccount({
+        await adminUserService.createFamilyAccount({
           email: email.trim(),
           password: senha,
           nome: nome.trim(),
@@ -197,7 +173,10 @@ export const LinkFamilyScreen = () => {
         );
       }
     } catch (err) {
-      Alert.alert('Erro ao vincular', mapFirebaseError(err));
+      Alert.alert(
+        'Erro ao vincular',
+        mapAuthError(err, (err instanceof Error ? err.message : '') || 'Erro desconhecido ao vincular família'),
+      );
     } finally {
       setIsSaving(false);
     }

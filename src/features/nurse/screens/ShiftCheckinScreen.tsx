@@ -13,9 +13,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
+import type { ShiftStackParamList } from '../../../core/navigation/RootNavigator';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import { useLocation } from '../../../core/hooks/useLocation';
 import * as shiftService from '../../../core/services/shiftService';
@@ -26,7 +28,7 @@ import { PrimaryButton } from '../../../shared/components/ui';
 
 export const ShiftCheckinScreen = () => {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<ShiftStackParamList>>();
   const { user } = useAuthStore();
   const { isLoading: isLocationLoading, getCurrentLocation } = useLocation();
 
@@ -256,7 +258,7 @@ export const ShiftCheckinScreen = () => {
         {hasActiveShift ? (
           <TouchableOpacity
             style={styles.sbarButton}
-            onPress={() => (navigation as any).navigate('ShiftEvolution')}
+            onPress={() => navigation.navigate('ShiftEvolution')}
             activeOpacity={0.85}
           >
             <Ionicons name="document-text-outline" size={20} color={colors.white} />
@@ -279,8 +281,8 @@ const ShiftDuration = ({ checkinAt }: { checkinAt: Date }) => {
   const [elapsed, setElapsed] = useState('');
 
   useEffect(() => {
-    // checkinAt pode vir como Timestamp do Firestore — garantir conversão
-    const safeDate = checkinAt instanceof Date ? checkinAt : new Date(checkinAt as any);
+    // checkinAt já chega como Date (o service converte o Timestamp); cópia defensiva
+    const safeDate = checkinAt instanceof Date ? checkinAt : new Date(checkinAt);
     const updateElapsed = () => {
       const now = new Date();
       const diffMs = now.getTime() - safeDate.getTime();

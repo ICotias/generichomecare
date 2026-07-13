@@ -12,6 +12,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+import { differenceInYears } from 'date-fns';
+
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import { useFamilyPatientId } from '../../../core/hooks/useFamilyPatientId';
@@ -30,13 +32,7 @@ const TIPO_LABELS: Record<Patient['tipoAtendimento'], string> = {
   visita: 'Visita',
 };
 
-const calcAge = (birth: Date): number => {
-  const now = new Date();
-  let age = now.getFullYear() - birth.getFullYear();
-  const m = now.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
-  return age;
-};
+const calcAge = (birth: Date): number => differenceInYears(new Date(), birth);
 
 export const PatientInfoScreen = () => {
   const insets = useSafeAreaInsets();
@@ -180,10 +176,10 @@ export const PatientInfoScreen = () => {
         {/* Faixas de sinais vitais */}
         <Text style={styles.sectionTitle}>FAIXAS DE SINAIS VITAIS</Text>
         <View style={styles.infoCard}>
-          <InfoRow label="PA Sistólica" value={`${patient.faixaSinaisVitais.paSistolicaMin}–${patient.faixaSinaisVitais.paSistolicaMax} mmHg`} />
-          <InfoRow label="PA Diastólica" value={`${patient.faixaSinaisVitais.paDiastolicaMin}–${patient.faixaSinaisVitais.paDiastolicaMax} mmHg`} />
-          <InfoRow label="FC" value={`${patient.faixaSinaisVitais.fcMin}–${patient.faixaSinaisVitais.fcMax} bpm`} />
-          <InfoRow label="Temp." value={`${patient.faixaSinaisVitais.tempMin}–${patient.faixaSinaisVitais.tempMax} °C`} />
+          <InfoRow label="PA Sistólica" value={`${patient.faixaSinaisVitais.paSistolicaMin} a ${patient.faixaSinaisVitais.paSistolicaMax} mmHg`} />
+          <InfoRow label="PA Diastólica" value={`${patient.faixaSinaisVitais.paDiastolicaMin} a ${patient.faixaSinaisVitais.paDiastolicaMax} mmHg`} />
+          <InfoRow label="FC" value={`${patient.faixaSinaisVitais.fcMin} a ${patient.faixaSinaisVitais.fcMax} bpm`} />
+          <InfoRow label="Temp." value={`${patient.faixaSinaisVitais.tempMin} a ${patient.faixaSinaisVitais.tempMax} °C`} />
           <InfoRow label="SpO₂ mín." value={`${patient.faixaSinaisVitais.satO2Min}%`} last />
         </View>
 

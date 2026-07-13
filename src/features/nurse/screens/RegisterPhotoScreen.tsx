@@ -21,7 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import { usePatientWithActiveShift } from '../../../core/hooks/usePatientWithActiveShift';
-import { saveRecordWithFallback } from '../../../core/services/offlineQueue';
+import { useSaveRecord } from '../../../core/hooks/useSaveRecord';
 import { ModalHeader } from '../../../shared/components/ui/ModalHeader';
 import { InsetGroupedSection } from '../../../shared/components/ui/InsetGroupedSection';
 import { InsetRow } from '../../../shared/components/ui/InsetRow';
@@ -58,15 +58,15 @@ export const RegisterPhotoScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { user } = useAuthStore();
+  const { isSubmitting, save } = useSaveRecord('RegisterPhoto error');
 
-  const { patients, selectedPatient, setSelectedPatient } = usePatientWithActiveShift(user?.empresaId, user?.uid);
+  const { selectedPatient } = usePatientWithActiveShift(user?.empresaId, user?.uid);
 
 
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [fotoClinica, setFotoClinica] = useState(false);
   const [observacoes, setObservacoes] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const pickImage = async (source: 'camera' | 'gallery') => {
@@ -134,61 +134,44 @@ export const RegisterPhotoScreen = () => {
     return true;
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     Keyboard.dismiss();
     if (!validate()) return;
-    if (!user?.empresaId || !user?.uid) return;
 
-    setIsSubmitting(true);
-    try {
-      // Comprime e converte para base64 (guardado no próprio registro Firestore)
-      const base64 = await prepareBase64(imageUri!, imageBase64);
+    save({
+      pacienteId: selectedPatient!.id,
+      successMessage: `Foto registrada para ${selectedPatient!.nome}.`,
+      build: async () => {
+        // Comprime e converte para base64 (guardado no próprio registro Firestore)
+        const base64 = await prepareBase64(imageUri!, imageBase64);
 
-      if (!base64) {
-        Alert.alert('Erro', 'Não foi possível processar a imagem. Tente novamente.');
-        return;
-      }
+        if (!base64) {
+          Alert.alert('Erro', 'Não foi possível processar a imagem. Tente novamente.');
+          return null;
+        }
 
-      if (base64.length > MAX_BASE64_CHARS) {
-        Alert.alert(
-          'Foto muito grande',
-          'A imagem ficou grande demais para salvar. Tire a foto novamente com menos zoom ou recorte uma área menor.'
-        );
-        return;
-      }
+        if (base64.length > MAX_BASE64_CHARS) {
+          Alert.alert(
+            'Foto muito grande',
+            'A imagem ficou grande demais para salvar. Tire a foto novamente com menos zoom ou recorte uma área menor.'
+          );
+          return null;
+        }
 
-      const imageUrl = `data:image/jpeg;base64,${base64}`;
+        const imageUrl = `data:image/jpeg;base64,${base64}`;
 
-      const { online } = await saveRecordWithFallback(
-        user.empresaId,
-        selectedPatient!.id,
-        {
+        return {
           type: 'foto',
           pacienteId: selectedPatient!.id,
-          empresaId: user.empresaId,
-          profissionalId: user.uid,
-          profissionalNome: user.nome,
+          empresaId: user!.empresaId,
+          profissionalId: user!.uid,
+          profissionalNome: user!.nome,
           imageUrl,
           fotoClinica,
           ...(observacoes.trim() ? { observacoes: observacoes.trim() } : {}),
-        },
-        user.uid,
-        user.role
-      );
-
-      Alert.alert(
-        online ? 'Registrado' : 'Salvo offline',
-        online
-          ? `Foto registrada para ${selectedPatient!.nome}.`
-          : 'Sem conexão. A foto foi salva e será sincronizada automaticamente quando voltar a ter internet.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
-    } catch (error) {
-      Alert.alert('Erro', 'Não foi possível salvar o registro.');
-      console.error('RegisterPhoto error', error);
-    } finally {
-      setIsSubmitting(false);
-    }
+        };
+      },
+    });
   };
 
   return (

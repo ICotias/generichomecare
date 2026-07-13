@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 
-import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
+import { colors, spacing } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import * as patientService from '../../../core/services/patientService';
 import * as registroService from '../../../core/services/registroService';
@@ -193,7 +193,7 @@ export const ExportReportScreen = () => {
         await shareModule.open({
           url: Platform.OS === 'android' ? `file://${result.filePath}` : result.filePath,
           type: 'application/pdf',
-          title: `Relatório — ${selectedPatient.nome}`,
+          title: `Relatório de ${selectedPatient.nome}`,
         });
       } else {
         Alert.alert('PDF gerado', `Salvo em: ${result.filePath}`);

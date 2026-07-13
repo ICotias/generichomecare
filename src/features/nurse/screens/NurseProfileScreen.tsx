@@ -1,11 +1,13 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
+import type { NurseProfileStackParamList } from '../../../core/navigation/RootNavigator';
 
 const MenuRow = ({
   icon,
@@ -25,7 +27,7 @@ const MenuRow = ({
 
 export const NurseProfileScreen = () => {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<NurseProfileStackParamList>>();
   const { user, signOut } = useAuthStore();
 
   const initials = (user?.nome ?? 'E').charAt(0).toUpperCase();
@@ -58,13 +60,13 @@ export const NurseProfileScreen = () => {
         <View style={styles.menuCard}>
           <MenuRow icon="settings-outline" label="Configurações Pessoais" onPress={() => navigation.navigate('EditProfile')} />
           <View style={styles.menuDivider} />
-          <MenuRow icon="time-outline" label="Histórico de Plantões" onPress={() => (navigation as any).navigate('ShiftHistory')} />
+          <MenuRow icon="time-outline" label="Histórico de Plantões" onPress={() => navigation.navigate('ShiftHistory')} />
         </View>
 
         {/* SUPORTE E AJUDA */}
         <Text style={styles.sectionLabel}>SUPORTE E AJUDA</Text>
         <View style={styles.menuCard}>
-          <MenuRow icon="help-circle-outline" label="Central de Ajuda" onPress={() => (navigation as any).navigate('Help')} />
+          <MenuRow icon="help-circle-outline" label="Central de Ajuda" onPress={() => navigation.navigate('Help')} />
         </View>
 
         {/* Logout */}

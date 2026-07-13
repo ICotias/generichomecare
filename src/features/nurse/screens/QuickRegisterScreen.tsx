@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   View,
   Text,
@@ -13,8 +12,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
-import { useAuthStore } from '../../../core/hooks/useAuth';
-import { usePatientWithActiveShift } from '../../../core/hooks/usePatientWithActiveShift';
 import type { RegisterStackParamList } from '../../../core/navigation/RootNavigator';
 
 type NavProp = NativeStackNavigationProp<RegisterStackParamList, 'QuickRegister'>;
@@ -75,8 +72,6 @@ const OPTIONS: RegisterOption[] = [
 export const QuickRegisterScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
-  const { user } = useAuthStore();
-  const { selectedPatient } = usePatientWithActiveShift(user?.empresaId, user?.uid);
 
   return (
     <ScrollView

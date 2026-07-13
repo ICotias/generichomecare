@@ -156,7 +156,7 @@ export const TeamListScreen = () => {
 
       {usingMock && __DEV__ && (
         <View style={styles.mockBanner}>
-          <Text style={styles.mockText}>Dados de exemplo — profissionais reais aparecerão aqui.</Text>
+          <Text style={styles.mockText}>Dados de exemplo. Os profissionais reais aparecerão aqui.</Text>
         </View>
       )}
 

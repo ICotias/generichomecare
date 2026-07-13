@@ -22,7 +22,9 @@ import { useAuthStore } from '../../../core/hooks/useAuth';
 import * as adminUserService from '../../../core/services/adminUserService';
 import type { TeamStackParamList } from '../../../core/navigation/RootNavigator';
 import { PasswordInput } from '../../../shared/components/PasswordInput';
+import { FormInput } from '../../../shared/components/ui';
 import { formatPhone, EMAIL_REGEX } from '../../../shared/utils/formatters';
+import { mapAuthError } from '../../../shared/utils/authErrors';
 
 type NavProp = NativeStackNavigationProp<TeamStackParamList, 'CreateNurse'>;
 
@@ -88,21 +90,6 @@ export const CreateNurseScreen = () => {
     return Object.keys(next).length === 0;
   };
 
-  const mapFirebaseError = (code: string): string => {
-    switch (code) {
-      case 'auth/email-already-in-use':
-        return 'Já existe uma conta com este e-mail';
-      case 'auth/invalid-email':
-        return 'E-mail inválido';
-      case 'auth/weak-password':
-        return 'Senha muito fraca';
-      case 'auth/network-request-failed':
-        return 'Falha de rede. Verifique sua conexão';
-      default:
-        return 'Não foi possível criar a conta. Tente novamente';
-    }
-  };
-
   const handleSubmit = async () => {
     Keyboard.dismiss();
     if (!validate()) return;
@@ -130,62 +117,10 @@ export const CreateNurseScreen = () => {
       );
     } catch (error) {
       const code = (error as { code?: string })?.code ?? '';
-      setErrors({ general: mapFirebaseError(code) });
+      setErrors({ general: mapAuthError(code, 'Não foi possível criar a conta. Tente novamente') });
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const renderField = (
-    key: keyof FormState,
-    label: string,
-    options: {
-      placeholder: string;
-      keyboardType?: 'default' | 'email-address' | 'phone-pad';
-      autoCapitalize?: 'none' | 'words';
-      textContentType?: 'name' | 'emailAddress' | 'telephoneNumber' | 'newPassword' | 'none';
-      secureTextEntry?: boolean;
-      ref?: React.RefObject<TextInput | null>;
-      onSubmitEditing?: () => void;
-      returnKeyType?: 'next' | 'done';
-      optional?: boolean;
-      formatter?: (raw: string) => string;
-    }
-  ) => {
-    const error = errors[key as keyof FormErrors];
-    const isFocused = focused === key;
-
-    return (
-      <View style={styles.field}>
-        <Text style={styles.label}>
-          {label}
-          {options.optional ? <Text style={styles.optional}> (opcional)</Text> : null}
-        </Text>
-        <TextInput
-          ref={options.ref}
-          value={form[key]}
-          onChangeText={(value) => updateField(key, options.formatter ? options.formatter(value) : value)}
-          placeholder={options.placeholder}
-          placeholderTextColor={colors.textMuted}
-          keyboardType={options.keyboardType ?? 'default'}
-          autoCapitalize={options.autoCapitalize ?? 'none'}
-          autoCorrect={false}
-          textContentType={options.textContentType ?? 'none'}
-          secureTextEntry={options.secureTextEntry}
-          returnKeyType={options.returnKeyType ?? 'next'}
-          onSubmitEditing={options.onSubmitEditing}
-          onFocus={() => setFocused(key)}
-          onBlur={() => setFocused(null)}
-          style={[
-            styles.input,
-            isFocused && styles.inputFocused,
-            error && styles.inputError,
-          ]}
-          editable={!isSubmitting}
-        />
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      </View>
-    );
   };
 
   return (
@@ -220,37 +155,65 @@ export const CreateNurseScreen = () => {
             </Text>
 
             <View style={styles.form}>
-              {renderField('nome', 'Nome completo', {
-                placeholder: 'Ex.: Maria da Silva',
-                autoCapitalize: 'words',
-                textContentType: 'name',
-                onSubmitEditing: () => emailRef.current?.focus(),
-              })}
+              <FormInput
+                label="Nome completo"
+                value={form.nome}
+                onChangeText={(v) => updateField('nome', v)}
+                placeholder="Ex.: Maria da Silva"
+                autoCapitalize="words"
+                autoCorrect={false}
+                textContentType="name"
+                returnKeyType="next"
+                onSubmitEditing={() => emailRef.current?.focus()}
+                editable={!isSubmitting}
+                error={errors.nome}
+              />
 
-              {renderField('email', 'E-mail', {
-                placeholder: 'enfermeiro@exemplo.com',
-                keyboardType: 'email-address',
-                textContentType: 'emailAddress',
-                ref: emailRef,
-                onSubmitEditing: () => telefoneRef.current?.focus(),
-              })}
+              <FormInput
+                ref={emailRef}
+                label="E-mail"
+                value={form.email}
+                onChangeText={(v) => updateField('email', v)}
+                placeholder="enfermeiro@exemplo.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="emailAddress"
+                returnKeyType="next"
+                onSubmitEditing={() => telefoneRef.current?.focus()}
+                editable={!isSubmitting}
+                error={errors.email}
+              />
 
-              {renderField('telefone', 'Telefone', {
-                placeholder: '(11) 90000-0000',
-                keyboardType: 'phone-pad',
-                textContentType: 'telephoneNumber',
-                ref: telefoneRef,
-                onSubmitEditing: () => corenRef.current?.focus(),
-                formatter: formatPhone,
-              })}
+              <FormInput
+                ref={telefoneRef}
+                label="Telefone"
+                value={form.telefone}
+                onChangeText={(v) => updateField('telefone', formatPhone(v))}
+                placeholder="(11) 90000-0000"
+                keyboardType="phone-pad"
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="telephoneNumber"
+                returnKeyType="next"
+                onSubmitEditing={() => corenRef.current?.focus()}
+                editable={!isSubmitting}
+                error={errors.telefone}
+              />
 
-              {renderField('coren', 'COREN', {
-                placeholder: 'Ex.: COREN-SP 123456',
-                autoCapitalize: 'none',
-                ref: corenRef,
-                optional: true,
-                onSubmitEditing: () => passwordRef.current?.focus(),
-              })}
+              <FormInput
+                ref={corenRef}
+                label="COREN"
+                optional
+                value={form.coren}
+                onChangeText={(v) => updateField('coren', v)}
+                placeholder="Ex.: COREN-SP 123456"
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="next"
+                onSubmitEditing={() => passwordRef.current?.focus()}
+                editable={!isSubmitting}
+              />
 
               <View style={styles.field}>
                 <Text style={styles.label}>Senha temporária</Text>
@@ -348,26 +311,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.textPrimary,
     marginBottom: spacing.xs + 2,
-  },
-  optional: {
-    color: colors.textMuted,
-    fontWeight: '400',
-  },
-  input: {
-    height: 52,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    fontSize: fontSize.md,
-    color: colors.textPrimary,
-  },
-  inputFocused: {
-    borderColor: colors.primary,
-  },
-  inputError: {
-    borderColor: colors.error,
   },
   errorText: {
     color: colors.error,

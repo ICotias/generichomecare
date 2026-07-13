@@ -22,9 +22,11 @@ export const usePatientWithActiveShift = (empresaId?: string, uid?: string) => {
       ]).then(([list, activeShift]) => {
         const result = list.length > 0 ? list : MOCK_PATIENTS;
         setPatients(result);
-        if (!selectedPatient && activeShift?.pacienteId) {
+        // setter funcional: não sobrescreve seleção já feita, sem depender de
+        // selectedPatient no closure do useCallback
+        if (activeShift?.pacienteId) {
           const match = result.find((p) => p.id === activeShift.pacienteId);
-          if (match) setSelectedPatient(match);
+          if (match) setSelectedPatient((prev) => prev ?? match);
         }
       }).catch(console.error);
     }, [empresaId, uid])

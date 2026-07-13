@@ -16,7 +16,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
 import { Ionicons } from '@expo/vector-icons';
-import { format } from 'date-fns';
+import { format, differenceInYears } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
@@ -50,20 +50,9 @@ const TIPO_LABELS: Record<Patient['tipoAtendimento'], string> = {
   visita: 'Visita',
 };
 
-const formatDate = (d: Date): string => {
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const yyyy = d.getFullYear();
-  return `${dd}/${mm}/${yyyy}`;
-};
+const formatDate = (d: Date): string => format(d, 'dd/MM/yyyy');
 
-const calcAge = (birth: Date): number => {
-  const now = new Date();
-  let age = now.getFullYear() - birth.getFullYear();
-  const m = now.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
-  return age;
-};
+const calcAge = (birth: Date): number => differenceInYears(new Date(), birth);
 
 // ── Histórico de registros: ícone/cor/resumo por tipo ──
 const RECORD_TYPE_CONFIG: Record<
@@ -83,15 +72,15 @@ const DEFAULT_RECORD_CONFIG = { icon: 'document-text-outline' as const, color: c
 const getRecordSummary = (rec: CareRecord): string => {
   switch (rec.type) {
     case 'medicamento':
-      return `${rec.medicamento} — ${rec.dosagem}${rec.recusado ? ' (recusado)' : ''}`;
+      return `${rec.medicamento} · ${rec.dosagem}${rec.recusado ? ' (recusado)' : ''}`;
     case 'sinaisVitais':
       return `PA ${rec.paSistolica}/${rec.paDiastolica} · FC ${rec.fc} · SpO₂ ${rec.satO2}%`;
     case 'alimentacao':
-      return `Alimentação — ${rec.aceitacao}%`;
+      return `Alimentação · ${rec.aceitacao}%`;
     case 'atividade':
       return rec.categoria;
     case 'intercorrencia':
-      return `${rec.tipoIncidente} — ${rec.gravidade}`;
+      return `${rec.tipoIncidente} · ${rec.gravidade}`;
     case 'foto':
       return rec.fotoClinica ? 'Foto clínica' : 'Foto';
     default:
@@ -182,7 +171,7 @@ export const AdminPatientDetailScreen = () => {
     try {
       await patientService.updatePatient(user.empresaId, patientId, {
         faixaSinaisVitais: editedRanges,
-      } as any);
+      });
       setPatient((prev) => (prev ? { ...prev, faixaSinaisVitais: editedRanges } : prev));
       setIsEditingVitals(false);
       Alert.alert('Atualizado', 'Faixas de sinais vitais atualizadas com sucesso.');
@@ -339,7 +328,7 @@ export const AdminPatientDetailScreen = () => {
           <View style={styles.pendingBanner}>
             <Ionicons name="time-outline" size={18} color={colors.warning} />
             <Text style={styles.pendingBannerText}>
-              Cadastro pendente — aguardando a família completar os dados clínicos.
+              Cadastro pendente: aguardando a família completar os dados clínicos.
             </Text>
           </View>
         )}
@@ -492,7 +481,7 @@ export const AdminPatientDetailScreen = () => {
                     <Text style={styles.vitalCancelText}>Cancelar</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.vitalSaveBtn, isSavingVitals && { opacity: 0.5 }]}
+                    style={[styles.vitalSaveBtn, isSavingVitals && styles.vitalSaveBtnDisabled]}
                     onPress={handleSaveVitals}
                     activeOpacity={0.8}
                     disabled={isSavingVitals}
@@ -507,11 +496,11 @@ export const AdminPatientDetailScreen = () => {
               </>
             ) : (
               <>
-                <InfoRow label="PA Sistólica" value={`${patient.faixaSinaisVitais.paSistolicaMin}–${patient.faixaSinaisVitais.paSistolicaMax} mmHg`} />
-                <InfoRow label="PA Diastólica" value={`${patient.faixaSinaisVitais.paDiastolicaMin}–${patient.faixaSinaisVitais.paDiastolicaMax} mmHg`} />
-                <InfoRow label="FC" value={`${patient.faixaSinaisVitais.fcMin}–${patient.faixaSinaisVitais.fcMax} bpm`} />
-                <InfoRow label="FR" value={`${patient.faixaSinaisVitais.frMin}–${patient.faixaSinaisVitais.frMax} irpm`} />
-                <InfoRow label="Temperatura" value={`${patient.faixaSinaisVitais.tempMin}–${patient.faixaSinaisVitais.tempMax} °C`} />
+                <InfoRow label="PA Sistólica" value={`${patient.faixaSinaisVitais.paSistolicaMin} a ${patient.faixaSinaisVitais.paSistolicaMax} mmHg`} />
+                <InfoRow label="PA Diastólica" value={`${patient.faixaSinaisVitais.paDiastolicaMin} a ${patient.faixaSinaisVitais.paDiastolicaMax} mmHg`} />
+                <InfoRow label="FC" value={`${patient.faixaSinaisVitais.fcMin} a ${patient.faixaSinaisVitais.fcMax} bpm`} />
+                <InfoRow label="FR" value={`${patient.faixaSinaisVitais.frMin} a ${patient.faixaSinaisVitais.frMax} irpm`} />
+                <InfoRow label="Temperatura" value={`${patient.faixaSinaisVitais.tempMin} a ${patient.faixaSinaisVitais.tempMax} °C`} />
                 <InfoRow label="SpO₂ mínima" value={`${patient.faixaSinaisVitais.satO2Min}%`} />
               </>
             )}
@@ -584,7 +573,7 @@ const EditableVitalRow = ({
       />
       {maxKey && (
         <>
-          <Text style={styles.editVitalDash}>–</Text>
+          <Text style={styles.editVitalDash}>a</Text>
           <TextInput
             style={styles.editVitalInput}
             value={String(ranges[maxKey])}
@@ -966,6 +955,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  vitalSaveBtnDisabled: { opacity: 0.5 },
   vitalSaveText: {
     fontSize: fontSize.sm,
     fontWeight: '600',

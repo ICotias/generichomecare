@@ -44,7 +44,7 @@ const CONSENT_SECTIONS = [
   },
   {
     title: '6. Retenção dos dados',
-    body: 'Os dados de saúde são retidos conforme exigência do CFM (Conselho Federal de Medicina) — mínimo de 20 anos. Dados de conta podem ser eliminados mediante solicitação, respeitadas as obrigações legais.',
+    body: 'Os dados de saúde são retidos conforme exigência do CFM (Conselho Federal de Medicina), no mínimo por 20 anos. Dados de conta podem ser eliminados mediante solicitação, respeitadas as obrigações legais.',
   },
   {
     title: '7. Segurança',
@@ -117,7 +117,7 @@ export const LgpdConsentScreen = ({ onAccepted }: { onAccepted: () => void }) =>
         ))}
 
         <View style={styles.versionBox}>
-          <Text style={styles.versionText}>Versão 1.0 — Abril 2026</Text>
+          <Text style={styles.versionText}>Versão 1.0, Abril 2026</Text>
         </View>
 
         {!hasScrolledToEnd && (

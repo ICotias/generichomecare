@@ -78,7 +78,7 @@ export const AdminProfileScreen = () => {
         {/* SUPORTE */}
         <Text style={styles.sectionLabel}>SUPORTE</Text>
         <View style={styles.menuCard}>
-          <MenuRow icon="help-circle-outline" label="Central de Ajuda" onPress={() => (navigation as any).navigate('Help')} />
+          <MenuRow icon="help-circle-outline" label="Central de Ajuda" onPress={() => navigation.navigate('Help')} />
         </View>
 
         {/* Role Switcher — somente para o e-mail autorizado (super-admin de testes) */}

@@ -20,6 +20,7 @@ Pegadinhas conhecidas:
 - O desenvolvedor é **Iago** (não Kai)
 - **Documentar scripts:** sempre que criar um novo script em `scripts/`, adicionar a entrada correspondente no `SCRIPTS.md` (o que faz, comando, argumentos), na seção certa.
 - **Texto human friendly:** todo texto escrito para o usuário, seja no chat ou em entregáveis (LPs, documentos, apresentações, código voltado ao usuário), deve soar natural e humano. Nunca usar travessão (—), meia risca (–) nem hífen de estilo no meio de frases. Preferir frases curtas separadas, vírgulas, parênteses ou dois pontos.
+- **Escrita profissional em documentos formais:** contratos, propostas comerciais, termos e documentos do gênero devem ter escrita profissional e formal. Evitar coloquialismos e abreviações informais (ex.: escrever "aplicativo" em vez de "app", "em um" em vez de "num"). Manter a regra human friendly (sem travessão) e o tom orientado a ganho, mas com vocabulário e construção de frases mais formais.
 
 ## Comandos
 - Rodar no device: `npx expo run:ios --device` / `npx expo run:android --device` (dev-client). Metro: `npx expo start --dev-client`.
@@ -29,6 +30,20 @@ Pegadinhas conhecidas:
 - Seed de dados: `yarn seed:all`, `yarn seed:teste`, `yarn seed:escalas`
 - Diagnóstico Expo: `npx expo-doctor`
 - Deploy de regras: `firebase deploy --only firestore:rules`
+
+## Ponytail (modo dev preguiçoso, nível full)
+Antes de escrever qualquer código, parar no primeiro degrau que resolve:
+
+1. Isso precisa existir? Se não, não faça (YAGNI).
+2. A stdlib já faz? Use.
+3. Uma funcionalidade nativa da plataforma resolve? Use.
+4. Uma dependência já instalada resolve? Use.
+5. Dá para fazer em uma linha? Faça em uma linha.
+6. Só então: escreva o mínimo que funciona.
+
+Regras: nenhuma abstração que não foi pedida, nenhuma dependência nova evitável, nenhum boilerplate que ninguém pediu. Deletar em vez de adicionar, simples em vez de esperto, menos arquivos. Questionar pedidos complexos ("você precisa mesmo de X, ou Y já cobre?"). Marcar simplificações deliberadas com um comentário `ponytail:` que nomeia o teto (ex.: varredura O(n²), heurística ingênua) e o caminho de evolução.
+
+Preguiçoso não é negligente. Nunca cortar: validação em fronteiras de confiança, tratamento de erro que evita perda de dados, segurança, acessibilidade, nem nada pedido explicitamente. Lógica não trivial deixa uma verificação executável mínima para trás, sem framework de teste.
 
 ## Workflow
 - **Portão de qualidade:** após qualquer mudança, rodar `yarn typecheck` e `yarn lint` e corrigir as falhas antes de concluir a tarefa. Não há Jest configurado; typecheck e lint são o gate.
@@ -140,7 +155,7 @@ Ao criar/modificar fluxos de usuário, sempre verificar:
 
 ### 5. Telas novas — checklist visual
 - Seguir obrigatoriamente as regras Apple HIG da seção 4 acima
-- Usar componentes do design system (`ScreenHeader`, `FormInput`, `PrimaryButton`, `PatientDropdown`, `SectionLabel`)
+- Usar componentes do design system (`ScreenHeader`, `FormInput`, `PrimaryButton`, `InsetGroupedSection`, `InsetRow`, `SelectionListModal`, `SegmentedControl`)
 - Ícones: sempre Ionicons (nunca emoji)
 - Cor primária: `colors.primary` (#6C63FF), nunca hardcoded
 - Loading states em todos os botões de ação

@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
+import { colors, spacing, fontSize } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import * as adminUserService from '../../../core/services/adminUserService';
 import {
@@ -25,32 +25,9 @@ import {
   SelectionListModal,
   PrimaryButton,
 } from '../../../shared/components/ui';
-import type { SelectionItem } from '../../../shared/components/ui';
 import { formatPhone } from '../../../shared/utils/formatters';
-
-const PARENTESCO_OPTIONS: SelectionItem[] = [
-  { id: 'filho', label: 'Filho(a)' },
-  { id: 'conjuge', label: 'Cônjuge' },
-  { id: 'neto', label: 'Neto(a)' },
-  { id: 'irmao', label: 'Irmão(ã)' },
-  { id: 'sobrinho', label: 'Sobrinho(a)' },
-  { id: 'cuidador', label: 'Cuidador(a)' },
-  { id: 'outro', label: 'Outro' },
-];
-
-const mapError = (error: unknown): string => {
-  const code = (error as { code?: string })?.code ?? '';
-  switch (code) {
-    case 'auth/email-already-in-use':
-      return 'Já existe uma conta com este e-mail';
-    case 'auth/invalid-email':
-      return 'E-mail inválido';
-    case 'auth/network-request-failed':
-      return 'Falha de rede. Verifique sua conexão';
-    default:
-      return 'Não foi possível criar o convite';
-  }
-};
+import { mapAuthError } from '../../../shared/utils/authErrors';
+import { PARENTESCO_OPTIONS } from '../../../shared/constants/parentesco';
 
 /** Sanitiza o telefone para wa.me (só dígitos, com DDI Brasil) */
 const toWhatsappNumber = (phone: string): string => {
@@ -102,7 +79,7 @@ export const InviteFamilyScreen = () => {
       });
       setInvited({ email: email.trim().toLowerCase(), tempPassword: result.tempPassword });
     } catch (err) {
-      Alert.alert('Erro ao convidar', mapError(err));
+      Alert.alert('Erro ao convidar', mapAuthError(err, 'Não foi possível criar o convite'));
     } finally {
       setIsSaving(false);
     }
@@ -150,7 +127,7 @@ export const InviteFamilyScreen = () => {
             title="Enviar no WhatsApp"
             onPress={handleSendWhatsapp}
             icon={<Ionicons name="logo-whatsapp" size={20} color={colors.white} />}
-            style={{ marginTop: spacing.lg, backgroundColor: '#25D366' }}
+            style={styles.whatsappBtn}
           />
           <TouchableOpacity style={styles.doneLink} onPress={() => navigation.goBack()}>
             <Text style={styles.doneLinkText}>Concluir</Text>
@@ -270,6 +247,7 @@ const styles = StyleSheet.create({
   successIcon: { alignItems: 'center', marginTop: spacing.lg, marginBottom: spacing.md },
   successTitle: { fontSize: fontSize.lg, fontWeight: '700', color: colors.textPrimary, textAlign: 'center' },
   successSub: { fontSize: fontSize.sm, color: colors.textSecondary, textAlign: 'center', marginTop: spacing.sm, marginBottom: spacing.lg, lineHeight: 20 },
+  whatsappBtn: { marginTop: spacing.lg, backgroundColor: '#25D366' },
   doneLink: { alignItems: 'center', paddingVertical: spacing.lg },
   doneLinkText: { fontSize: fontSize.md, color: colors.admin, fontWeight: '600' },
 });

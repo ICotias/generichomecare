@@ -11,7 +11,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { collection, getDocs, query, where } from 'firebase/firestore';
@@ -283,7 +283,7 @@ export const ScheduleScreen = () => {
                     </View>
                   </View>
                   <Text style={styles.entryPaciente}>Paciente: {entry.pacienteNome}</Text>
-                  <Text style={styles.entryHorario}>{entry.horaInicio} — {entry.horaFim}</Text>
+                  <Text style={styles.entryHorario}>{entry.horaInicio} às {entry.horaFim}</Text>
                 </View>
               </View>
             ))
@@ -349,7 +349,7 @@ export const ScheduleScreen = () => {
                       mode="time"
                       display="spinner"
                       minuteInterval={5}
-                      onChange={(_: any, d: Date | undefined) => { if (d) setHoraInicio(d); if (Platform.OS === 'android') setShowInicioPicker(false); }}
+                      onChange={(_: DateTimePickerEvent, d: Date | undefined) => { if (d) setHoraInicio(d); if (Platform.OS === 'android') setShowInicioPicker(false); }}
                       locale="pt-BR"
                     />
                   </View>
@@ -368,7 +368,7 @@ export const ScheduleScreen = () => {
                       mode="time"
                       display="spinner"
                       minuteInterval={5}
-                      onChange={(_: any, d: Date | undefined) => { if (d) setHoraFim(d); if (Platform.OS === 'android') setShowFimPicker(false); }}
+                      onChange={(_: DateTimePickerEvent, d: Date | undefined) => { if (d) setHoraFim(d); if (Platform.OS === 'android') setShowFimPicker(false); }}
                       locale="pt-BR"
                     />
                   </View>

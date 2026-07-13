@@ -14,9 +14,13 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   collection,
+  collectionGroup,
   getDocs,
+  getCountFromServer,
   query,
   where,
+  orderBy,
+  limit,
   Timestamp,
 } from 'firebase/firestore';
 import { format } from 'date-fns';
@@ -27,7 +31,6 @@ import { Collections } from '../../../shared/constants/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
-import * as registroService from '../../../core/services/registroService';
 import type { DashboardStackParamList } from '../../../core/navigation/RootNavigator';
 
 type NavProp = NativeStackNavigationProp<DashboardStackParamList, 'AdminDashboard'>;
@@ -175,39 +178,48 @@ export const AdminDashboardScreen = () => {
       const shiftSnap = await getDocs(shiftQ);
       const plantoesHoje = shiftSnap.size;
 
-      // Registros de hoje (contagem) + intercorrências recentes (cross-paciente)
-      let registrosHoje = 0;
-      let intercorrenciasHoje = 0;
-      const incidents: RecentIncident[] = [];
+      // Registros e intercorrências de hoje são apenas CONTAGENS, então usamos
+      // count() do Firestore: devolve só o número, sem baixar o corpo dos
+      // documentos. Substitui o N+1 (duas queries por paciente) por consultas
+      // collectionGroup agregadas. Depende de empresaId no doc do registro
+      // (garantido em registroService) e dos índices em firestore.indexes.json.
+      const todayRegsQ = query(
+        collectionGroup(db, 'registros'),
+        where('empresaId', '==', empresaId),
+        where('timestamp', '>=', todayTs)
+      );
+      const registrosHoje = (await getCountFromServer(todayRegsQ)).data().count;
 
-      for (const patDoc of patSnap.docs) {
-        const regQ = query(
-          collection(db, Collections.registros(empresaId, patDoc.id)),
-          where('timestamp', '>=', todayTs)
-        );
-        const regSnap = await getDocs(regQ);
-        registrosHoje += regSnap.size;
-        intercorrenciasHoje += regSnap.docs.filter((d) => d.data().type === 'intercorrencia').length;
+      const todayIncQ = query(
+        collectionGroup(db, 'registros'),
+        where('empresaId', '==', empresaId),
+        where('type', '==', 'intercorrencia'),
+        where('timestamp', '>=', todayTs)
+      );
+      const intercorrenciasHoje = (await getCountFromServer(todayIncQ)).data().count;
 
-        const incs = await registroService.listRecords(empresaId, patDoc.id, {
-          type: 'intercorrencia',
-          limitCount: 3,
-        });
-        incs.forEach((rec) => {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const r = rec as any;
-          incidents.push({
-            id: rec.id,
-            pacienteNome: nomeById[patDoc.id] ?? 'Paciente',
-            tipoIncidente: r.tipoIncidente ?? 'Intercorrência',
-            gravidade: r.gravidade ?? '',
-            timestamp: rec.timestamp,
-          });
-        });
-      }
+      // Só aqui baixamos documentos: as 5 intercorrências mais recentes, que
+      // são de fato exibidas na lista.
+      const recentIncQ = query(
+        collectionGroup(db, 'registros'),
+        where('empresaId', '==', empresaId),
+        where('type', '==', 'intercorrencia'),
+        orderBy('timestamp', 'desc'),
+        limit(5)
+      );
+      const recentIncSnap = await getDocs(recentIncQ);
+      const incidents: RecentIncident[] = recentIncSnap.docs.map((d) => {
+        const x = d.data();
+        return {
+          id: d.id,
+          pacienteNome: nomeById[x.pacienteId] ?? 'Paciente',
+          tipoIncidente: x.tipoIncidente ?? 'Intercorrência',
+          gravidade: x.gravidade ?? '',
+          timestamp: x.timestamp?.toDate?.() ?? new Date(),
+        };
+      });
 
-      incidents.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-      setRecentIncidents(incidents.slice(0, 5));
+      setRecentIncidents(incidents);
       setActiveShifts(active);
 
       const data: DashboardMetrics = {
@@ -271,7 +283,7 @@ export const AdminDashboardScreen = () => {
 
         {usingMock && __DEV__ && (
           <View style={styles.mockBanner}>
-            <Text style={styles.mockText}>Dados de exemplo — métricas reais aparecerão aqui.</Text>
+            <Text style={styles.mockText}>Dados de exemplo: métricas reais aparecerão aqui.</Text>
           </View>
         )}
 
@@ -343,7 +355,7 @@ export const AdminDashboardScreen = () => {
                     key={inc.id}
                     style={[styles.listRow, idx < recentIncidents.length - 1 && styles.listRowBorder]}
                   >
-                    <View style={[styles.listIcon, { backgroundColor: '#FEF2F2' }]}>
+                    <View style={[styles.listIcon, styles.listIconError]}>
                       <Ionicons name="alert-circle-outline" size={16} color={colors.error} />
                     </View>
                     <View style={styles.listInfo}>
@@ -510,6 +522,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  listIconError: { backgroundColor: '#FEF2F2' },
   listInfo: { flex: 1 },
   listTitle: { fontSize: fontSize.sm, fontWeight: '600', color: colors.textPrimary },
   listMeta: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },

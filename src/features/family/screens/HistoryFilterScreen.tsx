@@ -13,6 +13,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 
+import { format } from 'date-fns';
+
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import { useFamilyPatientId } from '../../../core/hooks/useFamilyPatientId';
@@ -43,16 +45,12 @@ const TYPE_LABELS: Record<string, string> = {
 const formatDate = (date: Date) =>
   date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 
-const formatTime = (date: Date) => {
-  const h = date.getHours().toString().padStart(2, '0');
-  const m = date.getMinutes().toString().padStart(2, '0');
-  return `${h}:${m}`;
-};
+const formatTime = (date: Date) => format(date, 'HH:mm');
 
 const getRecordSummary = (record: CareRecord): string => {
   switch (record.type) {
     case 'medicamento':
-      return `${record.medicamento} — ${record.dosagem} (${record.via})`;
+      return `${record.medicamento} · ${record.dosagem} (${record.via})`;
     case 'sinaisVitais':
       return `PA ${record.paSistolica}/${record.paDiastolica} · FC ${record.fc} · T ${record.temperatura}°C · SpO₂ ${record.satO2}%`;
     case 'alimentacao':
@@ -60,7 +58,7 @@ const getRecordSummary = (record: CareRecord): string => {
     case 'atividade':
       return record.categoria;
     case 'intercorrencia':
-      return `${record.tipoIncidente} — ${record.gravidade}`;
+      return `${record.tipoIncidente} · ${record.gravidade}`;
     case 'foto':
       return record.fotoClinica ? 'Foto clínica (restrita)' : 'Registro fotográfico';
     default:

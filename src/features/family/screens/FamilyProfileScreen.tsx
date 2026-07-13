@@ -1,11 +1,13 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
+import type { FamilyProfileStackParamList } from '../../../core/navigation/RootNavigator';
 
 const MenuRow = ({
   icon,
@@ -25,7 +27,7 @@ const MenuRow = ({
 
 export const FamilyProfileScreen = () => {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<FamilyProfileStackParamList>>();
   const { user, signOut } = useAuthStore();
 
   const initials = (user?.nome ?? 'F').charAt(0).toUpperCase();
@@ -62,7 +64,7 @@ export const FamilyProfileScreen = () => {
 
         <Text style={styles.sectionLabel}>SUPORTE E AJUDA</Text>
         <View style={styles.menuCard}>
-          <MenuRow icon="help-circle-outline" label="Central de Ajuda" onPress={() => (navigation as any).navigate('Help')} />
+          <MenuRow icon="help-circle-outline" label="Central de Ajuda" onPress={() => navigation.navigate('Help')} />
         </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={signOut} activeOpacity={0.8}>

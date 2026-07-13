@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import * as empresaService from '../../../core/services/empresaService';
+import { FormInput } from '../../../shared/components/ui';
 
 interface FormState {
   nome: string;
@@ -36,7 +37,6 @@ export const SetupEmpresaScreen = () => {
   const [form, setForm] = useState<FormState>({ nome: '', cnpj: '', cidade: '' });
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [focused, setFocused] = useState<keyof FormState | null>(null);
 
   const cnpjRef = useRef<TextInput>(null);
   const cidadeRef = useRef<TextInput>(null);
@@ -79,53 +79,6 @@ export const SetupEmpresaScreen = () => {
     }
   };
 
-  const renderField = (
-    key: keyof FormState,
-    label: string,
-    options: {
-      placeholder: string;
-      autoCapitalize?: 'none' | 'words' | 'characters';
-      keyboardType?: 'default' | 'numeric';
-      ref?: React.RefObject<TextInput | null>;
-      onSubmitEditing?: () => void;
-      returnKeyType?: 'next' | 'done';
-      optional?: boolean;
-      error?: string;
-    }
-  ) => {
-    const isFocused = focused === key;
-
-    return (
-      <View style={styles.field}>
-        <Text style={styles.label}>
-          {label}
-          {options.optional ? <Text style={styles.optional}> (opcional)</Text> : null}
-        </Text>
-        <TextInput
-          ref={options.ref}
-          value={form[key]}
-          onChangeText={(value) => updateField(key, value)}
-          placeholder={options.placeholder}
-          placeholderTextColor={colors.textMuted}
-          keyboardType={options.keyboardType ?? 'default'}
-          autoCapitalize={options.autoCapitalize ?? 'words'}
-          autoCorrect={false}
-          returnKeyType={options.returnKeyType ?? 'next'}
-          onSubmitEditing={options.onSubmitEditing}
-          onFocus={() => setFocused(key)}
-          onBlur={() => setFocused(null)}
-          style={[
-            styles.input,
-            isFocused && styles.inputFocused,
-            options.error && styles.inputError,
-          ]}
-          editable={!isSubmitting}
-        />
-        {options.error ? <Text style={styles.errorText}>{options.error}</Text> : null}
-      </View>
-    );
-  };
-
   return (
     <KeyboardAvoidingView
       style={styles.root}
@@ -148,30 +101,47 @@ export const SetupEmpresaScreen = () => {
             </Text>
 
             <View style={styles.form}>
-              {renderField('nome', 'Nome da empresa', {
-                placeholder: 'Ex.: Clínica Cuidar Bem',
-                autoCapitalize: 'words',
-                error: errors.nome,
-                onSubmitEditing: () => cnpjRef.current?.focus(),
-              })}
+              <FormInput
+                label="Nome da empresa"
+                value={form.nome}
+                onChangeText={(v) => updateField('nome', v)}
+                placeholder="Ex.: Clínica Cuidar Bem"
+                autoCapitalize="words"
+                autoCorrect={false}
+                returnKeyType="next"
+                onSubmitEditing={() => cnpjRef.current?.focus()}
+                editable={!isSubmitting}
+                error={errors.nome}
+              />
 
-              {renderField('cnpj', 'CNPJ', {
-                placeholder: '00.000.000/0000-00',
-                autoCapitalize: 'none',
-                keyboardType: 'numeric',
-                ref: cnpjRef,
-                optional: true,
-                onSubmitEditing: () => cidadeRef.current?.focus(),
-              })}
+              <FormInput
+                ref={cnpjRef}
+                label="CNPJ"
+                optional
+                value={form.cnpj}
+                onChangeText={(v) => updateField('cnpj', v)}
+                placeholder="00.000.000/0000-00"
+                autoCapitalize="none"
+                keyboardType="numeric"
+                autoCorrect={false}
+                returnKeyType="next"
+                onSubmitEditing={() => cidadeRef.current?.focus()}
+                editable={!isSubmitting}
+              />
 
-              {renderField('cidade', 'Cidade', {
-                placeholder: 'Ex.: São Paulo',
-                autoCapitalize: 'words',
-                ref: cidadeRef,
-                optional: true,
-                returnKeyType: 'done',
-                onSubmitEditing: handleSubmit,
-              })}
+              <FormInput
+                ref={cidadeRef}
+                label="Cidade"
+                optional
+                value={form.cidade}
+                onChangeText={(v) => updateField('cidade', v)}
+                placeholder="Ex.: São Paulo"
+                autoCapitalize="words"
+                autoCorrect={false}
+                returnKeyType="done"
+                onSubmitEditing={handleSubmit}
+                editable={!isSubmitting}
+              />
 
               {errors.general ? (
                 <Text style={styles.generalError}>{errors.general}</Text>
@@ -226,40 +196,6 @@ const styles = StyleSheet.create({
   },
   form: {
     marginTop: spacing.xl,
-  },
-  field: {
-    marginBottom: spacing.md,
-  },
-  label: {
-    fontSize: fontSize.sm,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: spacing.xs + 2,
-  },
-  optional: {
-    color: colors.textMuted,
-    fontWeight: '400',
-  },
-  input: {
-    height: 52,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    fontSize: fontSize.md,
-    color: colors.textPrimary,
-  },
-  inputFocused: {
-    borderColor: colors.primary,
-  },
-  inputError: {
-    borderColor: colors.error,
-  },
-  errorText: {
-    color: colors.error,
-    fontSize: fontSize.xs,
-    marginTop: spacing.xs,
   },
   generalError: {
     color: colors.error,

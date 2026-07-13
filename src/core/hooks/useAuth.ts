@@ -164,7 +164,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       listenerCount++;
       const callId = listenerCount;
-      console.log(`[Auth #${callId}] onAuthStateChanged disparou. user:`, firebaseUser?.uid ?? 'NULL');
 
       const { setUser, setFirebaseUser, setLoading } = get();
       setFirebaseUser(firebaseUser);
@@ -172,7 +171,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (firebaseUser) {
         try {
           const userDoc = await getDoc(doc(db, 'usuarios', firebaseUser.uid));
-          console.log(`[Auth #${callId}] Doc existe?`, userDoc.exists());
 
           if (userDoc.exists()) {
             const data = userDoc.data();
@@ -190,7 +188,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               createdAt: data.createdAt?.toDate?.() ?? new Date(),
               updatedAt: data.updatedAt?.toDate?.() ?? new Date(),
             });
-            console.log(`[Auth #${callId}] setUser OK — role:`, data.role, 'lgpd:', !!data.lgpdConsentAt);
             logAudit('login', firebaseUser.uid, data.role ?? 'nurse', data.empresaId ?? '');
           } else {
             console.warn(`[Auth #${callId}] Perfil não encontrado, criando...`);
@@ -220,7 +217,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 createdAt: now.toDate(),
                 updatedAt: now.toDate(),
               });
-              console.log(`[Auth #${callId}] Perfil criado — role:`, safeRole);
             } catch (createError) {
               console.error(`[Auth #${callId}] ERRO ao criar perfil:`, createError);
               if (role === 'admin') {
@@ -229,17 +225,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                   'Crie o documento usuarios/' + firebaseUser.uid + ' no Firebase Console.'
                 );
               }
-              console.log(`[Auth #${callId}] setUser(null) — motivo: ERRO_CRIAR_PERFIL`);
               setUser(null);
             }
           }
         } catch (error) {
           console.error(`[Auth #${callId}] ERRO ao buscar perfil:`, error);
-          console.log(`[Auth #${callId}] setUser(null) — motivo: ERRO_BUSCAR_PERFIL`);
           setUser(null);
         }
       } else {
-        console.log(`[Auth #${callId}] setUser(null) — motivo: SEM_USUARIO`);
         setUser(null);
       }
 

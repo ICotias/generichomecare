@@ -4,7 +4,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from './src/core/navigation/RootNavigator';
 import { useAuthStore } from './src/core/hooks/useAuth';
 import { startQueueProcessor, stopQueueProcessor } from './src/core/services/offlineQueue';
-import { setupNotificationChannel, setupNotificationHandlers } from './src/core/services/notificationService';
 
 export default function App() {
   const initialize = useAuthStore((state) => state.initialize);
@@ -18,13 +17,6 @@ export default function App() {
   useEffect(() => {
     startQueueProcessor();
     return () => stopQueueProcessor();
-  }, []);
-
-  // Setup push notifications
-  useEffect(() => {
-    setupNotificationChannel();
-    const cleanup = setupNotificationHandlers();
-    return cleanup;
   }, []);
 
   return (

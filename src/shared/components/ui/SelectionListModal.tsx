@@ -9,7 +9,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
+import { colors, spacing, fontSize } from '../../../core/theme/theme';
 
 export interface SelectionItem {
   id: string;
@@ -67,7 +67,9 @@ export const SelectionListModal = ({
   }, [visible, slideAnim]);
 
   // Don't render at all if never opened (avoids covering touch targets)
-  if (!visible && (slideAnim as any)._value === SCREEN_WIDTH) return null;
+  // ponytail: lê o valor interno do Animated.Value (API não pública). Teto: pode
+  // mudar em upgrade do RN. Evolução: rastrear "fechado" via slideAnim.addListener.
+  if (!visible && (slideAnim as unknown as { _value: number })._value === SCREEN_WIDTH) return null;
 
   return (
     <Animated.View

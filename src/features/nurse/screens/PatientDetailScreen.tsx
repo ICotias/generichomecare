@@ -19,7 +19,7 @@ import type { RouteProp } from '@react-navigation/native';
 import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 
-import { format } from 'date-fns';
+import { format, differenceInYears } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
@@ -45,13 +45,7 @@ const TIPO_LABELS: Record<Patient['tipoAtendimento'], string> = {
   visita: 'Visita',
 };
 
-const calcAge = (birth: Date): number => {
-  const now = new Date();
-  let age = now.getFullYear() - birth.getFullYear();
-  const m = now.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
-  return age;
-};
+const calcAge = (birth: Date): number => differenceInYears(new Date(), birth);
 
 const GUIDE_SECTIONS = [
   { type: 'medicamento' as const, title: 'MEDICAMENTOS', emptyMsg: 'Nenhum medicamento registrado anteriormente' },
@@ -98,19 +92,20 @@ const ATIVIDADE_LABELS: Record<string, string> = {
 const getRecordSummary = (rec: CareRecord): string => {
   switch (rec.type) {
     case 'medicamento':
-      return `${rec.medicamento} — ${rec.dosagem}${rec.recusado ? ' (recusado)' : ''}`;
+      return `${rec.medicamento} · ${rec.dosagem}${rec.recusado ? ' (recusado)' : ''}`;
     case 'sinaisVitais':
       return `PA ${rec.paSistolica}/${rec.paDiastolica} · FC ${rec.fc} · SpO₂ ${rec.satO2}%`;
     case 'alimentacao':
-      return `${REFEICAO_LABELS[rec.tipoRefeicao] ?? rec.tipoRefeicao} — ${rec.aceitacao}%`;
+      return `${REFEICAO_LABELS[rec.tipoRefeicao] ?? rec.tipoRefeicao} · ${rec.aceitacao}%`;
     case 'atividade':
       return ATIVIDADE_LABELS[rec.categoria] ?? rec.categoria;
     case 'intercorrencia':
-      return `${rec.tipoIncidente} — ${rec.gravidade}`;
+      return `${rec.tipoIncidente} · ${rec.gravidade}`;
     case 'foto':
       return rec.fotoClinica ? 'Foto clínica' : 'Foto';
     default:
-      return RECORD_TYPE_CONFIG[(rec as any).type]?.label ?? 'Registro';
+      // switch exaustivo sobre CareRecord.type; fallback só por segurança
+      return 'Registro';
   }
 };
 
@@ -294,25 +289,25 @@ export const PatientDetailScreen = () => {
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>PA Sistólica</Text>
             <Text style={styles.infoValue}>
-              {patient.faixaSinaisVitais.paSistolicaMin}–{patient.faixaSinaisVitais.paSistolicaMax} mmHg
+              {patient.faixaSinaisVitais.paSistolicaMin} a {patient.faixaSinaisVitais.paSistolicaMax} mmHg
             </Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>PA Diastólica</Text>
             <Text style={styles.infoValue}>
-              {patient.faixaSinaisVitais.paDiastolicaMin}–{patient.faixaSinaisVitais.paDiastolicaMax} mmHg
+              {patient.faixaSinaisVitais.paDiastolicaMin} a {patient.faixaSinaisVitais.paDiastolicaMax} mmHg
             </Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>FC</Text>
             <Text style={styles.infoValue}>
-              {patient.faixaSinaisVitais.fcMin}–{patient.faixaSinaisVitais.fcMax} bpm
+              {patient.faixaSinaisVitais.fcMin} a {patient.faixaSinaisVitais.fcMax} bpm
             </Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Temp.</Text>
             <Text style={styles.infoValue}>
-              {patient.faixaSinaisVitais.tempMin}–{patient.faixaSinaisVitais.tempMax} °C
+              {patient.faixaSinaisVitais.tempMin} a {patient.faixaSinaisVitais.tempMax} °C
             </Text>
           </View>
           <View style={[styles.infoRow, styles.infoRowLast]}>
@@ -349,9 +344,10 @@ export const PatientDetailScreen = () => {
               <View style={styles.infoCard}>
                 {records.map((rec, idx) => {
                   const isPhoto = rec.type === 'foto';
+                  const photoUrl = rec.type === 'foto' ? rec.imageUrl : undefined;
                   const Wrapper = isPhoto ? TouchableOpacity : View;
                   const wrapperProps = isPhoto
-                    ? { activeOpacity: 0.7, onPress: () => setPhotoModal({ url: (rec as any).imageUrl, label: getRecordSummary(rec) }) }
+                    ? { activeOpacity: 0.7, onPress: () => setPhotoModal({ url: photoUrl ?? '', label: getRecordSummary(rec) }) }
                     : {};
                   return (
                     <Wrapper
@@ -362,9 +358,9 @@ export const PatientDetailScreen = () => {
                       ]}
                       {...wrapperProps}
                     >
-                      {isPhoto && (rec as any).imageUrl ? (
+                      {photoUrl ? (
                         <Image
-                          source={{ uri: (rec as any).imageUrl }}
+                          source={{ uri: photoUrl }}
                           style={styles.photoThumb}
                         />
                       ) : null}
@@ -469,7 +465,6 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     marginBottom: spacing.sm,
   },
-  alertIconCircle: { fontSize: 16 },
   alertTitle: {
     fontSize: fontSize.xs,
     fontWeight: '700',
@@ -566,7 +561,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#E8F5E9',
     gap: spacing.xs,
   },
-  medTagIcon: { fontSize: 14 },
   medTagText: { fontSize: fontSize.sm, color: '#2E7D32', fontWeight: '500' },
 
   // Export button
@@ -616,12 +610,6 @@ const styles = StyleSheet.create({
   statusText: { fontSize: fontSize.sm, fontWeight: '700' },
 
   // Recent records
-  emptyRecordsText: {
-    fontSize: fontSize.sm,
-    color: colors.textMuted,
-    textAlign: 'center',
-    paddingVertical: spacing.md,
-  },
   recordRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -629,13 +617,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm + 2,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
-  },
-  recordIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   recordInfo: {
     flex: 1,

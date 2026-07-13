@@ -28,8 +28,8 @@ export const useFamilyPatientId = (): FamilyPatientResult => {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [isLoadingPatients, setIsLoadingPatients] = useState(false);
 
-  // O pacienteId real do familiar vem do doc Firestore (não está no AppUser type, mas existe no doc)
-  const realPacienteId = (user as any)?.pacienteId as string | undefined;
+  // O pacienteId real do familiar vem do doc Firestore
+  const realPacienteId = user?.pacienteId;
 
   // Em simulação, carregar todos os pacientes para seleção
   useEffect(() => {
@@ -41,9 +41,12 @@ export const useFamilyPatientId = (): FamilyPatientResult => {
       .then((list) => {
         const ativos = list.filter((p) => p.status === 'ativo');
         setPatients(ativos);
-        // Auto-selecionar o primeiro se não tem nenhum selecionado
-        if (!simulatedPatientId && ativos.length > 0) {
-          setSimulatedPatientId(ativos[0].id);
+        // Auto-selecionar o primeiro se não tem nenhum selecionado.
+        // Lê o estado atual via getState para não depender de simulatedPatientId
+        // no closure (evita re-fetch a cada seleção).
+        const store = useAuthStore.getState();
+        if (!store.simulatedPatientId && ativos.length > 0) {
+          store.setSimulatedPatientId(ativos[0].id);
         }
       })
       .catch((err) => {

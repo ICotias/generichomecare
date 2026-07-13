@@ -269,7 +269,7 @@ export const FinancialScreen = () => {
         await shareModule.open({
           url: Platform.OS === 'android' ? `file://${result.filePath}` : result.filePath,
           type: 'application/pdf',
-          title: `Financeiro — ${monthLabel}/${year}`,
+          title: `Financeiro de ${monthLabel}/${year}`,
         });
       } else {
         Alert.alert('PDF gerado', `Salvo em: ${result.filePath}`);

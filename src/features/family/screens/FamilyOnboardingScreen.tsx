@@ -357,7 +357,7 @@ export const FamilyOnboardingScreen = () => {
         {step === 2 && (
           <>
             <Text style={styles.helper}>
-              Faixas esperadas definidas pelo médico do paciente. Elas disparam os alertas —
+              Faixas esperadas definidas pelo médico do paciente. Elas disparam os alertas,
               preencha com cuidado.
             </Text>
             <RangePair label="Pressão sistólica (mmHg)" minKey="paSistolicaMin" maxKey="paSistolicaMax" ranges={ranges} onChange={setRange} />
@@ -386,7 +386,7 @@ export const FamilyOnboardingScreen = () => {
 
             {medicamentos.map((m, i) => (
               <View key={`${m.medicamento}-${i}`} style={styles.medCard}>
-                <View style={{ flex: 1 }}>
+                <View style={styles.flex1}>
                   <Text style={styles.medName}>{m.medicamento}</Text>
                   <Text style={styles.medMeta}>
                     {[m.dosagem, m.via, m.frequencia].filter(Boolean).join(' · ')}
@@ -440,7 +440,7 @@ export const FamilyOnboardingScreen = () => {
 
             {contatosAdicionais.map((c, i) => (
               <View key={`${c.nome}-${i}`} style={styles.medCard}>
-                <View style={{ flex: 1 }}>
+                <View style={styles.flex1}>
                   <Text style={styles.medName}>{c.nome}</Text>
                   <Text style={styles.medMeta}>
                     {[c.parentesco, c.telefone].filter(Boolean).join(' · ')}
@@ -468,8 +468,8 @@ export const FamilyOnboardingScreen = () => {
         {step === 5 && (
           <>
             <InsetGroupedSection header="RESUMO">
-              <InsetRow label="Paciente" value={nome || '—'} />
-              <InsetRow label="Nascimento" value={dataNascimento ? formatDate(dataNascimento) : '—'} />
+              <InsetRow label="Paciente" value={nome || 'Nenhum'} />
+              <InsetRow label="Nascimento" value={dataNascimento ? formatDate(dataNascimento) : 'Nenhum'} />
               <InsetRow label="Diagnósticos" value={diagnosticos.length ? String(diagnosticos.length) : 'Nenhum'} />
               <InsetRow label="Alergias" value={alergias.length ? String(alergias.length) : 'Nenhuma'} />
               <InsetRow label="Medicamentos" value={medicamentos.length ? String(medicamentos.length) : 'Nenhum'} last />
@@ -683,6 +683,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.border,
     padding: spacing.md, marginBottom: spacing.sm,
   },
+  flex1: { flex: 1 },
   medName: { fontSize: fontSize.md, fontWeight: '700', color: colors.textPrimary },
   medMeta: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },
   addMedBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingVertical: spacing.md },

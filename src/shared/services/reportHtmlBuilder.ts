@@ -57,7 +57,7 @@ const renderRecord = (r: CareRecord): string => {
 
   switch (r.type) {
     case 'medicamento':
-      details = `<b>${r.medicamento}</b> — ${r.dosagem} (${r.via})${r.recusado ? ' <span style="color:#DC2626">[RECUSADO]</span>' : ''}`;
+      details = `<b>${r.medicamento}</b>: ${r.dosagem} (${r.via})${r.recusado ? ' <span style="color:#DC2626">[RECUSADO]</span>' : ''}`;
       break;
     case 'sinaisVitais': {
       const v = r as VitalSignsRecord;
@@ -71,7 +71,7 @@ const renderRecord = (r: CareRecord): string => {
       details = `Categoria: ${r.categoria}`;
       break;
     case 'intercorrencia':
-      details = `<b>${r.tipoIncidente}</b> — Gravidade: ${r.gravidade}${r.descricao ? ` · ${r.descricao}` : ''}`;
+      details = `<b>${r.tipoIncidente}</b> · Gravidade: ${r.gravidade}${r.descricao ? ` · ${r.descricao}` : ''}`;
       break;
     case 'foto':
       details = `${r.fotoClinica ? '[Foto clínica] ' : ''}Registro fotográfico`;
@@ -118,7 +118,7 @@ export const buildReportHtml = ({
   endDate,
   empresaNome,
 }: BuildHtmlOptions): string => {
-  const periodLabel = `${fmtDate(startDate)} — ${fmtDate(endDate)}`;
+  const periodLabel = `${fmtDate(startDate)} a ${fmtDate(endDate)}`;
 
   // Count per type
   const counts: Record<string, number> = {};

@@ -19,7 +19,7 @@ export const SimulationBanner = () => {
       onPress={stopSimulation}
       activeOpacity={0.8}
     >
-      <Text style={styles.text}>Simulando perfil — Voltar ao Admin</Text>
+      <Text style={styles.text}>Simulando perfil. Toque para voltar ao Admin</Text>
     </TouchableOpacity>
   );
 };

@@ -14,6 +14,8 @@ import { useNavigation } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import { LineChart } from 'react-native-chart-kit';
 
+import { format } from 'date-fns';
+
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
@@ -265,7 +267,7 @@ const ChartCard = ({ title, unit, datasets, labels, ranges, decimalPlaces = 0 }:
 
       {ranges && (
         <Text style={styles.rangeHint}>
-          Faixa normal: {ranges.min}–{ranges.max} {unit}
+          Faixa normal: {ranges.min} a {ranges.max} {unit}
         </Text>
       )}
 
@@ -325,13 +327,12 @@ const LastReadingCard = ({ reading }: { reading: VitalSignsRecord }) => {
     month: '2-digit',
     year: '2-digit',
   });
-  const h = ts.getHours().toString().padStart(2, '0');
-  const m = ts.getMinutes().toString().padStart(2, '0');
+  const timeStr = format(ts, 'HH:mm');
 
   return (
     <View style={styles.lastCard}>
       <Text style={styles.lastTitle}>Última Aferição</Text>
-      <Text style={styles.lastDate}>{dateStr} às {h}:{m}</Text>
+      <Text style={styles.lastDate}>{dateStr} às {timeStr}</Text>
       <View style={styles.lastGrid}>
         <VitalBadge label="PA" value={`${reading.paSistolica}/${reading.paDiastolica}`} color="#EF4444" />
         <VitalBadge label="FC" value={`${reading.fc} bpm`} color="#EF4444" />

@@ -1,8 +1,7 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useState, useEffect, useCallback } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import { useState, useEffect } from 'react';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -245,7 +244,10 @@ const NurseTabNavigator = () => {
         .catch(() => setHasActiveShift(false));
     };
     check();
-    const interval = setInterval(check, 3000);
+    // ponytail: polling simples a cada 30s só para alternar a aba "Registrar".
+    // Teto: gera leituras ociosas no Firestore. Evolução: trocar por onSnapshot
+    // do plantão ativo, ou revalidar via evento de checkin/checkout.
+    const interval = setInterval(check, 30_000);
     return () => clearInterval(interval);
   }, [user?.empresaId, user?.uid]);
 
@@ -411,8 +413,6 @@ export const RootNavigator = () => {
   useEffect(() => {
     setLgpdAccepted(false);
   }, [user?.uid]);
-
-  console.log('[Nav] isLoading:', isLoading, 'isAuth:', isAuthenticated, 'role:', role, 'empresaId:', user?.empresaId, 'needsSetup:', needsEmpresaSetup, 'needsLgpd:', needsLgpd, 'lgpdAccepted:', lgpdAccepted, 'lgpdConsentAt:', user?.lgpdConsentAt, 'showLgpd:', showLgpd);
 
   if (isLoading) {
     return (

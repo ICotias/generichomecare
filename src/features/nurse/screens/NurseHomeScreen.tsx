@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+import { differenceInYears } from 'date-fns';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
@@ -37,13 +38,7 @@ const TIPO_LABELS: Record<Patient['tipoAtendimento'], string> = {
   visita: 'Visita',
 };
 
-const calcAge = (birth: Date): number => {
-  const now = new Date();
-  let age = now.getFullYear() - birth.getFullYear();
-  const m = now.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
-  return age;
-};
+const calcAge = (birth: Date): number => differenceInYears(new Date(), birth);
 
 const getGreeting = (): string => {
   const h = new Date().getHours();
@@ -177,7 +172,7 @@ export const NurseHomeScreen = () => {
               </View>
               <View style={styles.escalaInfo}>
                 <Text style={styles.escalaPatient} numberOfLines={1}>{e.pacienteNome}</Text>
-                <Text style={styles.escalaTime}>{e.horaInicio} — {e.horaFim}</Text>
+                <Text style={styles.escalaTime}>{e.horaInicio} às {e.horaFim}</Text>
               </View>
               {isToday && <Text style={styles.escalaHoje}>Hoje</Text>}
             </View>

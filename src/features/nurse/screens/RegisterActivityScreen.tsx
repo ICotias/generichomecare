@@ -13,11 +13,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
-import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
+import { colors, spacing, fontSize } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import { usePatientWithActiveShift } from '../../../core/hooks/usePatientWithActiveShift';
-import { saveRecordWithFallback } from '../../../core/services/offlineQueue';
-import type { Patient } from '../../../core/types';
+import { useSaveRecord } from '../../../core/hooks/useSaveRecord';
 
 import { ModalHeader } from '../../../shared/components/ui/ModalHeader';
 import { InsetGroupedSection } from '../../../shared/components/ui/InsetGroupedSection';
@@ -54,14 +53,14 @@ export const RegisterActivityScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { user } = useAuthStore();
+  const { isSubmitting, save } = useSaveRecord('RegisterActivity error');
 
-  const { patients, selectedPatient, setSelectedPatient } = usePatientWithActiveShift(user?.empresaId, user?.uid);
+  const { selectedPatient } = usePatientWithActiveShift(user?.empresaId, user?.uid);
 
   const [tipo, setTipo] = useState('');
   const [participacao, setParticipacao] = useState('');
   const [duracao, setDuracao] = useState('');
   const [observacoes, setObservacoes] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Modal visibility
@@ -83,38 +82,25 @@ export const RegisterActivityScreen = () => {
     return true;
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     Keyboard.dismiss();
     if (!validate()) return;
-    if (!user?.empresaId || !user?.uid) return;
 
-    setIsSubmitting(true);
-    try {
-      const { online } = await saveRecordWithFallback(user.empresaId, selectedPatient!.id, {
+    save({
+      pacienteId: selectedPatient!.id,
+      successMessage: `Atividade registrada para ${selectedPatient!.nome}.`,
+      build: () => ({
         type: 'atividade',
         pacienteId: selectedPatient!.id,
-        empresaId: user.empresaId,
-        profissionalId: user.uid,
-        profissionalNome: user.nome,
+        empresaId: user!.empresaId,
+        profissionalId: user!.uid,
+        profissionalNome: user!.nome,
         categoria: tipo as 'banho' | 'higiene_oral' | 'mobilidade' | 'fisioterapia' | 'outro',
         ...(participacao ? { participacao } : {}),
         ...(Number(duracao) ? { duracaoMinutos: Number(duracao) } : {}),
         ...(observacoes.trim() ? { observacoes: observacoes.trim() } : {}),
-      }, user.uid, user.role);
-
-      Alert.alert(
-        online ? 'Registrado' : 'Salvo offline',
-        online
-          ? `Atividade registrada para ${selectedPatient!.nome}.`
-          : 'Sem conexão. O registro foi salvo e será sincronizado automaticamente quando voltar a ter internet.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
-    } catch (error) {
-      Alert.alert('Erro', 'Não foi possível salvar o registro.');
-      console.error('RegisterActivity error', error);
-    } finally {
-      setIsSubmitting(false);
-    }
+      }),
+    });
   };
 
   // Find selected labels for display
@@ -180,7 +166,7 @@ export const RegisterActivityScreen = () => {
                     ref={duracaoRef}
                     value={duracao}
                     onChangeText={setDuracao}
-                    placeholder="—"
+                    placeholder="0"
                     placeholderTextColor={colors.textMuted}
                     keyboardType="numeric"
                     style={styles.inlineInput}
@@ -197,7 +183,7 @@ export const RegisterActivityScreen = () => {
                     ref={obsRef}
                     value={observacoes}
                     onChangeText={setObservacoes}
-                    placeholder="—"
+                    placeholder="Opcional"
                     placeholderTextColor={colors.textMuted}
                     style={styles.inlineInputMultiline}
                     multiline

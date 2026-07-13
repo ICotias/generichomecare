@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -63,7 +63,6 @@ export const ShiftEvolutionScreen = () => {
   const { user } = useAuthStore();
   const { getCurrentLocation } = useLocation();
 
-  const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [activeShiftId, setActiveShiftId] = useState<string | null>(null);
   const [form, setForm] = useState<Record<string, string>>({
@@ -76,8 +75,6 @@ export const ShiftEvolutionScreen = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const fieldRefs = useRef<Record<string, TextInput | null>>({});
-
   useFocusEffect(
     useCallback(() => {
       if (!user?.empresaId || !user?.uid) return;
@@ -86,13 +83,12 @@ export const ShiftEvolutionScreen = () => {
         shiftService.getActiveShift(user.empresaId, user.uid).catch(() => null),
       ]).then(([list, activeShift]) => {
         const result = list.length > 0 ? list : MOCK_PATIENTS;
-        setPatients(result);
         if (activeShift) {
           setActiveShiftId(activeShift.id);
-          if (!selectedPatient) {
-            const match = result.find((p) => p.id === activeShift.pacienteId);
-            if (match) setSelectedPatient(match);
-          }
+          // setter funcional: não sobrescreve seleção já feita, sem depender
+          // de selectedPatient no closure do useCallback
+          const match = result.find((p) => p.id === activeShift.pacienteId);
+          if (match) setSelectedPatient((prev) => prev ?? match);
         }
       }).catch(console.error);
     }, [user?.empresaId, user?.uid])
@@ -124,6 +120,21 @@ export const ShiftEvolutionScreen = () => {
 
     setIsSubmitting(true);
     try {
+      // A localização é a prova de presença no encerramento do plantão, então é
+      // obrigatória. Obtém antes de gravar qualquer coisa: se falhar, avisa e
+      // aborta sem dar falso sucesso e sem deixar a evolução salva pela metade.
+      let location: { latitude: number; longitude: number } | null = null;
+      if (activeShiftId) {
+        location = await getCurrentLocation();
+        if (!location) {
+          Alert.alert(
+            'Localização necessária',
+            'Não foi possível obter sua localização. O encerramento do plantão precisa dela para registrar onde você estava. Ative o GPS e a permissão de localização e tente novamente.'
+          );
+          return;
+        }
+      }
+
       // 1. Salvar evolução SBAR
       await evolucaoService.createEvolucao({
         empresaId: user.empresaId,
@@ -137,17 +148,14 @@ export const ShiftEvolutionScreen = () => {
         ...(form.observacoesLivres?.trim() ? { observacoesLivres: form.observacoesLivres.trim() } : {}),
       });
 
-      // 2. Finalizar plantão (checkout)
-      if (activeShiftId) {
-        const location = await getCurrentLocation();
-        if (location) {
-          await shiftService.checkout({
-            shiftId: activeShiftId,
-            empresaId: user.empresaId,
-            latitude: location.latitude,
-            longitude: location.longitude,
-          });
-        }
+      // 2. Finalizar plantão (checkout) com a localização comprovada
+      if (activeShiftId && location) {
+        await shiftService.checkout({
+          shiftId: activeShiftId,
+          empresaId: user.empresaId,
+          latitude: location.latitude,
+          longitude: location.longitude,
+        });
       }
 
       Alert.alert(
@@ -185,7 +193,7 @@ export const ShiftEvolutionScreen = () => {
 
             <Text style={styles.titleLine1}>Evolução do</Text>
             <Text style={styles.titleLine2}>Plantão</Text>
-            <Text style={styles.subtitle}>Passagem de plantão — método SBAR</Text>
+            <Text style={styles.subtitle}>Passagem de plantão: método SBAR</Text>
 
             <View style={styles.form}>
 
@@ -200,7 +208,6 @@ export const ShiftEvolutionScreen = () => {
                   </View>
                   <Text style={styles.sbarHint}>{sbar.hint}</Text>
                   <TextInput
-                    ref={(ref) => { fieldRefs.current[sbar.key] = ref; }}
                     value={form[sbar.key]}
                     onChangeText={(t) => updateField(sbar.key, t)}
                     placeholder={sbar.placeholder}
@@ -249,7 +256,7 @@ export const ShiftEvolutionScreen = () => {
                 <ActivityIndicator color={colors.white} />
               ) : (
                 <>
-                  <Ionicons name="checkmark-circle-outline" size={22} color={colors.white} style={{ marginRight: 6 }} />
+                  <Ionicons name="checkmark-circle-outline" size={22} color={colors.white} style={styles.submitIcon} />
                   <Text style={styles.submitText}>Assinar e Fechar Turno</Text>
                 </>
 
@@ -362,5 +369,8 @@ const styles = StyleSheet.create({
     fontSize: fontSize.lg,
     fontWeight: '600',
     letterSpacing: 0.3,
+  },
+  submitIcon: {
+    marginRight: 6,
   },
 });

@@ -35,7 +35,7 @@ import {
 
 import { db, firebaseConfig } from '../config/firebase';
 import { Collections } from '../../shared/constants/firestore';
-import { UserRole } from '../types';
+import { UserRole, CorenCategoria, CorenRegistro } from '../types';
 
 const SECONDARY_APP_NAME = 'Secondary';
 
@@ -51,8 +51,35 @@ export interface CreateNurseInput {
   nome: string;
   telefone: string;
   empresaId: string;
-  coren?: string;
+  /** Registro profissional + atesto de quem conferiu no Cofen */
+  coren?: CorenRegistroInput;
+  /** UID de quem está criando a conta (autor do atesto do COREN) */
+  criadoPorUid: string;
 }
+
+/** O que a tela entrega: o service carimba a data e o autor do atesto. */
+export interface CorenRegistroInput {
+  uf: string;
+  numero: string;
+  categoria: CorenCategoria;
+  verificado: boolean;
+}
+
+/**
+ * Monta o corenRegistro persistido. O atesto NUNCA vem pronto da tela: quem
+ * carimba quem conferiu e quando é o service, a partir do usuário logado.
+ */
+const buildCorenRegistro = (
+  input: CorenRegistroInput,
+  criadoPorUid: string,
+  now: Timestamp
+): Record<string, unknown> => ({
+  uf: input.uf,
+  numero: input.numero,
+  categoria: input.categoria,
+  verificado: input.verificado,
+  ...(input.verificado ? { verificadoEm: now, verificadoPorUid: criadoPorUid } : {}),
+});
 
 export interface CreateFamilyInput {
   email: string;
@@ -75,6 +102,16 @@ export interface FamilyMember {
   telefone?: string;
   parentesco?: string;
   pacienteId?: string;
+  /** Ausente = titular (contas anteriores ao campo) */
+  familiaTitular?: boolean;
+}
+
+export interface NurseMember {
+  uid: string;
+  nome: string;
+  email: string;
+  telefone?: string;
+  corenRegistro?: CorenRegistro;
 }
 
 /**
@@ -105,13 +142,15 @@ export const createNurseAccount = async (
       role: 'nurse' satisfies UserRole,
       empresaId: input.empresaId,
       telefone: input.telefone,
+      // Senha definida pelo admin é temporária: força a troca no 1º acesso.
+      mustChangePassword: true,
       createdAt: now,
       updatedAt: now,
       status: 'ativo',
     };
 
     if (input.coren) {
-      userData.coren = input.coren;
+      userData.corenRegistro = buildCorenRegistro(input.coren, input.criadoPorUid, now);
     }
 
     await setDoc(doc(db, Collections.USUARIOS, uid), userData);
@@ -163,6 +202,9 @@ export const createFamilyAccount = async (
       telefone: input.telefone,
       pacienteId: input.pacienteId,
       parentesco: input.parentesco,
+      familiaTitular: true,
+      // Senha definida pelo admin é temporária: força a troca no 1º acesso.
+      mustChangePassword: true,
       createdAt: now,
       updatedAt: now,
       status: 'ativo',
@@ -241,6 +283,7 @@ export const inviteFamilyAccount = async (
       telefone: input.telefone,
       pacienteId: '', // sem paciente — família cadastra no 1º acesso
       parentesco: input.parentesco,
+      familiaTitular: true,
       mustChangePassword: true,
       createdAt: now,
       updatedAt: now,
@@ -259,6 +302,168 @@ export const inviteFamilyAccount = async (
       // noop
     }
   }
+};
+
+export interface InviteNurseInput {
+  email: string;
+  nome: string;
+  telefone: string;
+  empresaId: string;
+  coren: CorenRegistroInput;
+  /** UID de quem convida (autor do atesto do COREN) */
+  criadoPorUid: string;
+}
+
+export interface InviteNurseResult {
+  uid: string;
+  tempPassword: string;
+}
+
+/**
+ * Convida um enfermeiro com senha temporária e troca obrigatória no 1º acesso.
+ * Espelha o inviteFamilyAccount.
+ *
+ * Usado no modo familiar, onde a família é dona do próprio tenant e convida o
+ * enfermeiro que já cuida do paciente dela. O admin de empresa usa o
+ * createNurseAccount (que define a senha à mão).
+ *
+ * Convidar NÃO dá acesso ao prontuário: quem dá acesso é a autorização no
+ * paciente (patientService.authorizeNurse). São dois atos separados de
+ * propósito.
+ */
+export const inviteNurseAccount = async (
+  input: InviteNurseInput
+): Promise<InviteNurseResult> => {
+  const tempPassword = generateTempPassword();
+  const secondary = getSecondaryApp();
+  const secondaryAuth = getAuth(secondary);
+
+  try {
+    const cred = await createUserWithEmailAndPassword(
+      secondaryAuth,
+      input.email.trim(),
+      tempPassword
+    );
+
+    const uid = cred.user.uid;
+    const now = Timestamp.now();
+
+    const userData: Record<string, unknown> = {
+      uid,
+      email: input.email.trim().toLowerCase(),
+      nome: input.nome,
+      role: 'nurse' satisfies UserRole,
+      empresaId: input.empresaId,
+      telefone: input.telefone,
+      corenRegistro: buildCorenRegistro(input.coren, input.criadoPorUid, now),
+      mustChangePassword: true,
+      createdAt: now,
+      updatedAt: now,
+      status: 'ativo',
+    };
+
+    await setDoc(doc(db, Collections.USUARIOS, uid), userData);
+    await signOut(secondaryAuth);
+
+    return { uid, tempPassword };
+  } finally {
+    try {
+      const app = getApp(SECONDARY_APP_NAME);
+      await deleteApp(app);
+    } catch {
+      // noop
+    }
+  }
+};
+
+export interface InviteRelativeInput {
+  email: string;
+  nome: string;
+  telefone: string;
+  parentesco: string;
+  empresaId: string;
+  /** Paciente que o parente vai acompanhar (o mesmo de quem convida) */
+  pacienteId: string;
+}
+
+/**
+ * A titular convida um PARENTE para acompanhar o mesmo paciente.
+ * Ex.: dois irmãos cuidando da mãe.
+ *
+ * O convidado nasce acompanhante (`familiaTitular: false`): vê a timeline, os
+ * sinais vitais e o histórico, mas não edita o paciente, não mexe no
+ * enfermeiro e não convida mais ninguém. Quem responde pelo cadastro continua
+ * sendo uma pessoa só, e o convite não vira corrente sem fim.
+ *
+ * O `pacienteId` vem de quem convida, nunca digitado pelo convidado: nenhum
+ * dado prova parentesco, então o vínculo só nasce de quem já tem autoridade.
+ */
+export const inviteRelativeAccount = async (
+  input: InviteRelativeInput
+): Promise<InviteFamilyResult> => {
+  const tempPassword = generateTempPassword();
+  const secondary = getSecondaryApp();
+  const secondaryAuth = getAuth(secondary);
+
+  try {
+    const cred = await createUserWithEmailAndPassword(
+      secondaryAuth,
+      input.email.trim(),
+      tempPassword
+    );
+
+    const uid = cred.user.uid;
+    const now = Timestamp.now();
+
+    await setDoc(doc(db, Collections.USUARIOS, uid), {
+      uid,
+      email: input.email.trim().toLowerCase(),
+      nome: input.nome,
+      role: 'family' satisfies UserRole,
+      empresaId: input.empresaId,
+      telefone: input.telefone,
+      pacienteId: input.pacienteId,
+      parentesco: input.parentesco,
+      familiaTitular: false,
+      mustChangePassword: true,
+      createdAt: now,
+      updatedAt: now,
+      status: 'ativo',
+    });
+
+    await signOut(secondaryAuth);
+    return { uid, tempPassword };
+  } finally {
+    try {
+      const app = getApp(SECONDARY_APP_NAME);
+      await deleteApp(app);
+    } catch {
+      // noop
+    }
+  }
+};
+
+/**
+ * Lista os enfermeiros de um tenant. Usado pela família dona do tenant
+ * (modo familiar) para ver quem ela já convidou.
+ */
+export const listNurses = async (empresaId: string): Promise<NurseMember[]> => {
+  const q = query(
+    collection(db, Collections.USUARIOS),
+    where('empresaId', '==', empresaId),
+    where('role', '==', 'nurse')
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => {
+    const data = d.data();
+    return {
+      uid: d.id,
+      nome: data.nome ?? '',
+      email: data.email ?? '',
+      telefone: data.telefone,
+      corenRegistro: data.corenRegistro,
+    };
+  });
 };
 
 // ════════════════════════════════════════════
@@ -288,6 +493,7 @@ export const listFamilyByPatient = async (
       telefone: data.telefone,
       parentesco: data.parentesco,
       pacienteId: data.pacienteId,
+      familiaTitular: data.familiaTitular ?? true,
     };
   });
 };

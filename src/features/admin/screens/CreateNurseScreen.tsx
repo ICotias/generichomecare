@@ -23,6 +23,7 @@ import * as adminUserService from '../../../core/services/adminUserService';
 import type { TeamStackParamList } from '../../../core/navigation/RootNavigator';
 import { PasswordInput } from '../../../shared/components/PasswordInput';
 import { FormInput } from '../../../shared/components/ui';
+import { CorenField, EMPTY_COREN, type CorenFieldValue } from '../../../shared/components/CorenField';
 import { formatPhone, EMAIL_REGEX } from '../../../shared/utils/formatters';
 import { mapAuthError } from '../../../shared/utils/authErrors';
 
@@ -32,7 +33,6 @@ interface FormState {
   nome: string;
   email: string;
   telefone: string;
-  coren: string;
   password: string;
 }
 
@@ -41,6 +41,9 @@ interface FormErrors {
   email?: string;
   telefone?: string;
   password?: string;
+  corenUf?: string;
+  corenNumero?: string;
+  corenVerificado?: string;
   general?: string;
 }
 
@@ -53,16 +56,15 @@ export const CreateNurseScreen = () => {
     nome: '',
     email: '',
     telefone: '',
-    coren: '',
     password: '',
   });
+  const [coren, setCoren] = useState<CorenFieldValue>(EMPTY_COREN);
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [focused, setFocused] = useState<keyof FormState | null>(null);
 
   const emailRef = useRef<TextInput>(null);
   const telefoneRef = useRef<TextInput>(null);
-  const corenRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
 
   const updateField = (key: keyof FormState, value: string) => {
@@ -86,6 +88,14 @@ export const CreateNurseScreen = () => {
       next.password = 'A senha deve ter ao menos 8 caracteres';
     }
 
+    // O registro profissional é obrigatório: quem entra como enfermeiro vai
+    // ler prontuário e registrar cuidado. Sem registro conferido, não entra.
+    if (!coren.uf) next.corenUf = 'Selecione a UF do conselho';
+    if (!coren.numero.trim()) next.corenNumero = 'Informe o número do COREN';
+    if (!coren.verificado) {
+      next.corenVerificado = 'Consulte o registro no Cofen e confirme a conferência';
+    }
+
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -94,7 +104,7 @@ export const CreateNurseScreen = () => {
     Keyboard.dismiss();
     if (!validate()) return;
 
-    if (!user?.empresaId) {
+    if (!user?.empresaId || !user?.uid) {
       setErrors({ general: 'Administrador sem empresa vinculada' });
       return;
     }
@@ -105,9 +115,15 @@ export const CreateNurseScreen = () => {
         nome: form.nome.trim(),
         email: form.email.trim().toLowerCase(),
         telefone: form.telefone.trim(),
-        coren: form.coren.trim() || undefined,
+        coren: {
+          uf: coren.uf,
+          numero: coren.numero.trim(),
+          categoria: coren.categoria,
+          verificado: coren.verificado,
+        },
         password: form.password,
         empresaId: user.empresaId,
+        criadoPorUid: user.uid,
       });
 
       Alert.alert(
@@ -196,23 +212,30 @@ export const CreateNurseScreen = () => {
                 autoCorrect={false}
                 textContentType="telephoneNumber"
                 returnKeyType="next"
-                onSubmitEditing={() => corenRef.current?.focus()}
+                onSubmitEditing={() => passwordRef.current?.focus()}
                 editable={!isSubmitting}
                 error={errors.telefone}
               />
 
-              <FormInput
-                ref={corenRef}
-                label="COREN"
-                optional
-                value={form.coren}
-                onChangeText={(v) => updateField('coren', v)}
-                placeholder="Ex.: COREN-SP 123456"
-                autoCapitalize="none"
-                autoCorrect={false}
-                returnKeyType="next"
-                onSubmitEditing={() => passwordRef.current?.focus()}
+              <CorenField
+                value={coren}
+                onChange={(next) => {
+                  setCoren(next);
+                  setErrors((prev) => ({
+                    ...prev,
+                    corenUf: undefined,
+                    corenNumero: undefined,
+                    corenVerificado: undefined,
+                    general: undefined,
+                  }));
+                }}
                 editable={!isSubmitting}
+                accentColor={colors.admin}
+                errors={{
+                  uf: errors.corenUf,
+                  numero: errors.corenNumero,
+                  verificado: errors.corenVerificado,
+                }}
               />
 
               <View style={styles.field}>

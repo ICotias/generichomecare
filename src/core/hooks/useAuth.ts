@@ -7,8 +7,24 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
-import { AppUser, UserRole } from '../types';
+import { AppUser, UserRole, CorenRegistro } from '../types';
 import { logAudit } from '../services/auditService';
+
+/** Converte o corenRegistro do Firestore (Timestamp) para o tipo do app (Date) */
+const toCorenRegistro = (raw: unknown): CorenRegistro | undefined => {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const r = raw as Record<string, unknown>;
+  if (typeof r.uf !== 'string' || typeof r.numero !== 'string') return undefined;
+  const verificadoEm = r.verificadoEm as { toDate?: () => Date } | undefined;
+  return {
+    uf: r.uf,
+    numero: r.numero,
+    categoria: (r.categoria as CorenRegistro['categoria']) ?? 'enfermeiro',
+    verificado: r.verificado === true,
+    verificadoEm: verificadoEm?.toDate?.(),
+    verificadoPorUid: typeof r.verificadoPorUid === 'string' ? r.verificadoPorUid : undefined,
+  };
+};
 
 /**
  * Único e-mail autorizado a simular outras roles (admin → enfermeiro/família).
@@ -20,7 +36,17 @@ export const SIMULATION_ADMIN_EMAIL = 'iago.admin@test.com';
 export const canSimulateRoles = (email?: string | null): boolean =>
   (email ?? '').trim().toLowerCase() === SIMULATION_ADMIN_EMAIL;
 
-/** Detecta role pelo email (fallback para primeiro login sem doc Firestore) */
+/**
+ * Detecta role pelo email. USO RESTRITO: só para contas de TESTE criadas
+ * direto no Firebase Console, que entram sem doc no Firestore.
+ *
+ * NÃO vale para produção e não decide o papel de quem se cadastra pelo app:
+ * como o cadastro é aberto, quem escrevesse "admin" no endereço viraria admin.
+ * Quem define o papel é a escolha explícita no SetupEmpresaScreen.
+ *
+ * O perfil auto-criado aqui nasce com empresaId vazio, então é inerte: nenhum
+ * papel abre dado sem tenant (toda regra exige belongsToCompany).
+ */
 const inferRoleFromEmail = (email: string): UserRole => {
   const lower = email.toLowerCase();
   if (lower.includes('admin')) return 'admin';
@@ -123,8 +149,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         role: data.role ?? 'nurse',
         empresaId: data.empresaId ?? '',
         telefone: data.telefone ?? '',
+        corenRegistro: toCorenRegistro(data.corenRegistro),
         pacienteId: data.pacienteId ?? undefined,
         parentesco: data.parentesco ?? undefined,
+        familiaTitular: data.familiaTitular ?? true,
         mustChangePassword: data.mustChangePassword ?? false,
         lgpdConsentAt: data.lgpdConsentAt?.toDate?.() ?? undefined,
         createdAt: data.createdAt?.toDate?.() ?? new Date(),
@@ -181,8 +209,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               role: data.role ?? 'nurse',
               empresaId: data.empresaId ?? '',
               telefone: data.telefone ?? '',
+              corenRegistro: toCorenRegistro(data.corenRegistro),
               pacienteId: data.pacienteId ?? undefined,
               parentesco: data.parentesco ?? undefined,
+              familiaTitular: data.familiaTitular ?? true,
               mustChangePassword: data.mustChangePassword ?? false,
               lgpdConsentAt: data.lgpdConsentAt?.toDate?.() ?? undefined,
               createdAt: data.createdAt?.toDate?.() ?? new Date(),

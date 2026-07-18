@@ -1,5 +1,25 @@
 export type UserRole = 'nurse' | 'family' | 'admin';
 
+/** Categoria profissional registrada no Cofen */
+export type CorenCategoria = 'enfermeiro' | 'tecnico' | 'auxiliar';
+
+/**
+ * Registro profissional do enfermeiro, conferido pelo admin no portal do Cofen.
+ * O app não valida o registro de forma automática: guarda o dado estruturado e
+ * o atesto de quem conferiu, como trilha de auditoria.
+ */
+export interface CorenRegistro {
+  uf: string;
+  numero: string;
+  categoria: CorenCategoria;
+  /** Admin declarou ter conferido o registro no Cofen e que a situação é ativa */
+  verificado: boolean;
+  /** Quando o atesto foi feito */
+  verificadoEm?: Date;
+  /** UID de quem atestou */
+  verificadoPorUid?: string;
+}
+
 export interface AppUser {
   uid: string;
   email: string;
@@ -7,7 +27,8 @@ export interface AppUser {
   role: UserRole;
   empresaId: string;
   telefone: string;
-  coren?: string;
+  /** Enfermeiro: registro profissional estruturado + atesto do admin */
+  corenRegistro?: CorenRegistro;
   avatarUrl?: string;
   lgpdConsentAt?: Date;
   /** Conta criada pelo admin com senha temporária — força troca no 1º acesso */
@@ -16,13 +37,21 @@ export interface AppUser {
   pacienteId?: string;
   /** Família: parentesco com o paciente */
   parentesco?: string;
+  /**
+   * Família: titular do cadastro (quem responde pelos dados do paciente) ou
+   * acompanhante convidado (só leitura).
+   *
+   * Ausente = titular. Contas anteriores a este campo são todas titulares, e o
+   * default nas rules é `true` justamente para não trancá-las fora.
+   */
+  familiaTitular?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface NurseProfile extends AppUser {
   role: 'nurse';
-  coren: string;
+  corenRegistro: CorenRegistro;
   especialidades: string[];
   disponibilidade: string;
   valorHora: number;

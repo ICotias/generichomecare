@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
+import { formatCoren, COREN_CATEGORIA_LABEL } from '../../../shared/utils/formatters';
 import type { NurseProfileStackParamList } from '../../../core/navigation/RootNavigator';
 
 const MenuRow = ({
@@ -31,7 +32,10 @@ export const NurseProfileScreen = () => {
   const { user, signOut } = useAuthStore();
 
   const initials = (user?.nome ?? 'E').charAt(0).toUpperCase();
-  const coren = user?.coren ? `Enfermeira - COREN ${user.coren}` : 'Enfermeiro(a)';
+  const registro = user?.corenRegistro;
+  const coren = registro
+    ? `${COREN_CATEGORIA_LABEL[registro.categoria]} - ${formatCoren(registro)}`
+    : 'Enfermeiro(a)';
 
   return (
     <ScrollView

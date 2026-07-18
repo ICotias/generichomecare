@@ -20,9 +20,9 @@ import { colors, spacing, fontSize, borderRadius } from '../../core/theme/theme'
 import { useAuthStore } from '../../core/hooks/useAuth';
 import { db } from '../../core/config/firebase';
 import { ScreenHeader } from '../components/ui/ScreenHeader';
-import { formatPhone } from '../utils/formatters';
+import { formatPhone, formatCoren } from '../utils/formatters';
 
-type FieldKey = 'nome' | 'telefone' | 'coren';
+type FieldKey = 'nome' | 'telefone';
 
 export const EditProfileScreen = () => {
   const insets = useSafeAreaInsets();
@@ -31,15 +31,14 @@ export const EditProfileScreen = () => {
 
   const [nome, setNome] = useState(user?.nome ?? '');
   const [telefone, setTelefone] = useState(user?.telefone ?? '');
-  const [coren, setCoren] = useState(user?.coren ?? '');
   const [focused, setFocused] = useState<FieldKey | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const telefoneRef = useRef<TextInput>(null);
-  const corenRef = useRef<TextInput>(null);
 
   const isNurse = user?.role === 'nurse';
+  const coren = formatCoren(user?.corenRegistro);
 
   const handleSave = async () => {
     Keyboard.dismiss();
@@ -64,10 +63,6 @@ export const EditProfileScreen = () => {
         updatedAt: Timestamp.now(),
       };
 
-      if (isNurse) {
-        updateData.coren = coren.trim();
-      }
-
       await updateDoc(doc(db, 'usuarios', user.uid), updateData);
 
       // Atualiza o estado local
@@ -75,7 +70,6 @@ export const EditProfileScreen = () => {
         ...user,
         nome: nome.trim(),
         telefone: telefone.trim(),
-        ...(isNurse ? { coren: coren.trim() } : {}),
         updatedAt: new Date(),
       });
 
@@ -159,20 +153,24 @@ export const EditProfileScreen = () => {
                 keyboardType: 'phone-pad',
                 autoCapitalize: 'none',
                 ref: telefoneRef,
-                returnKeyType: isNurse ? 'next' : 'done',
-                onSubmitEditing: isNurse
-                  ? () => corenRef.current?.focus()
-                  : handleSave,
+                returnKeyType: 'done',
+                onSubmitEditing: handleSave,
               })}
 
-              {isNurse &&
-                renderField('coren', 'COREN', coren, setCoren, {
-                  placeholder: 'Ex.: 123456-SP',
-                  autoCapitalize: 'none',
-                  ref: corenRef,
-                  returnKeyType: 'done',
-                  onSubmitEditing: handleSave,
-                })}
+              {/* COREN é somente leitura: quem confere o registro no Cofen e
+                  responde por ele é a empresa. Se o enfermeiro pudesse editar
+                  o próprio número, o atesto do admin não valeria nada. */}
+              {isNurse && coren ? (
+                <View style={styles.field}>
+                  <Text style={styles.label}>COREN</Text>
+                  <View style={styles.readOnlyBox}>
+                    <Text style={styles.readOnlyValue}>{coren}</Text>
+                  </View>
+                  <Text style={styles.readOnlyHint}>
+                    Para corrigir o registro, fale com a administração.
+                  </Text>
+                </View>
+              ) : null}
 
               {error ? (
                 <Text style={styles.generalError}>{error}</Text>
@@ -237,6 +235,24 @@ const styles = StyleSheet.create({
   },
   inputFocused: {
     borderColor: colors.primary,
+  },
+  readOnlyBox: {
+    height: 52,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  readOnlyValue: {
+    fontSize: fontSize.md,
+    color: colors.textSecondary,
+  },
+  readOnlyHint: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
   },
   generalError: {
     color: colors.error,

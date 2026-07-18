@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
+import { useIsTenantOwner } from '../../../core/hooks/useIsTenantOwner';
 import type { FamilyProfileStackParamList } from '../../../core/navigation/RootNavigator';
 
 const MenuRow = ({
@@ -29,6 +30,7 @@ export const FamilyProfileScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<FamilyProfileStackParamList>>();
   const { user, signOut } = useAuthStore();
+  const { isOwner } = useIsTenantOwner();
 
   const initials = (user?.nome ?? 'F').charAt(0).toUpperCase();
   const familyUser = user as typeof user & { parentesco?: string };
@@ -61,6 +63,28 @@ export const FamilyProfileScreen = () => {
           <View style={styles.menuDivider} />
           <MenuRow icon="person-outline" label="Paciente Vinculado" onPress={() => navigation.navigate('LinkedPatient')} />
         </View>
+
+        {/* Só a titular dona do próprio tenant gerencia enfermeiro e convida
+            parentes. Quando há uma empresa por trás, é ela quem controla os
+            acessos, e o acompanhante convidado só acompanha. */}
+        {isOwner && user?.familiaTitular !== false ? (
+          <>
+            <Text style={styles.sectionLabel}>CUIDADO</Text>
+            <View style={styles.menuCard}>
+              <MenuRow
+                icon="medkit-outline"
+                label="Enfermeiro"
+                onPress={() => navigation.navigate('FamilyNurse')}
+              />
+              <View style={styles.menuDivider} />
+              <MenuRow
+                icon="people-outline"
+                label="Familiares"
+                onPress={() => navigation.navigate('FamilyRelatives')}
+              />
+            </View>
+          </>
+        ) : null}
 
         <Text style={styles.sectionLabel}>SUPORTE E AJUDA</Text>
         <View style={styles.menuCard}>

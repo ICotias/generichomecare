@@ -26,6 +26,7 @@ export const createEmpresa = async (
   const empresaData: Record<string, unknown> = {
     nome: input.nome,
     ownerUid: input.adminUid,
+    tipo: 'empresa',
     createdAt: now,
     updatedAt: now,
   };
@@ -35,6 +36,41 @@ export const createEmpresa = async (
   await setDoc(doc(db, Collections.EMPRESAS, empresaId), empresaData);
 
   await updateDoc(doc(db, Collections.USUARIOS, input.adminUid), {
+    empresaId,
+    updatedAt: now,
+  });
+
+  return { empresaId };
+};
+
+/**
+ * Cria o tenant de uma FAMÍLIA que não tem empresa por trás.
+ *
+ * O tenant existe só como container de dados: é o mesmo `empresas/{id}` do
+ * modo empresa, mas nunca aparece na interface. A família não sabe que ele
+ * existe. Isso mantém uma arquitetura só, e cada família fica isolada das
+ * outras pelas mesmas regras de sempre.
+ *
+ * `ownerUid` é a família: é o que permite a ela convidar o próprio enfermeiro
+ * e autorizá-lo no paciente (ver isTenantOwner nas rules).
+ */
+export const createFamilyTenant = async (
+  familyUid: string,
+  nomeFamilia: string
+): Promise<CreateEmpresaResult> => {
+  const now = Timestamp.now();
+  const nome = `Família ${nomeFamilia.trim().split(/\s+/).pop() ?? ''}`.trim();
+  const empresaId = generateEmpresaId(nome);
+
+  await setDoc(doc(db, Collections.EMPRESAS, empresaId), {
+    nome,
+    ownerUid: familyUid,
+    tipo: 'familia',
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  await updateDoc(doc(db, Collections.USUARIOS, familyUid), {
     empresaId,
     updatedAt: now,
   });

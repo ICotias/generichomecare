@@ -210,8 +210,10 @@ export const FamilyTimelineScreen = () => {
         <Text style={styles.today}>{todayLabel}</Text>
       </View>
 
-      {/* Cadastro pendente — família precisa completar os dados do paciente criado pelo admin */}
-      {!isSimulating && patient && patient.cadastroCompleto === false && (
+      {/* Cadastro pendente — só a TITULAR completa os dados. O acompanhante
+          convidado só lê: mostrar o card a ele levaria a um permission-denied
+          no fim do wizard, com o trabalho todo perdido. */}
+      {!isSimulating && user?.familiaTitular !== false && patient && patient.cadastroCompleto === false && (
         <TouchableOpacity
           style={styles.pendingCard}
           activeOpacity={0.85}

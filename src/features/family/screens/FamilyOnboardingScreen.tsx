@@ -36,6 +36,7 @@ import {
   PrimaryButton,
 } from '../../../shared/components/ui';
 import type { SelectionItem } from '../../../shared/components/ui';
+import { formatPhone } from '../../../shared/utils/formatters';
 
 const STEPS = [
   'Paciente',
@@ -204,6 +205,15 @@ export const FamilyOnboardingScreen = () => {
     if (!user?.empresaId || !user?.uid || !dataNascimento) return;
     setSaving(true);
     try {
+      // O Firestore recusa `undefined`. Monta o médico só com os campos
+      // preenchidos, em vez de gravar crm/telefone como undefined.
+      let medicoResponsavel: { nome: string; crm?: string; telefone?: string } | undefined;
+      if (medicoNome.trim()) {
+        medicoResponsavel = { nome: medicoNome.trim() };
+        if (medicoCrm.trim()) medicoResponsavel.crm = medicoCrm.trim();
+        if (medicoTel.trim()) medicoResponsavel.telefone = medicoTel.trim();
+      }
+
       const input = {
         nome: nome.trim(),
         dataNascimento,
@@ -216,13 +226,7 @@ export const FamilyOnboardingScreen = () => {
           telefone: contatoTel.trim(),
         },
         contatosAdicionais,
-        medicoResponsavel: medicoNome.trim()
-          ? {
-              nome: medicoNome.trim(),
-              crm: medicoCrm.trim() || undefined,
-              telefone: medicoTel.trim() || undefined,
-            }
-          : undefined,
+        medicoResponsavel,
         faixaSinaisVitais: ranges,
         medicamentos,
       };
@@ -427,7 +431,7 @@ export const FamilyOnboardingScreen = () => {
             <InsetGroupedSection header="MÉDICO RESPONSÁVEL">
               <InputRow label="Nome" value={medicoNome} onChangeText={setMedicoNome} placeholder="Dr(a)." />
               <InputRow label="CRM" value={medicoCrm} onChangeText={setMedicoCrm} placeholder="Opcional" />
-              <InputRow label="Telefone" value={medicoTel} onChangeText={setMedicoTel} placeholder="Opcional" keyboardType="phone-pad" last />
+              <InputRow label="Telefone" value={medicoTel} onChangeText={(v) => setMedicoTel(formatPhone(v))} placeholder="Opcional" keyboardType="phone-pad" last />
             </InsetGroupedSection>
 
             <Text style={styles.helper}>
@@ -435,7 +439,7 @@ export const FamilyOnboardingScreen = () => {
             </Text>
             <InsetGroupedSection header="CONTATO PRINCIPAL (VOCÊ)">
               <InputRow label="Nome" value={contatoNome} onChangeText={setContatoNome} placeholder={user?.nome ?? 'Nome'} />
-              <InputRow label="Telefone" value={contatoTel} onChangeText={setContatoTel} placeholder="(11) 99999-9999" keyboardType="phone-pad" last />
+              <InputRow label="Telefone" value={contatoTel} onChangeText={(v) => setContatoTel(formatPhone(v))} placeholder="(11) 99999-9999" keyboardType="phone-pad" last />
             </InsetGroupedSection>
 
             {contatosAdicionais.map((c, i) => (
@@ -455,7 +459,7 @@ export const FamilyOnboardingScreen = () => {
             <InsetGroupedSection header="ADICIONAR OUTRO CONTATO">
               <InputRow label="Nome" value={addNome} onChangeText={setAddNome} placeholder="Nome" />
               <InputRow label="Parentesco" value={addParentesco} onChangeText={setAddParentesco} placeholder="Ex.: Filho(a)" />
-              <InputRow label="Telefone" value={addTel} onChangeText={setAddTel} placeholder="(11) 99999-9999" keyboardType="phone-pad" last />
+              <InputRow label="Telefone" value={addTel} onChangeText={(v) => setAddTel(formatPhone(v))} placeholder="(11) 99999-9999" keyboardType="phone-pad" last />
             </InsetGroupedSection>
             <TouchableOpacity style={styles.addMedBtn} onPress={addContato} activeOpacity={0.7}>
               <Ionicons name="add-circle-outline" size={20} color={colors.family} />

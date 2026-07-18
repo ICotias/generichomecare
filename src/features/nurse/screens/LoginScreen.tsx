@@ -34,7 +34,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   'auth/operation-not-allowed': 'Login não permitido. Contate o administrador.',
 };
 
-export const LoginScreen = () => {
+export const LoginScreen = ({ onSignUp }: { onSignUp: () => void }) => {
   const insets = useSafeAreaInsets();
   const passwordRef = useRef<TextInput>(null);
 
@@ -137,7 +137,7 @@ export const LoginScreen = () => {
                 resizeMode="contain"
               />
             </View>
-            <Text style={styles.appName}>HomeCare</Text>
+            <Text style={styles.appName}>Benevita</Text>
             <Text style={styles.tagline}>Gerenciamento de cuidados{'\n'}domiciliares simplificado</Text>
           </View>
 
@@ -216,10 +216,13 @@ export const LoginScreen = () => {
               )}
             </TouchableOpacity>
 
-            {/* Dica */}
-            <Text style={styles.hint}>
-              Dica: use email contendo &quot;admin&quot;, &quot;nurse&quot; ou &quot;family&quot;
-            </Text>
+            {/* Criar conta */}
+            <View style={styles.signUpRow}>
+              <Text style={styles.signUpLead}>Ainda não tem conta?</Text>
+              <TouchableOpacity onPress={onSignUp} hitSlop={8} activeOpacity={0.7}>
+                <Text style={styles.signUpLink}>Criar conta</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -375,11 +378,20 @@ const styles = StyleSheet.create({
   },
 
   // Hint
-  hint: {
+  signUpRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.lg,
+  },
+  signUpLead: {
     fontSize: fontSize.sm,
     color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: spacing.md,
-    lineHeight: 20,
+  },
+  signUpLink: {
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    color: colors.primary,
   },
 });

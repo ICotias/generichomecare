@@ -6,6 +6,7 @@ import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useAuthStore } from '../hooks/useAuth';
+import { useIsTenantOwner } from '../hooks/useIsTenantOwner';
 import * as shiftService from '../services/shiftService';
 import { colors } from '../theme/theme';
 import { SimulationBanner } from '../../shared/components/SimulationBanner';
@@ -13,6 +14,7 @@ import { LgpdConsentScreen } from '../../shared/screens/LgpdConsentScreen';
 
 // ── Auth ──
 import { LoginScreen } from '../../features/nurse/screens/LoginScreen';
+import { SignUpScreen } from '../../shared/screens/SignUpScreen';
 import { SetupEmpresaScreen } from '../../features/admin/screens/SetupEmpresaScreen';
 import { ChangePasswordScreen } from '../../shared/screens/ChangePasswordScreen';
 import { FamilyOnboardingScreen } from '../../features/family/screens/FamilyOnboardingScreen';
@@ -39,6 +41,8 @@ import { PatientInfoScreen } from '../../features/family/screens/PatientInfoScre
 import { VitalsChartScreen } from '../../features/family/screens/VitalsChartScreen';
 import { HistoryFilterScreen } from '../../features/family/screens/HistoryFilterScreen';
 import { FamilyProfileScreen } from '../../features/family/screens/FamilyProfileScreen';
+import { FamilyNurseScreen } from '../../features/family/screens/FamilyNurseScreen';
+import { FamilyRelativesScreen } from '../../features/family/screens/FamilyRelativesScreen';
 
 // ── Admin screens ──
 import { AdminDashboardScreen } from '../../features/admin/screens/AdminDashboardScreen';
@@ -126,6 +130,8 @@ export type FamilyProfileStackParamList = {
   EditProfile: undefined;
   Help: undefined;
   LinkedPatient: undefined;
+  FamilyNurse: undefined;
+  FamilyRelatives: undefined;
 };
 
 export type PatientInfoStackParamList = {
@@ -297,6 +303,8 @@ const FamilyProfileStack = () => (
     <FamilyProfileStackNav.Screen name="EditProfile" component={EditProfileScreen} />
     <FamilyProfileStackNav.Screen name="Help" component={HelpScreen} />
     <FamilyProfileStackNav.Screen name="LinkedPatient" component={LinkedPatientScreen} />
+    <FamilyProfileStackNav.Screen name="FamilyNurse" component={FamilyNurseScreen} />
+    <FamilyProfileStackNav.Screen name="FamilyRelatives" component={FamilyRelativesScreen} />
   </FamilyProfileStackNav.Navigator>
 );
 
@@ -388,21 +396,37 @@ const RootStack = createNativeStackNavigator<RootStackParamList>();
 
 export const RootNavigator = () => {
   const { isLoading, isAuthenticated, role, user, originalRole, isSimulating } = useAuthStore();
-  const needsEmpresaSetup = originalRole === 'admin' && !user?.empresaId;
+  const [showSignUp, setShowSignUp] = useState(false);
+
+  // Conta sem tenant → Setup. O enfermeiro convidado tem empresaId, então não
+  // cai aqui. A exclusão antiga (`originalRole !== 'nurse'`) prendia numa tela
+  // vazia a conta-fantasma que o inferRoleFromEmail cria como 'nurse' sem
+  // empresa: sem tenant, ela precisa passar pelo Setup como qualquer outra.
+  const needsEmpresaSetup = isAuthenticated && !user?.empresaId;
 
   // Troca de senha obrigatória (conta criada pelo admin com senha temporária)
   const needsPasswordChange =
     isAuthenticated && !needsEmpresaSetup && !isSimulating && user?.mustChangePassword === true;
 
-  // Família real sem paciente vinculado → tela de espera (o admin cria/vincula o paciente).
-  // Não durante simulação.
-  const familyWaitingForPatient =
+  // Família sem paciente vinculado. O destino depende de quem é o dono do
+  // tenant, e são dois mundos diferentes:
+  //
+  //   modo empresa  → a família ESPERA: o admin cria e vincula o paciente.
+  //   modo familiar → a família CADASTRA: ela é a dona, não há admin nenhum
+  //                   para esperar, e mandá-la para a tela de espera seria
+  //                   prendê-la para sempre aguardando uma clínica que não existe.
+  const { isOwner, isLoading: isLoadingOwner } = useIsTenantOwner();
+
+  const familyWithoutPatient =
     isAuthenticated &&
     !needsEmpresaSetup &&
     !isSimulating &&
     !needsPasswordChange &&
     originalRole === 'family' &&
     !user?.pacienteId;
+
+  const familyWaitingForPatient = familyWithoutPatient && !isOwner;
+  const familyNeedsToRegisterPatient = familyWithoutPatient && isOwner;
 
   // LGPD consent check — user must accept before using app
   const needsLgpd = isAuthenticated && !needsEmpresaSetup && !user?.lgpdConsentAt;
@@ -414,7 +438,9 @@ export const RootNavigator = () => {
     setLgpdAccepted(false);
   }, [user?.uid]);
 
-  if (isLoading) {
+  // Não decidir o destino da família enquanto não se sabe quem é o dono do
+  // tenant: adivinhar aqui faz a tela de espera piscar antes do cadastro.
+  if (isLoading || (familyWithoutPatient && isLoadingOwner)) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -436,11 +462,23 @@ export const RootNavigator = () => {
       <NavigationContainer>
         <RootStack.Navigator screenOptions={{ headerShown: false }}>
           {!isAuthenticated ? (
-            <RootStack.Screen name="Login" component={LoginScreen} />
+            <RootStack.Screen name="Login">
+              {() =>
+                showSignUp ? (
+                  <SignUpScreen onBack={() => setShowSignUp(false)} />
+                ) : (
+                  <LoginScreen onSignUp={() => setShowSignUp(true)} />
+                )
+              }
+            </RootStack.Screen>
           ) : needsEmpresaSetup ? (
             <RootStack.Screen name="SetupEmpresa" component={SetupEmpresaScreen} />
           ) : familyWaitingForPatient ? (
             <RootStack.Screen name="FamilyWaiting" component={FamilyWaitingScreen} />
+          ) : familyNeedsToRegisterPatient ? (
+            // Modo familiar: ela é a dona do tenant, então cadastra o paciente
+            // agora. Sem params, o wizard cria do zero (createPatientByFamily).
+            <RootStack.Screen name="CompletePatient" component={FamilyOnboardingScreen} />
           ) : (
             <>
               {role === 'nurse' && (

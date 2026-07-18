@@ -1,7 +1,24 @@
 rules_version = '2';
 
 // ═══════════════════════════════════════════════════════════════
-// Regras de segurança do Firebase Storage — HomeCare
+// ⚠️  NÃO ESTÁ EM USO — NÃO PUBLICAR.
+//
+// O Benevita guarda as fotos como base64 dentro do Firestore, então o
+// Firebase Storage está DORMENTE: nada no app lê ou escreve nele.
+// Por isso este arquivo NÃO está registrado no firebase.json e NÃO é
+// publicado por `firebase deploy`. É intencional.
+//
+// Quando o Storage for realmente adotado (migrar fotos para lá), o Iago
+// avisa. Só então:
+//   1. registrar  "storage": { "rules": "storage.rules" }  no firebase.json
+//   2. revisar estas regras contra o firestore.rules atual (o isolamento por
+//      enfermeiro mudou: hoje é a lista enfermeirosAutorizados no paciente)
+//   3. firebase deploy --only storage
+//
+// Até lá, ignore este arquivo.
+// ═══════════════════════════════════════════════════════════════
+//
+// Regras de segurança do Firebase Storage — Benevita
 //
 // Espelha a lógica do firestore.rules: autenticação obrigatória,
 // isolamento por empresaId e papel (nurse/family/admin).

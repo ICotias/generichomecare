@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>HomeCare — Calculadora de Proposta</title>
+<title>Benevita · Calculadora de Proposta</title>
 <style>
   :root{ --purple:#6C63FF; --ink:#14213A; --muted:#5A6678; --bg:#F6F7FB; --surface:#fff; --line:#E7EAF0; --green:#16A34A; --soft:#F3F2FF; }
   *{box-sizing:border-box;margin:0;padding:0}
@@ -42,8 +42,8 @@
 <body>
 <div class="wrap">
   <div class="eyebrow">Calculadora de proposta</div>
-  <h1>HomeCare</h1>
-  <div class="sub">Base de R$ 280 por cliente. O desconto por volume cresce aos poucos e vale para metade dos pacientes, então o seu total sempre sobe e o desconto efetivo nunca passa de 10%.</div>
+  <h1>Benevita</h1>
+  <div class="sub">Base de R$ 280 por cliente. O desconto por volume é acumulativo: mais 5% a cada 20 pacientes ativos, com teto de 20%.</div>
 
   <div class="grid">
     <div class="card">
@@ -57,14 +57,14 @@
 
       <label for="base">Valor base por cliente (R$)</label>
       <input type="number" id="base" value="280" min="0" step="10">
-      <div class="hint">O valor cheio, pago pela metade dos pacientes que fica fora do desconto.</div>
+      <div class="hint">Valor cheio por cliente, antes do desconto por volume.</div>
 
       <div class="rule">
-        <b>Como o desconto funciona:</b> até 20 clientes, sem desconto. De 21 a 80, o desconto cresce aos poucos até 20%. Acima de 80, fica em 20%. E ele vale só para metade dos pacientes, então o efetivo é a metade disso.
+        <b>Como o desconto funciona:</b> a cada 20 pacientes ativos, o desconto sobe 5%, de forma acumulativa. São 5% a partir de 20 pacientes, 10% a partir de 40, 15% a partir de 60 e 20% a partir de 80. O teto é 20%.
       </div>
       <div class="rows" style="margin-top:8px">
-        <div class="row"><span class="k">Desconto gradual (no auge)</span><span class="v" id="gr">0%</span></div>
-        <div class="row"><span class="k">Pacientes com desconto</span><span class="v">50%</span></div>
+        <div class="row"><span class="k">Desconto atual</span><span class="v" id="gr">0%</span></div>
+        <div class="row"><span class="k">Próximo degrau</span><span class="v" id="next">aos 20 pacientes</span></div>
       </div>
     </div>
 
@@ -77,25 +77,23 @@
       </div>
       <div class="rows">
         <div class="row"><span class="k">Preço médio por cliente</span><span class="v" id="avg">R$ 0</span></div>
-        <div class="row"><span class="k">Desconto efetivo na conta</span><span class="v" id="effd">0%</span></div>
+        <div class="row"><span class="k">Desconto aplicado</span><span class="v" id="effd">0%</span></div>
         <div class="row"><span class="k">O que a empresa paga por mês</span><span class="v" id="emp">R$ 0</span></div>
         <div class="row"><span class="k">Economia da empresa vs valor cheio</span><span class="v" id="sav">R$ 0</span></div>
       </div>
     </div>
   </div>
 
-  <div class="foot">HomeCare · uso interno para simulação de proposta</div>
+  <div class="foot">Benevita · uso interno para simulação de proposta</div>
 </div>
 
 <script>
   const brl = (n) => n.toLocaleString('pt-BR', {style:'currency', currency:'BRL', maximumFractionDigits:2});
   const el = (id) => document.getElementById(id);
 
-  // desconto gradual pela quantidade: 0% ate 20, sobe linear ate 20% em 80, teto 20%
-  function gradual(n){
-    if(n<=20) return 0;
-    if(n>=80) return 0.20;
-    return 0.20*(n-20)/60;
+  // desconto: +5% a cada 20 pacientes, acumulativo, teto de 20%
+  function desconto(n){
+    return Math.min(0.20, 0.05 * Math.floor(n / 20));
   }
 
   function calc(){
@@ -103,17 +101,21 @@
     const base = Math.max(0, +el('base').value||0);
     el('clival').textContent = n;
 
-    const d = gradual(n);            // desconto gradual no volume atual
-    const eff = 0.5*d;               // metade dos pacientes sofre o desconto
-    const fat = base*n*(1-eff);      // faturamento do Iago
+    const d = desconto(n);
+    const fat = base*n*(1-d);        // faturamento com o desconto por volume
     const full = base*n;
     const avg = n>0 ? fat/n : 0;
 
-    el('gr').textContent = (d*100).toFixed(1).replace('.', ',')+'%';
+    // próximo degrau: quantos pacientes faltam para o próximo +5% (até o teto)
+    const faltam = 20 - (n % 20);
+    const nextTxt = d >= 0.20 ? 'teto de 20% atingido' : `+5% em ${faltam} paciente${faltam>1?'s':''}`;
+
+    el('gr').textContent = (d*100).toFixed(0)+'%';
+    el('next').textContent = nextTxt;
     el('fatMes').textContent = brl(fat);
     el('fatAno').textContent = brl(fat*12)+' por ano';
     el('avg').textContent = brl(avg);
-    el('effd').textContent = (eff*100).toFixed(1).replace('.', ',')+'%';
+    el('effd').textContent = (d*100).toFixed(0)+'%';
     el('emp').textContent = brl(fat);
     el('sav').textContent = brl(full - fat);
   }

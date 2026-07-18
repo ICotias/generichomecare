@@ -34,7 +34,7 @@ try { Share = require('react-native-share'); } catch { /* not installed */ }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 // ════════════════════════════════════════════
-// Types & mock data
+// Types
 // ════════════════════════════════════════════
 
 const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -245,14 +245,14 @@ export const FinancialScreen = () => {
         table{width:100%;border-collapse:collapse}th{text-align:left;padding:10px 12px;background:#F3F4F6;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;border-bottom:2px solid #E5E7EB}
         .ft{margin-top:32px;border-top:1px solid #E5E7EB;padding-top:12px;font-size:11px;color:#9CA3AF;text-align:center}
       </style></head><body>
-        <div class="hdr"><div><h1>HomeCare</h1><p>Relatório Financeiro</p></div><div style="text-align:right;font-size:12px;color:#6B7280"><div>${monthLabel}/${year}</div><div>Gerado: ${new Date().toLocaleDateString('pt-BR')}</div></div></div>
+        <div class="hdr"><div><h1>Benevita</h1><p>Relatório Financeiro</p></div><div style="text-align:right;font-size:12px;color:#6B7280"><div>${monthLabel}/${year}</div><div>Gerado: ${new Date().toLocaleDateString('pt-BR')}</div></div></div>
         <div class="sum">
           <div class="sr"><div style="font-size:11px;color:#6B7280">Receita</div><div style="font-size:22px;font-weight:800;color:#16A34A">${fmtCurrency(totalReceita)}</div></div>
           <div class="sd"><div style="font-size:11px;color:#6B7280">Despesa</div><div style="font-size:22px;font-weight:800;color:#DC2626">${fmtCurrency(totalDespesa)}</div></div>
         </div>
         <div class="ss"><span style="font-weight:600">Saldo</span><span style="font-weight:800;color:${saldo >= 0 ? '#16A34A' : '#DC2626'}">${fmtCurrency(saldo)}</span></div>
         ${entries.length > 0 ? `<table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th style="text-align:right">Valor</th></tr></thead><tbody>${rows}</tbody></table>` : '<p style="text-align:center;color:#6B7280;padding:40px">Sem lançamentos.</p>'}
-        <div class="ft">HomeCare App · Relatório gerado automaticamente</div>
+        <div class="ft">Benevita App · Relatório gerado automaticamente</div>
       </body></html>`;
 
       const result = await RNHTMLtoPDF.generatePDF({

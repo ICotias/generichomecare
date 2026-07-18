@@ -1,10 +1,12 @@
-# HomeCare App — Regras de Desenvolvimento
+# Benevita App — Regras de Desenvolvimento
 
 ## Projeto
 App React Native (Expo SDK 54, dev-client) com Firebase JS SDK (Auth, Firestore, Storage), Zustand, React Navigation v7, TypeScript strict.
 
 ## Contexto do projeto
-HomeCare é um app de gestão de cuidado domiciliar com três perfis: empresa (admin), enfermeiro e família. O enfermeiro registra o plantão pelo celular, com funcionamento offline. A família acompanha o cuidado em tempo real. A gestão administra pacientes, equipe, escalas e financeiro.
+Benevita é um app de gestão de cuidado domiciliar com três perfis: empresa (admin), enfermeiro e família. O enfermeiro registra o plantão pelo celular, com funcionamento offline. A família acompanha o cuidado em tempo real. A gestão administra pacientes, equipe, escalas e financeiro.
+
+**O produto é do Iago. É um único aplicativo (o Benevita), NÃO um app white-label.** Nunca escrever, em nenhum material (proposta, LP, documento, deck, copy do app), que o aplicativo é personalizado com a marca/identidade visual da empresa cliente, nem que é "entregue com a marca dela". As empresas são clientes que usam o Benevita, não donas de uma versão própria. A marca é sempre Benevita.
 
 Pegadinhas conhecidas:
 - Fotos são guardadas como base64 dentro do Firestore, não no Storage. O `getStorage`/`storageService`/`storage.rules` estão dormentes.
@@ -21,6 +23,7 @@ Pegadinhas conhecidas:
 - **Documentar scripts:** sempre que criar um novo script em `scripts/`, adicionar a entrada correspondente no `SCRIPTS.md` (o que faz, comando, argumentos), na seção certa.
 - **Texto human friendly:** todo texto escrito para o usuário, seja no chat ou em entregáveis (LPs, documentos, apresentações, código voltado ao usuário), deve soar natural e humano. Nunca usar travessão (—), meia risca (–) nem hífen de estilo no meio de frases. Preferir frases curtas separadas, vírgulas, parênteses ou dois pontos.
 - **Escrita profissional em documentos formais:** contratos, propostas comerciais, termos e documentos do gênero devem ter escrita profissional e formal. Evitar coloquialismos e abreviações informais (ex.: escrever "aplicativo" em vez de "app", "em um" em vez de "num"). Manter a regra human friendly (sem travessão) e o tom orientado a ganho, mas com vocabulário e construção de frases mais formais.
+- **Incluído x incluso:** usar a forma certa do particípio. "Incluído" (regular) vai na voz ativa, sempre com os auxiliares ter ou haver (ex.: "tinham incluído o nome na lista"). "Incluso/inclusa" (irregular) vai com ser ou estar, ou como adjetivo (ex.: "o documento está incluso no e-mail", "a taxa foi inclusa na fatura"). Concordância de gênero e número sempre com o substantivo (inclusa, inclusos, inclusas).
 
 ## Comandos
 - Rodar no device: `npx expo run:ios --device` / `npx expo run:android --device` (dev-client). Metro: `npx expo start --dev-client`.
@@ -111,7 +114,48 @@ Ao criar/modificar fluxos de usuário, sempre verificar:
 - [ ] O `empresaId` está preenchido? (se não, admin vai para SetupEmpresa)
 - [ ] Campos obrigatórios (`nome`, `email`, `role`) têm fallbacks?
 
-### 4. Apple HIG — Design obrigatório (CRÍTICO)
+### 4. Isolamento do enfermeiro (CRÍTICO, não regredir)
+
+**O enfermeiro só acessa os pacientes em que foi autorizado.** Nunca todos os da empresa.
+
+A autorização é a lista `enfermeirosAutorizados: string[]` no doc do paciente, e as `firestore.rules` exigem o uid do enfermeiro nela. A lista vive no paciente (denormalizada) porque as rules não conseguem consultar escalas.
+
+- Quem mantém a lista é o **dono do tenant**: o admin da empresa (criar escala autoriza, remover a última escala do par revoga), ou a família no modo familiar.
+- Nas telas do enfermeiro, use `listPatientsVisibleTo(empresaId, uid, originalRole)`. **Nunca `listPatients`**: ela varre a empresa e é negada para o enfermeiro.
+- Passe sempre o `originalRole`, não o `role`. Na simulação admin → enfermeiro o uid continua sendo o do admin, que não está em lista nenhuma.
+- Consultas do enfermeiro precisam vir restritas: `array-contains` em pacientes, `profissionalId == uid` em escalas e plantões. **Rules não são filtros**: consulta ampla é negada inteira, não filtrada.
+- `collectionGroup('registros')` é **só admin**. Uma consulta collectionGroup não enxerga o paciente-pai, então não consegue provar a autorização.
+- Paciente novo nasce com a lista vazia. Autorizar é ato explícito.
+
+### 5. Papel do usuário vem da escolha, nunca do e-mail
+
+O cadastro é aberto (`SignUpScreen`), então o papel é definido pela escolha explícita no `SetupEmpresaScreen` (Empresa ou Família). O `inferRoleFromEmail` no `useAuth` é só fallback de contas de teste criadas no Console: se ele decidisse, quem escrevesse "admin" no e-mail viraria admin.
+
+A conta nasce com `empresaId: ''`, o que a torna inerte (toda regra de dado exige `belongsToCompany`). Para ativar, é preciso reivindicar um tenant, e as rules só aceitam tenant cujo `ownerUid` é o próprio usuário.
+
+### 6. Vínculo família ↔ paciente nasce de quem tem autoridade, nunca do que o usuário digita
+
+**Nenhum dado prova parentesco.** CPF, sobrenome, data de nascimento: o vizinho também sabe. Então o app **nunca oferece "escolher um paciente"**. Se ninguém pode reivindicar, não há o que verificar.
+
+Os três caminhos válidos, todos ancorados em alguém que já tem autoridade:
+
+- **Modo empresa:** o admin vincula. A âncora é humana e offline (a empresa conhece a família, tem contrato com ela).
+- **Modo familiar:** a família cria o paciente. Criar é ser dono. As rules só deixam reivindicar `pacienteId` de paciente cujo `criadoPorUid` é você.
+- **Parente extra:** a titular convida (`inviteRelativeAccount`), e o `pacienteId` vai preenchido por ela.
+
+**Titular x acompanhante** (`familiaTitular`): a titular responde pelo cadastro (edita paciente, prescrições, gerencia enfermeiro, convida parentes). O acompanhante só lê. Campo ausente = titular, e o default nas rules é `true` para não trancar contas antigas fora.
+
+No modo empresa a família **não** convida: a empresa é a cliente, é quem paga e é a controladora dos dados. Ela já tem `InviteFamilyScreen` e `LinkFamilyScreen`.
+
+Cobrança por acesso extra (futuro) não precisa de campo novo: acessos por paciente = contar `usuarios` com `role: 'family'` e aquele `pacienteId`.
+
+### 7. COREN é atestado pelo admin, e o enfermeiro não edita o próprio
+
+`corenRegistro` é estruturado (UF, número, categoria) e guarda o atesto de quem conferiu no Cofen, com autor e data. O Cofen não tem API pública, então a conferência é assistida: botão que abre o Sigen e checkbox de confirmação.
+
+O `corenRegistro` é **imutável para o próprio usuário** (rules). Se o enfermeiro pudesse editar o próprio número, o atesto não valeria nada. Isso não impede admin relapso, e não reverifica com o tempo: o que entrega é a trilha de auditoria.
+
+### 8. Apple HIG — Design obrigatório (CRÍTICO)
 **Este app DEVE seguir os padrões de design da Apple (Human Interface Guidelines).** Toda decisão de UI deve ser validada contra o que a Apple faria. Não usar padrões Material Design, Android, ou web.
 
 #### Modais e Sheets
@@ -153,15 +197,15 @@ Ao criar/modificar fluxos de usuário, sempre verificar:
 - Package para pickers: `@react-native-community/datetimepicker`
 - Seguir: https://developer.apple.com/design/human-interface-guidelines/
 
-### 5. Telas novas — checklist visual
-- Seguir obrigatoriamente as regras Apple HIG da seção 4 acima
+### 9. Telas novas — checklist visual
+- Seguir obrigatoriamente as regras Apple HIG da seção 8 acima
 - Usar componentes do design system (`ScreenHeader`, `FormInput`, `PrimaryButton`, `InsetGroupedSection`, `InsetRow`, `SelectionListModal`, `SegmentedControl`)
 - Ícones: sempre Ionicons (nunca emoji)
 - Cor primária: `colors.primary` (#6C63FF), nunca hardcoded
 - Loading states em todos os botões de ação
 - Safe area insets via `useSafeAreaInsets()`
 
-### 6. Zero placeholders — Nenhum elemento de UI sem funcionalidade
+### 10. Zero placeholders — Nenhum elemento de UI sem funcionalidade
 **Regra absoluta:** NUNCA criar um botão, link, menu ou qualquer elemento tocável sem funcionalidade real. Se a funcionalidade não pode ser implementada agora, NÃO crie o elemento visual.
 
 **Proibido:**

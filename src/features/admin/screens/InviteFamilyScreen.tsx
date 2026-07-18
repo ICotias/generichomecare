@@ -60,7 +60,7 @@ export const InviteFamilyScreen = () => {
   const selectedParentesco = PARENTESCO_OPTIONS.find((o) => o.label === parentesco);
 
   const buildMessage = (em: string, pwd: string) =>
-    `Olá, ${nome.trim()}! Você foi convidado(a) para acompanhar o cuidado do seu familiar no app HomeCare.\n\n` +
+    `Olá, ${nome.trim()}! Você foi convidado(a) para acompanhar o cuidado do seu familiar no app Benevita.\n\n` +
     `Acesse o app e entre com:\n` +
     `E-mail: ${em}\n` +
     `Senha temporária: ${pwd}\n\n` +

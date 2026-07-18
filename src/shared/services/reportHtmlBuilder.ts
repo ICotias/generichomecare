@@ -162,7 +162,7 @@ export const buildReportHtml = ({
 <body>
   <div class="header">
     <div class="logo-area">
-      <h1>HomeCare</h1>
+      <h1>Benevita</h1>
       <p>Relatório de Cuidados</p>
     </div>
     <div style="text-align:right;font-size:12px;color:#6B7280">
@@ -203,7 +203,7 @@ export const buildReportHtml = ({
   ` : '<p style="text-align:center;color:#6B7280;padding:40px 0">Nenhum registro encontrado neste período.</p>'}
 
   <div class="footer">
-    HomeCare App · Relatório gerado automaticamente · ${fmtDate(new Date())}
+    Benevita App · Relatório gerado automaticamente · ${fmtDate(new Date())}
   </div>
 </body>
 </html>`;

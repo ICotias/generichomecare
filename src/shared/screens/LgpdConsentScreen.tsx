@@ -24,7 +24,7 @@ import { useAuthStore } from '../../core/hooks/useAuth';
 const CONSENT_SECTIONS = [
   {
     title: '1. Dados coletados',
-    body: 'O HomeCare App coleta e processa os seguintes dados pessoais: nome completo, CPF, e-mail, telefone, endereço, dados de saúde (diagnósticos, sinais vitais, medicamentos), registros fotográficos e dados de geolocalização para controle de plantões.',
+    body: 'O Benevita App coleta e processa os seguintes dados pessoais: nome completo, CPF, e-mail, telefone, endereço, dados de saúde (diagnósticos, sinais vitais, medicamentos), registros fotográficos e dados de geolocalização para controle de plantões.',
   },
   {
     title: '2. Finalidade do tratamento',
@@ -44,7 +44,7 @@ const CONSENT_SECTIONS = [
   },
   {
     title: '6. Retenção dos dados',
-    body: 'Os dados de saúde são retidos conforme exigência do CFM (Conselho Federal de Medicina), no mínimo por 20 anos. Dados de conta podem ser eliminados mediante solicitação, respeitadas as obrigações legais.',
+    body: 'Os dados que compõem o prontuário são retidos por no mínimo 20 anos, contados do último registro, conforme a Lei 13.787/2018. Dados de conta podem ser eliminados mediante solicitação, respeitadas as obrigações legais.',
   },
   {
     title: '7. Segurança',
@@ -106,7 +106,7 @@ export const LgpdConsentScreen = ({ onAccepted }: { onAccepted: () => void }) =>
         scrollEventThrottle={200}
       >
         <Text style={styles.intro}>
-          Ao utilizar o HomeCare App, você consente com o tratamento de seus dados pessoais conforme descrito abaixo. Leia atentamente todos os termos antes de aceitar.
+          Ao utilizar o Benevita App, você consente com o tratamento de seus dados pessoais conforme descrito abaixo. Leia atentamente todos os termos antes de aceitar.
         </Text>
 
         {CONSENT_SECTIONS.map((section, idx) => (

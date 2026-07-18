@@ -102,7 +102,7 @@ export const HelpScreen = () => {
           <Text style={styles.supportTitle}>Precisa de mais ajuda?</Text>
           <View style={styles.supportRow}>
             <Ionicons name="mail-outline" size={18} color={colors.primary} />
-            <Text style={styles.supportEmail}>suporte@homecare.com</Text>
+            <Text style={styles.supportEmail}>suporte@benevita.com</Text>
           </View>
         </View>
       </View>

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "HomeCare",
+    "name": "Benevita",
     "slug": "homecare-app",
     "version": "1.0.0",
     "runtimeVersion": "1.0.0",
@@ -19,11 +19,11 @@
       "bundleIdentifier": "com.generichomecare.app",
       "buildNumber": "1",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "HomeCare usa sua localização para registrar check-in e check-out dos plantões.",
-        "NSLocationAlwaysUsageDescription": "HomeCare usa sua localização em segundo plano para garantir a precisão do registro de plantão.",
-        "NSCameraUsageDescription": "HomeCare precisa acessar a câmera para registrar fotos clínicas dos pacientes.",
-        "NSPhotoLibraryUsageDescription": "HomeCare precisa acessar suas fotos para anexar registros fotográficos.",
-        "CFBundleDisplayName": "HomeCare"
+        "NSLocationWhenInUseUsageDescription": "Benevita usa sua localização para registrar check-in e check-out dos plantões.",
+        "NSLocationAlwaysUsageDescription": "Benevita usa sua localização em segundo plano para garantir a precisão do registro de plantão.",
+        "NSCameraUsageDescription": "Benevita precisa acessar a câmera para registrar fotos clínicas dos pacientes.",
+        "NSPhotoLibraryUsageDescription": "Benevita precisa acessar suas fotos para anexar registros fotográficos.",
+        "CFBundleDisplayName": "Benevita"
       },
       "config": {
         "usesNonExemptEncryption": false
@@ -52,14 +52,14 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "HomeCare usa sua localização para registrar check-in e check-out dos plantões."
+          "locationAlwaysAndWhenInUsePermission": "Benevita usa sua localização para registrar check-in e check-out dos plantões."
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "HomeCare precisa acessar suas fotos para anexar registros fotográficos.",
-          "cameraPermission": "HomeCare precisa acessar a câmera para registrar fotos clínicas dos pacientes."
+          "photosPermission": "Benevita precisa acessar suas fotos para anexar registros fotográficos.",
+          "cameraPermission": "Benevita precisa acessar a câmera para registrar fotos clínicas dos pacientes."
         }
       ],
       "@react-native-community/datetimepicker"

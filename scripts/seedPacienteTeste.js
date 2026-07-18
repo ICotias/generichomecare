@@ -20,7 +20,7 @@
  */
 const path = require('path');
 const { initializeApp, cert } = require('firebase-admin/app');
-const { getFirestore, Timestamp } = require('firebase-admin/firestore');
+const { getFirestore, Timestamp, FieldValue } = require('firebase-admin/firestore');
 
 const empresaId = process.argv[2] || 'clinica-generica-94hdol';
 const nomePaciente = process.argv[3] || 'Teste';
@@ -94,7 +94,7 @@ const REFS = [
 async function findNurse() {
   // tenta pela escala do paciente; senão, qualquer enfermeiro; senão, genérico
   try {
-    const q = await db.collection('usuarios').where('role', '==', 'enfermeiro').limit(1).get();
+    const q = await db.collection('usuarios').where('role', '==', 'nurse').limit(1).get();
     if (!q.empty) {
       const d = q.docs[0].data();
       return { uid: q.docs[0].id, nome: d.nome || 'Enfermeiro' };
@@ -115,6 +115,14 @@ async function findNurse() {
 
   const nurse = await findNurse();
   console.log('Profissional dos registros:', nurse.nome, '\n');
+
+  // Autoriza o enfermeiro no paciente, senão ele não enxerga os dados seedados
+  // (o app lê pela lista enfermeirosAutorizados). Idempotente.
+  if (nurse.uid !== 'seed-teste') {
+    await patsCol.doc(pid).update({
+      enfermeirosAutorizados: FieldValue.arrayUnion(nurse.uid),
+    });
+  }
 
   const regCol = patsCol.doc(pid).collection('registros');
 

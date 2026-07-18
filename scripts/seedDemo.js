@@ -42,11 +42,11 @@ const pick = (arr) => arr[rand(0, arr.length - 1)];
 const chance = (p) => Math.random() < p;
 
 const NURSES = [
-  { nome: 'Ana Paula Costa', coren: 'COREN-SP 100001' },
-  { nome: 'Bruno Santos', coren: 'COREN-SP 100002' },
-  { nome: 'Carla Oliveira', coren: 'COREN-SP 100003' },
-  { nome: 'Diego Lima', coren: 'COREN-SP 100004' },
-  { nome: 'Elaine Ferreira', coren: 'COREN-SP 100005' },
+  { nome: 'Ana Paula Costa', corenNumero: '100001' },
+  { nome: 'Bruno Santos', corenNumero: '100002' },
+  { nome: 'Carla Oliveira', corenNumero: '100003' },
+  { nome: 'Diego Lima', corenNumero: '100004' },
+  { nome: 'Elaine Ferreira', corenNumero: '100005' },
 ];
 
 const PATIENTS = [
@@ -134,7 +134,13 @@ async function upsertAuthUser(email, nome) {
     const uid = await upsertAuthUser(email, NURSES[i].nome);
     await db.collection('usuarios').doc(uid).set({
       email, nome: NURSES[i].nome, role: 'nurse', empresaId,
-      telefone: '', coren: NURSES[i].coren, status: 'ativo', ativo: true,
+      telefone: '',
+      // corenRegistro estruturado (o campo `coren` string foi aposentado).
+      corenRegistro: {
+        uf: 'SP', numero: NURSES[i].corenNumero, categoria: 'enfermeiro',
+        verificado: true, verificadoEm: now, verificadoPorUid: 'seed',
+      },
+      familiaTitular: true, status: 'ativo', ativo: true,
       mustChangePassword: false, createdAt: now, updatedAt: now,
     }, { merge: true });
     nurses.push({ uid, ...NURSES[i], email });
@@ -160,7 +166,9 @@ async function upsertAuthUser(email, nome) {
       faixaSinaisVitais: BASE_RANGE,
       origemDados: 'equipe', validadoPorEquipe: true, cadastroCompleto: true,
       criadoPorUid: nurse.uid, demoSeed: true,
-      enfermeiroResponsavelId: nurse.uid,
+      // Autorização do enfermeiro no paciente (o app lê esta lista, não um
+      // "responsável" solto). Sem ela, o enfermeiro não enxerga o paciente.
+      enfermeirosAutorizados: [nurse.uid],
       createdAt: now, updatedAt: now,
     });
     patients.push({ id: ref.id, nurse, ...p });
@@ -175,7 +183,7 @@ async function upsertAuthUser(email, nome) {
       const nome = `Familiar ${suf.toUpperCase()} de ${patients[i].nome.split(' ')[0]}`;
       const uid = await upsertAuthUser(email, nome);
       await db.collection('usuarios').doc(uid).set({
-        email, nome, role: 'family', empresaId,
+        email, nome, role: 'family', empresaId, familiaTitular: true,
         telefone: '', pacienteId: patients[i].id, parentesco: pick(parentescos),
         status: 'ativo', mustChangePassword: false, createdAt: now, updatedAt: now,
       }, { merge: true });

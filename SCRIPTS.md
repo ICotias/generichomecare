@@ -87,6 +87,59 @@ Preenche o campo `visibleToFamily` nos registros antigos que não tinham esse ca
 node scripts/backfillVisibleToFamily.js
 ```
 
+### backfillEnfermeirosAutorizados
+Preenche o campo `enfermeirosAutorizados` nos pacientes antigos. **Rode uma vez, logo depois de publicar as regras do isolamento por enfermeiro.**
+
+A partir desta mudança, o enfermeiro só lê o paciente se o uid dele estiver nessa lista. Os pacientes criados antes não têm a lista, então ficam invisíveis para a equipe até o backfill rodar. O script reconstrói a lista a partir das escalas ativas e dos plantões já realizados (quem tem vínculo real com o paciente).
+
+Sempre confira com `--dry-run` antes de aplicar. Pacientes que aparecerem como "sem vínculo" continuam sem enfermeiro autorizado: o admin precisa escalar alguém ou autorizar à mão no detalhe do paciente.
+
+```bash
+# confere o que faria, sem escrever
+node scripts/backfillEnfermeirosAutorizados.js --dry-run
+
+# aplica
+node scripts/backfillEnfermeirosAutorizados.js
+
+# corte mais rígido: ignora plantões, autoriza só quem está escalado
+node scripts/backfillEnfermeirosAutorizados.js --somente-escalas
+```
+
+| Argumento | O que faz |
+| --- | --- |
+| `--dry-run` | Mostra as mudanças sem escrever nada |
+| `--somente-escalas` | Ignora os plantões e considera só as escalas ativas |
+
+### resetApp
+**Zera o app inteiro.** Apaga todos os dados do Firestore (empresas, pacientes, prontuários, escalas, plantões, financeiro, usuários, auditoria) e todas as contas do Auth. ⚠️ Destrutivo e irreversível, só para testes.
+
+Sem `--yes`, é dry-run: só mostra o que existe hoje, não apaga nada.
+
+```bash
+node scripts/resetApp.js          # dry-run
+node scripts/resetApp.js --yes    # apaga de verdade
+```
+
+### seedMinimo
+Cria o mínimo para testar depois do reset: 1 empresa, 1 admin, 1 enfermeiro, 1 família e 1 paciente, tudo amarrado. Senha de todas: `Demo@123`, sem troca obrigatória.
+
+```bash
+node scripts/seedMinimo.js
+```
+
+Contas geradas: `admin@benevita.test`, `enfermeiro@benevita.test`, `familia@benevita.test`.
+
+### resetTestPassword
+Define uma senha conhecida para uma conta, pelo e-mail. **Uso exclusivo de teste.**
+
+Serve para logar em contas convidadas (enfermeiro, família, parente) no simulador, onde a senha temporária não chega porque o WhatsApp não abre. A conta tem `mustChangePassword`, então o app pede a troca no 1º acesso mesmo assim.
+
+```bash
+node scripts/resetTestPassword.js <email> [senha]
+# sem o 2º argumento, usa Demo@123
+node scripts/resetTestPassword.js gabriel.nurse@ghx.com
+```
+
 ---
 
 ## Comandos de desenvolvimento

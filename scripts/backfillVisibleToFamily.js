@@ -11,7 +11,7 @@
  * COMO RODAR:
  *   1. Baixe a chave de service account no Firebase Console
  *      (Configurações do projeto → Contas de serviço → Gerar nova chave privada)
- *   2. Salve como serviceAccountKey.json na raiz (NÃO commite esse arquivo)
+ *   2. Salve como service-account.json na raiz (NÃO commite esse arquivo)
  *   3. yarn add -D firebase-admin   (se ainda não tiver)
  *   4. node scripts/backfillVisibleToFamily.js
  *
@@ -20,7 +20,17 @@
 const admin = require('firebase-admin');
 const path = require('path');
 
-const serviceAccount = require(path.resolve(__dirname, '../serviceAccountKey.json'));
+const keyPath =
+  process.env.GOOGLE_APPLICATION_CREDENTIALS ||
+  path.resolve(__dirname, '..', 'service-account.json');
+
+let serviceAccount;
+try {
+  serviceAccount = require(keyPath);
+} catch {
+  console.error('service-account.json não encontrado em: ' + keyPath);
+  process.exit(1);
+}
 
 admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 

@@ -1,10 +1,10 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, Fragment } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  FlatList,
+  ScrollView,
   Animated,
   Dimensions,
 } from 'react-native';
@@ -93,36 +93,38 @@ export const SelectionListModal = ({
         <View style={styles.headerSpacer} />
       </View>
 
-      {/* List */}
-      <FlatList
-        data={items}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => {
+      {/* List — ScrollView + map em vez de FlatList: as listas aqui são
+          sempre curtas (UF, categoria, parentesco, pacientes de uma empresa) e
+          o modal costuma ficar dentro de um ScrollView de formulário, o que
+          quebra a virtualização do FlatList. Sem virtualização, sem o aviso. */}
+      <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
+        {items.map((item, index) => {
           const isSelected = item.id === selectedId;
           return (
-            <TouchableOpacity
-              style={styles.row}
-              onPress={() => {
-                onSelect(item);
-                onClose();
-              }}
-              activeOpacity={0.6}
-            >
-              <View style={styles.rowContent}>
-                <Text style={styles.rowLabel}>{item.label}</Text>
-                {item.subtitle ? (
-                  <Text style={styles.rowSubtitle}>{item.subtitle}</Text>
-                ) : null}
-              </View>
-              {isSelected && (
-                <Ionicons name="checkmark" size={22} color={accentColor} />
-              )}
-            </TouchableOpacity>
+            <Fragment key={item.id}>
+              {index > 0 ? <View style={styles.separator} /> : null}
+              <TouchableOpacity
+                style={styles.row}
+                onPress={() => {
+                  onSelect(item);
+                  onClose();
+                }}
+                activeOpacity={0.6}
+              >
+                <View style={styles.rowContent}>
+                  <Text style={styles.rowLabel}>{item.label}</Text>
+                  {item.subtitle ? (
+                    <Text style={styles.rowSubtitle}>{item.subtitle}</Text>
+                  ) : null}
+                </View>
+                {isSelected && (
+                  <Ionicons name="checkmark" size={22} color={accentColor} />
+                )}
+              </TouchableOpacity>
+            </Fragment>
           );
-        }}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-        style={styles.list}
-      />
+        })}
+      </ScrollView>
     </Animated.View>
   );
 };

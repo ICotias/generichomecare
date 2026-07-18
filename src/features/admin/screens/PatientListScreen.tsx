@@ -22,7 +22,6 @@ import * as patientService from '../../../core/services/patientService';
 import type { Patient } from '../../../core/types';
 import type { PatientMgmtStackParamList } from '../../../core/navigation/RootNavigator';
 import { EmptyState } from '../../../shared/components/EmptyState';
-import { MOCK_PATIENTS } from '../../../core/mocks/patients';
 
 type NavProp = NativeStackNavigationProp<PatientMgmtStackParamList, 'PatientList'>;
 
@@ -66,7 +65,7 @@ export const PatientListScreen = () => {
         const list = await patientService.listPatients(user.empresaId, {
           includeInactive: true,
         });
-        setPatients(list.length > 0 ? list : MOCK_PATIENTS);
+        setPatients(list);
       } catch (err) {
         setError('Não foi possível carregar os pacientes.');
         console.error('loadPatients error', err);

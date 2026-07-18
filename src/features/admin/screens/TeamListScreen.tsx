@@ -18,6 +18,7 @@ import { Collections } from '../../../shared/constants/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
+import { formatCoren } from '../../../shared/utils/formatters';
 import type { TeamStackParamList } from '../../../core/navigation/RootNavigator';
 
 type NavProp = NativeStackNavigationProp<TeamStackParamList, 'TeamList'>;
@@ -31,14 +32,6 @@ interface TeamMember {
   status: 'ativo' | 'inativo';
 }
 
-// Fallback de demonstração — usado APENAS em __DEV__ (vazio em produção).
-const MOCK_TEAM: TeamMember[] = __DEV__ ? [
-  { uid: 'mock-1', nome: 'Ana Paula Costa', email: 'ana@homecare.com', telefone: '(11) 99999-1111', coren: 'COREN-SP 123456', status: 'ativo' },
-  { uid: 'mock-2', nome: 'Bruno Santos', email: 'bruno@homecare.com', telefone: '(11) 99999-2222', coren: 'COREN-SP 654321', status: 'ativo' },
-  { uid: 'mock-3', nome: 'Carla Oliveira', email: 'carla@homecare.com', telefone: '(11) 99999-3333', status: 'ativo' },
-  { uid: 'mock-4', nome: 'Diego Lima', email: 'diego@homecare.com', telefone: '(11) 99999-4444', coren: 'COREN-SP 111222', status: 'inativo' },
-] : [];
-
 export const TeamListScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
@@ -46,12 +39,10 @@ export const TeamListScreen = () => {
 
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [usingMock, setUsingMock] = useState(false);
 
   const load = useCallback(async () => {
     if (!user?.empresaId) {
-      setMembers(MOCK_TEAM);
-      setUsingMock(true);
+      setMembers([]);
       setIsLoading(false);
       return;
     }
@@ -71,24 +62,16 @@ export const TeamListScreen = () => {
             nome: data.nome ?? '',
             email: data.email ?? '',
             telefone: data.telefone,
-            coren: data.coren,
+            coren: formatCoren(data.corenRegistro),
             status: data.status ?? 'ativo',
           };
         })
         // Excluídos da equipe não aparecem na lista
         .filter((m) => m.status !== 'excluido');
-
-      if (list.length > 0) {
-        setMembers(list);
-        setUsingMock(false);
-      } else {
-        setMembers(MOCK_TEAM);
-        setUsingMock(true);
-      }
+      setMembers(list);
     } catch (err) {
       console.error('TeamList load error', err);
-      setMembers(MOCK_TEAM);
-      setUsingMock(true);
+      setMembers([]);
     } finally {
       setIsLoading(false);
     }
@@ -154,12 +137,6 @@ export const TeamListScreen = () => {
         </View>
       </View>
 
-      {usingMock && __DEV__ && (
-        <View style={styles.mockBanner}>
-          <Text style={styles.mockText}>Dados de exemplo. Os profissionais reais aparecerão aqui.</Text>
-        </View>
-      )}
-
       {isLoading ? (
         <ActivityIndicator size="large" color={colors.admin} style={styles.loader} />
       ) : (
@@ -205,16 +182,6 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
   },
   addBtnText: { fontSize: fontSize.sm, fontWeight: '700', color: colors.white },
-
-  mockBanner: {
-    backgroundColor: '#FEF3C7',
-    borderRadius: borderRadius.md,
-    padding: spacing.sm,
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
-    alignItems: 'center',
-  },
-  mockText: { fontSize: fontSize.xs, color: '#92400E', fontWeight: '500' },
 
   loader: { marginTop: spacing.xxl },
   list: { paddingHorizontal: spacing.lg },

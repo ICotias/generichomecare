@@ -16,7 +16,6 @@ import { colors, spacing } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import * as patientService from '../../../core/services/patientService';
 import * as registroService from '../../../core/services/registroService';
-import { MOCK_PATIENTS } from '../../../core/mocks/patients';
 import { buildReportHtml } from '../../../shared/services/reportHtmlBuilder';
 import type { Patient, CareRecord, RecordType } from '../../../core/types';
 
@@ -80,7 +79,7 @@ export const ExportReportScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const route = useRoute<RouteType>();
-  const { user } = useAuthStore();
+  const { user, originalRole } = useAuthStore();
 
   // State
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -95,15 +94,19 @@ export const ExportReportScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showPatientPicker, setShowPatientPicker] = useState(false);
 
-  // Load patients
+  // Load patients — a tela é compartilhada entre enfermeiro e admin, então a
+  // consulta certa depende do papel (o enfermeiro só vê os autorizados).
   useEffect(() => {
-    if (!user?.empresaId) return;
+    if (!user?.empresaId || !user?.uid) return;
     patientService
-      .listPatients(user.empresaId)
-      .then((list) => setPatients(list.length > 0 ? list : MOCK_PATIENTS))
-      .catch(() => setPatients(MOCK_PATIENTS))
+      .listPatientsVisibleTo(user.empresaId, user.uid, originalRole)
+      .then((list) => setPatients(list))
+      .catch((err) => {
+        console.error('ExportReport load patients error', err);
+        setPatients([]);
+      })
       .finally(() => setIsLoading(false));
-  }, [user?.empresaId]);
+  }, [user?.empresaId, user?.uid, originalRole]);
 
   const selectedPatient = patients.find((p) => p.id === selectedPatientId);
 

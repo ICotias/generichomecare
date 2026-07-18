@@ -24,7 +24,6 @@ import * as patientService from '../../../core/services/patientService';
 import * as shiftService from '../../../core/services/shiftService';
 import * as evolucaoService from '../../../core/services/evolucaoService';
 import type { Patient } from '../../../core/types';
-import { MOCK_PATIENTS } from '../../../core/mocks/patients';
 
 const SBAR_FIELDS = [
   {
@@ -60,7 +59,7 @@ const SBAR_FIELDS = [
 export const ShiftEvolutionScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
-  const { user } = useAuthStore();
+  const { user, originalRole } = useAuthStore();
   const { getCurrentLocation } = useLocation();
 
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
@@ -79,10 +78,10 @@ export const ShiftEvolutionScreen = () => {
     useCallback(() => {
       if (!user?.empresaId || !user?.uid) return;
       Promise.all([
-        patientService.listPatients(user.empresaId),
+        patientService.listPatientsVisibleTo(user.empresaId, user.uid, originalRole),
         shiftService.getActiveShift(user.empresaId, user.uid).catch(() => null),
       ]).then(([list, activeShift]) => {
-        const result = list.length > 0 ? list : MOCK_PATIENTS;
+        const result = list;
         if (activeShift) {
           setActiveShiftId(activeShift.id);
           // setter funcional: não sobrescreve seleção já feita, sem depender
@@ -91,7 +90,7 @@ export const ShiftEvolutionScreen = () => {
           if (match) setSelectedPatient((prev) => prev ?? match);
         }
       }).catch(console.error);
-    }, [user?.empresaId, user?.uid])
+    }, [user?.empresaId, user?.uid, originalRole])
   );
 
   const updateField = (key: string, value: string) => {

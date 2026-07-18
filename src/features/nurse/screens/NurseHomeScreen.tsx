@@ -23,7 +23,6 @@ import * as scheduleService from '../../../core/services/scheduleService';
 import type { Patient, Schedule } from '../../../core/types';
 import type { NurseHomeStackParamList } from '../../../core/navigation/RootNavigator';
 import { EmptyState } from '../../../shared/components/EmptyState';
-import { MOCK_PATIENTS } from '../../../core/mocks/patients';
 
 type NavProp = NativeStackNavigationProp<NurseHomeStackParamList, 'NurseHome'>;
 
@@ -50,7 +49,7 @@ const getGreeting = (): string => {
 export const NurseHomeScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
-  const { user } = useAuthStore();
+  const { user, originalRole } = useAuthStore();
 
   const [patients, setPatients] = useState<Patient[]>([]);
   const [escala, setEscala] = useState<NurseSchedule[]>([]);
@@ -61,7 +60,7 @@ export const NurseHomeScreen = () => {
 
   const loadPatients = useCallback(
     async (silent = false) => {
-      if (!user?.empresaId) {
+      if (!user?.empresaId || !user?.uid) {
         setIsLoading(false);
         return;
       }
@@ -69,14 +68,18 @@ export const NurseHomeScreen = () => {
       setError(null);
 
       try {
-        const list = await patientService.listPatients(user.empresaId);
-        setPatients(list.length > 0 ? list : MOCK_PATIENTS);
-        if (user.uid) {
-          scheduleService
-            .listSchedulesForNurse(user.empresaId, user.uid)
-            .then(setEscala)
-            .catch((e) => console.error('NurseHome escala error', e));
-        }
+        // Só os pacientes em que este enfermeiro foi autorizado. A restrição é
+        // das rules; a consulta apenas obedece.
+        const list = await patientService.listPatientsVisibleTo(
+          user.empresaId,
+          user.uid,
+          originalRole
+        );
+        setPatients(list);
+        scheduleService
+          .listSchedulesForNurse(user.empresaId, user.uid)
+          .then(setEscala)
+          .catch((e) => console.error('NurseHome escala error', e));
       } catch (err) {
         setError('Não foi possível carregar os pacientes.');
         console.error('NurseHome loadPatients error', err);
@@ -85,7 +88,7 @@ export const NurseHomeScreen = () => {
         setIsRefreshing(false);
       }
     },
-    [user?.empresaId, user?.uid]
+    [user?.empresaId, user?.uid, originalRole]
   );
 
   useFocusEffect(
@@ -192,7 +195,11 @@ export const NurseHomeScreen = () => {
         <Text style={styles.name}>{firstName}</Text>
         {patients.length > 0 && (
           <Text style={styles.subtitle}>
-            Você tem <Text style={styles.subtitleBold}>{patients.length} pacientes</Text> ativos na sua lista.
+            Você tem{' '}
+            <Text style={styles.subtitleBold}>
+              {patients.length} {patients.length === 1 ? 'paciente' : 'pacientes'}
+            </Text>{' '}
+            {patients.length === 1 ? 'ativo' : 'ativos'} na sua lista.
           </Text>
         )}
       </View>

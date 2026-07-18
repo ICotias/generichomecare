@@ -79,23 +79,6 @@ const GRAVIDADE_COLOR: Record<string, string> = {
 };
 
 // ════════════════════════════════════════════
-// Mock metrics for dev
-// ════════════════════════════════════════════
-
-// Fallback de demonstração — usado APENAS em __DEV__.
-// Em produção resolve para EMPTY_METRICS (zeros), sem banner.
-const MOCK_METRICS: DashboardMetrics = __DEV__
-  ? {
-      totalPacientes: 4,
-      pacientesAtivos: 3,
-      totalProfissionais: 6,
-      plantoesHoje: 2,
-      registrosHoje: 18,
-      intercorrenciasHoje: 1,
-    }
-  : EMPTY_METRICS;
-
-// ════════════════════════════════════════════
 // Component
 // ════════════════════════════════════════════
 
@@ -109,7 +92,6 @@ export const AdminDashboardScreen = () => {
   const [activeShifts, setActiveShifts] = useState<ActiveShiftInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [usingMock, setUsingMock] = useState(false);
 
   const today = new Date();
   const greeting = today.getHours() < 12 ? 'Bom dia' : today.getHours() < 18 ? 'Boa tarde' : 'Boa noite';
@@ -121,8 +103,7 @@ export const AdminDashboardScreen = () => {
 
   const load = useCallback(async () => {
     if (!user?.empresaId) {
-      setMetrics(MOCK_METRICS);
-      setUsingMock(true);
+      setMetrics(EMPTY_METRICS);
       setIsLoading(false);
       return;
     }
@@ -222,27 +203,17 @@ export const AdminDashboardScreen = () => {
       setRecentIncidents(incidents);
       setActiveShifts(active);
 
-      const data: DashboardMetrics = {
+      setMetrics({
         totalPacientes,
         pacientesAtivos,
         totalProfissionais,
         plantoesHoje,
         registrosHoje,
         intercorrenciasHoje,
-      };
-
-      const isEmpty = Object.values(data).every((v) => v === 0);
-      if (isEmpty) {
-        setMetrics(MOCK_METRICS);
-        setUsingMock(true);
-      } else {
-        setMetrics(data);
-        setUsingMock(false);
-      }
+      });
     } catch (err) {
       console.error('Dashboard load error', err);
-      setMetrics(MOCK_METRICS);
-      setUsingMock(true);
+      setMetrics(EMPTY_METRICS);
     } finally {
       setIsLoading(false);
     }
@@ -281,11 +252,6 @@ export const AdminDashboardScreen = () => {
           <Text style={styles.dateLabel}>{dateLabel}</Text>
         </View>
 
-        {usingMock && __DEV__ && (
-          <View style={styles.mockBanner}>
-            <Text style={styles.mockText}>Dados de exemplo: métricas reais aparecerão aqui.</Text>
-          </View>
-        )}
 
         {isLoading ? (
           <ActivityIndicator size="large" color={colors.admin} style={styles.loader} />
@@ -457,15 +423,6 @@ const styles = StyleSheet.create({
   greeting: { fontSize: fontSize.md, color: colors.textSecondary },
   userName: { fontSize: fontSize.title, fontWeight: '700', color: colors.textPrimary, marginTop: 2 },
   dateLabel: { fontSize: fontSize.sm, color: colors.textMuted, marginTop: spacing.xs },
-
-  mockBanner: {
-    backgroundColor: '#FEF3C7',
-    borderRadius: borderRadius.md,
-    padding: spacing.sm,
-    marginBottom: spacing.md,
-    alignItems: 'center',
-  },
-  mockText: { fontSize: fontSize.xs, color: '#92400E', fontWeight: '500' },
 
   // Big cards
   bigCardRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },

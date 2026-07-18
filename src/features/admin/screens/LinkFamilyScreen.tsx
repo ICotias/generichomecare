@@ -18,7 +18,6 @@ import { colors, spacing, fontSize } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import * as patientService from '../../../core/services/patientService';
 import * as adminUserService from '../../../core/services/adminUserService';
-import { MOCK_PATIENTS } from '../../../core/mocks/patients';
 import type { Patient } from '../../../core/types';
 import { ModalHeader } from '../../../shared/components/ui/ModalHeader';
 import { InsetGroupedSection } from '../../../shared/components/ui/InsetGroupedSection';
@@ -79,8 +78,11 @@ export const LinkFamilyScreen = () => {
     if (!user?.empresaId) return;
     patientService
       .listPatients(user.empresaId)
-      .then((list) => setPatients(list.length > 0 ? list : MOCK_PATIENTS))
-      .catch(() => setPatients(MOCK_PATIENTS))
+      .then((list) => setPatients(list))
+      .catch((err) => {
+        console.error('LinkFamily load patients error', err);
+        setPatients([]);
+      })
       .finally(() => setIsLoadingPatients(false));
   }, [user?.empresaId]);
 

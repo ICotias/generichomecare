@@ -18,6 +18,10 @@ import { db } from '../../../core/config/firebase';
 import { Collections } from '../../../shared/constants/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
+import { useAuthStore } from '../../../core/hooks/useAuth';
+import * as patientService from '../../../core/services/patientService';
+import type { Patient } from '../../../core/types';
+import { formatCoren } from '../../../shared/utils/formatters';
 import type { TeamStackParamList } from '../../../core/navigation/RootNavigator';
 
 type RouteType = RouteProp<TeamStackParamList, 'NurseDetail'>;
@@ -28,22 +32,11 @@ interface NurseData {
   email: string;
   telefone: string;
   coren?: string;
+  /** Quem atestou a conferência do COREN no Cofen, e quando */
+  corenVerificadoEm?: Date;
   status: string;
   createdAt?: Date;
 }
-
-// Fallback de demonstração — usado APENAS em __DEV__ (null em produção).
-const MOCK_NURSE: NurseData | null = __DEV__
-  ? {
-      uid: 'mock-1',
-      nome: 'Ana Paula Costa',
-      email: 'ana@homecare.com',
-      telefone: '(11) 99999-1111',
-      coren: 'COREN-SP 123456',
-      status: 'ativo',
-      createdAt: new Date(2025, 0, 15),
-    }
-  : null;
 
 export const NurseDetailScreen = () => {
   const insets = useSafeAreaInsets();
@@ -51,17 +44,17 @@ export const NurseDetailScreen = () => {
   const route = useRoute<RouteType>();
   const nurseId = route.params?.nurseId;
 
+  const { user } = useAuthStore();
+
   const [nurse, setNurse] = useState<NurseData | null>(null);
+  const [authorized, setAuthorized] = useState<Patient[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [usingMock, setUsingMock] = useState(false);
   const [isDeactivating, setIsDeactivating] = useState(false);
+  const [isReactivating, setIsReactivating] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
 
   const handleDeactivate = () => {
-    if (!nurseId || usingMock) {
-      Alert.alert('Ação indisponível', 'Não é possível desativar dados de exemplo.');
-      return;
-    }
+    if (!nurseId) return;
 
     Alert.alert(
       'Desativar Conta',
@@ -75,6 +68,11 @@ export const NurseDetailScreen = () => {
             setIsDeactivating(true);
             try {
               await updateDoc(doc(db, Collections.USUARIOS, nurseId), { ativo: false, status: 'inativo' });
+              // Revoga o acesso aos pacientes: desativar a conta não basta, a
+              // leitura do prontuário depende da lista de autorizados.
+              if (user?.empresaId) {
+                await patientService.deauthorizeNurseEverywhere(user.empresaId, nurseId);
+              }
               Alert.alert('Conta desativada', 'O profissional foi desativado com sucesso.', [
                 { text: 'OK', onPress: () => navigation.goBack() },
               ]);
@@ -90,11 +88,37 @@ export const NurseDetailScreen = () => {
     );
   };
 
+  const handleReactivate = () => {
+    if (!nurseId) return;
+    Alert.alert(
+      'Reativar conta',
+      `Reativar a conta de ${nurse?.nome ?? 'este profissional'}? Ele volta a poder entrar no app. ` +
+        'O acesso aos pacientes NÃO é devolvido automaticamente: escale-o de novo para autorizar.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Reativar',
+          onPress: async () => {
+            setIsReactivating(true);
+            try {
+              await updateDoc(doc(db, Collections.USUARIOS, nurseId), { ativo: true, status: 'ativo' });
+              Alert.alert('Conta reativada', 'O profissional já pode acessar o app. Escale-o para dar acesso aos pacientes.', [
+                { text: 'OK', onPress: () => load() },
+              ]);
+            } catch (err) {
+              console.error('Erro ao reativar profissional:', err);
+              Alert.alert('Erro', 'Não foi possível reativar. Tente novamente.');
+            } finally {
+              setIsReactivating(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleRemove = () => {
-    if (!nurseId || usingMock) {
-      Alert.alert('Ação indisponível', 'Não é possível excluir dados de exemplo.');
-      return;
-    }
+    if (!nurseId) return;
     Alert.alert(
       'Excluir da equipe',
       `Remover ${nurse?.nome ?? 'este profissional'} da equipe? Ele deixará de aparecer na lista.`,
@@ -107,6 +131,9 @@ export const NurseDetailScreen = () => {
             setIsRemoving(true);
             try {
               await updateDoc(doc(db, Collections.USUARIOS, nurseId), { ativo: false, status: 'excluido' });
+              if (user?.empresaId) {
+                await patientService.deauthorizeNurseEverywhere(user.empresaId, nurseId);
+              }
               Alert.alert('Removido', 'O profissional foi removido da equipe.', [
                 { text: 'OK', onPress: () => navigation.goBack() },
               ]);
@@ -124,8 +151,7 @@ export const NurseDetailScreen = () => {
 
   const load = useCallback(async () => {
     if (!nurseId) {
-      setNurse(MOCK_NURSE);
-      setUsingMock(true);
+      setNurse(null);
       setIsLoading(false);
       return;
     }
@@ -139,23 +165,27 @@ export const NurseDetailScreen = () => {
           nome: d.nome ?? '',
           email: d.email ?? '',
           telefone: d.telefone ?? '',
-          coren: d.coren,
+          coren: formatCoren(d.corenRegistro),
+          corenVerificadoEm: d.corenRegistro?.verificadoEm?.toDate?.() ?? undefined,
           status: d.status ?? 'ativo',
           createdAt: d.createdAt?.toDate?.() ?? undefined,
         });
-        setUsingMock(false);
       } else {
-        setNurse(MOCK_NURSE);
-        setUsingMock(true);
+        setNurse(null);
+      }
+      if (user?.empresaId) {
+        const pacientes = await patientService
+          .listPatientsAuthorizedFor(user.empresaId, nurseId)
+          .catch(() => []);
+        setAuthorized(pacientes);
       }
     } catch (err) {
       console.error('NurseDetail load error', err);
-      setNurse(MOCK_NURSE);
-      setUsingMock(true);
+      setNurse(null);
     } finally {
       setIsLoading(false);
     }
-  }, [nurseId]);
+  }, [nurseId, user?.empresaId]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
@@ -189,11 +219,6 @@ export const NurseDetailScreen = () => {
           <Text style={styles.backText}>Voltar</Text>
         </TouchableOpacity>
 
-        {usingMock && __DEV__ && (
-          <View style={styles.mockBanner}>
-            <Text style={styles.mockBannerText}>Dados de exemplo</Text>
-          </View>
-        )}
 
         {/* Profile header */}
         <View style={styles.profileHeader}>
@@ -213,13 +238,45 @@ export const NurseDetailScreen = () => {
         <View style={styles.infoCard}>
           <InfoRow label="E-mail" value={nurse.email} />
           <InfoRow label="Telefone" value={nurse.telefone} />
-          {nurse.coren && <InfoRow label="COREN" value={nurse.coren} />}
+          {nurse.coren ? <InfoRow label="COREN" value={nurse.coren} /> : null}
+          {nurse.coren ? (
+            <InfoRow
+              label="Registro conferido"
+              value={
+                nurse.corenVerificadoEm
+                  ? `Sim, em ${nurse.corenVerificadoEm.toLocaleDateString('pt-BR')}`
+                  : 'Não conferido'
+              }
+            />
+          ) : null}
           {nurse.createdAt && (
             <InfoRow
               label="Cadastrado em"
               value={nurse.createdAt.toLocaleDateString('pt-BR')}
               isLast
             />
+          )}
+        </View>
+
+        {/* Pacientes que este enfermeiro pode acessar */}
+        <Text style={styles.sectionTitle}>PACIENTES AUTORIZADOS</Text>
+        <View style={styles.infoCard}>
+          {authorized.length === 0 ? (
+            <View style={styles.emptyRow}>
+              <Text style={styles.emptyText}>
+                Nenhum paciente. O enfermeiro só enxerga quem estiver aqui, e é a
+                escala que autoriza.
+              </Text>
+            </View>
+          ) : (
+            authorized.map((p, i) => (
+              <InfoRow
+                key={p.id}
+                label={p.nome}
+                value=""
+                isLast={i === authorized.length - 1}
+              />
+            ))
           )}
         </View>
 
@@ -242,24 +299,41 @@ export const NurseDetailScreen = () => {
           </TouchableOpacity>
         )}
 
-        {/* Remover da equipe */}
-        {!usingMock && (
+        {/* Reactivate button — só para conta desativada (não para excluída) */}
+        {nurse.status === 'inativo' && (
           <TouchableOpacity
-            style={[styles.removeBtn, isRemoving && styles.deactivateBtnDisabled]}
-            onPress={handleRemove}
-            activeOpacity={0.85}
-            disabled={isRemoving}
+            style={[styles.reactivateBtn, isReactivating && styles.deactivateBtnDisabled]}
+            onPress={handleReactivate}
+            activeOpacity={0.8}
+            disabled={isReactivating}
           >
-            {isRemoving ? (
-              <ActivityIndicator color={colors.white} />
+            {isReactivating ? (
+              <ActivityIndicator color={colors.primary} />
             ) : (
               <>
-                <Ionicons name="trash-outline" size={20} color={colors.white} />
-                <Text style={styles.removeBtnText}>Excluir da equipe</Text>
+                <Ionicons name="checkmark-circle-outline" size={20} color={colors.primary} />
+                <Text style={styles.reactivateBtnText}>Reativar Conta</Text>
               </>
             )}
           </TouchableOpacity>
         )}
+
+        {/* Remover da equipe */}
+        <TouchableOpacity
+          style={[styles.removeBtn, isRemoving && styles.deactivateBtnDisabled]}
+          onPress={handleRemove}
+          activeOpacity={0.85}
+          disabled={isRemoving}
+        >
+          {isRemoving ? (
+            <ActivityIndicator color={colors.white} />
+          ) : (
+            <>
+              <Ionicons name="trash-outline" size={20} color={colors.white} />
+              <Text style={styles.removeBtnText}>Excluir da equipe</Text>
+            </>
+          )}
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -280,15 +354,6 @@ const styles = StyleSheet.create({
 
   backRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingVertical: spacing.xs, marginBottom: spacing.md },
   backText: { fontSize: fontSize.md, color: colors.primary, fontWeight: '600' },
-
-  mockBanner: {
-    backgroundColor: '#FEF3C7',
-    borderRadius: borderRadius.md,
-    padding: spacing.sm,
-    marginBottom: spacing.md,
-    alignItems: 'center',
-  },
-  mockBannerText: { fontSize: fontSize.xs, color: '#92400E', fontWeight: '500' },
 
   profileHeader: { alignItems: 'center', marginBottom: spacing.lg },
   avatar: {
@@ -317,6 +382,23 @@ const styles = StyleSheet.create({
   statusLabel: { fontSize: fontSize.sm, fontWeight: '600', color: '#16A34A' },
   statusLabelInactive: { color: colors.textMuted },
 
+  sectionTitle: {
+    fontSize: fontSize.xs,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    letterSpacing: 0.5,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+    marginLeft: spacing.xs,
+  },
+  emptyRow: {
+    paddingVertical: spacing.xs,
+  },
+  emptyText: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+    lineHeight: 19,
+  },
   infoCard: {
     backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
@@ -358,6 +440,24 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     fontWeight: '600',
     color: colors.error,
+  },
+  reactivateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.surface,
+    height: 52,
+  },
+  reactivateBtnText: {
+    fontSize: fontSize.md,
+    fontWeight: '600',
+    color: colors.primary,
   },
   removeBtn: {
     flexDirection: 'row',

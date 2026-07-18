@@ -7,9 +7,10 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as patientService from '../services/patientService';
 import * as shiftService from '../services/shiftService';
 import type { Patient } from '../types';
-import { MOCK_PATIENTS } from '../mocks/patients';
+import { useAuthStore } from './useAuth';
 
 export const usePatientWithActiveShift = (empresaId?: string, uid?: string) => {
+  const originalRole = useAuthStore((s) => s.originalRole);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
 
@@ -17,10 +18,10 @@ export const usePatientWithActiveShift = (empresaId?: string, uid?: string) => {
     useCallback(() => {
       if (!empresaId || !uid) return;
       Promise.all([
-        patientService.listPatients(empresaId),
+        patientService.listPatientsVisibleTo(empresaId, uid, originalRole),
         shiftService.getActiveShift(empresaId, uid).catch(() => null),
       ]).then(([list, activeShift]) => {
-        const result = list.length > 0 ? list : MOCK_PATIENTS;
+        const result = list;
         setPatients(result);
         // setter funcional: não sobrescreve seleção já feita, sem depender de
         // selectedPatient no closure do useCallback
@@ -29,7 +30,7 @@ export const usePatientWithActiveShift = (empresaId?: string, uid?: string) => {
           if (match) setSelectedPatient((prev) => prev ?? match);
         }
       }).catch(console.error);
-    }, [empresaId, uid])
+    }, [empresaId, uid, originalRole])
   );
 
   return { patients, selectedPatient, setSelectedPatient };

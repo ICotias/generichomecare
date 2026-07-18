@@ -10,6 +10,7 @@
 import {
   collection,
   addDoc,
+  getDoc,
   getDocs,
   deleteDoc,
   doc,
@@ -22,6 +23,7 @@ import {
 import { db } from '../config/firebase';
 import { Collections } from '../../shared/constants/firestore';
 import type { Schedule } from '../types';
+import { authorizeNurse, deauthorizeNurse } from './patientService';
 
 // ════════════════════════════════════════════
 // Input type
@@ -42,7 +44,11 @@ export interface CreateScheduleInput {
 // ════════════════════════════════════════════
 
 /**
- * Cria uma nova escala.
+ * Cria uma nova escala e autoriza o enfermeiro no paciente.
+ *
+ * Escalar é o ato que dá acesso: quem está na escala precisa enxergar o
+ * paciente. A autorização vive no doc do paciente porque as rules não
+ * conseguem consultar escalas (ver patientService.authorizeNurse).
  */
 export const createSchedule = async (
   empresaId: string,
@@ -55,6 +61,7 @@ export const createSchedule = async (
     ativo: true,
     createdAt: Timestamp.now(),
   });
+  await authorizeNurse(empresaId, input.pacienteId, input.profissionalId);
   return docRef.id;
 };
 
@@ -127,12 +134,36 @@ export const listSchedulesForNurse = async (
 };
 
 /**
- * Remove (desativa) uma escala.
+ * Remove uma escala. Se era a ÚLTIMA escala daquele enfermeiro naquele
+ * paciente, revoga também a autorização de acesso: sem escala e sem
+ * autorização explícita, ele não tem por que continuar lendo o prontuário.
+ *
+ * ponytail: a revogação é inferida da escala, não gerenciada à parte. Teto:
+ * se o admin autorizou o enfermeiro à mão para cobrir uma falta (sem criar
+ * escala) e depois apagar uma escala antiga do mesmo par, a cobertura cai
+ * junto. Evolução: separar "autorizado por escala" de "autorizado à mão",
+ * quando cobertura virar fluxo próprio.
  */
 export const deleteSchedule = async (
   empresaId: string,
   escalaId: string
 ): Promise<void> => {
   const docRef = doc(db, Collections.escalas(empresaId), escalaId);
+  const snap = await getDoc(docRef);
+  const data = snap.data();
+
   await deleteDoc(docRef);
+
+  if (!data?.pacienteId || !data?.profissionalId) return;
+
+  const remaining = await getDocs(
+    query(
+      collection(db, Collections.escalas(empresaId)),
+      where('pacienteId', '==', data.pacienteId),
+      where('profissionalId', '==', data.profissionalId)
+    )
+  );
+  if (remaining.empty) {
+    await deauthorizeNurse(empresaId, data.pacienteId, data.profissionalId);
+  }
 };

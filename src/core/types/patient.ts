@@ -30,6 +30,13 @@ export interface Patient {
   cadastroCompleto?: boolean;
   /** Médico responsável informado (proveniência dos parâmetros clínicos) */
   medicoResponsavel?: ResponsibleDoctor;
+  /**
+   * UIDs dos enfermeiros autorizados a ler este paciente e seus registros.
+   * É a fonte de verdade da autorização: as rules do Firestore exigem que o uid
+   * do enfermeiro esteja nesta lista. Mantida por quem é dono do tenant
+   * (o admin da empresa, ou a própria família no modo familiar).
+   */
+  enfermeirosAutorizados: string[];
   createdAt: Date;
   updatedAt: Date;
 }

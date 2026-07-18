@@ -29,7 +29,7 @@ import { PrimaryButton } from '../../../shared/components/ui';
 export const ShiftCheckinScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<ShiftStackParamList>>();
-  const { user } = useAuthStore();
+  const { user, originalRole } = useAuthStore();
   const { isLoading: isLocationLoading, getCurrentLocation } = useLocation();
 
   const [activeShift, setActiveShift] = useState<(Shift & { id: string }) | null>(null);
@@ -46,24 +46,28 @@ export const ShiftCheckinScreen = () => {
     useCallback(() => {
       if (!user?.empresaId || !user?.uid) return;
       setIsLoadingPatients(true);
-      // O enfermeiro só pode iniciar plantão com pacientes da SUA escala.
+      // A lista já vem restrita aos pacientes autorizados (rules). A escala
+      // apenas afina para os de HOJE.
       Promise.all([
-        patientService.listPatients(user.empresaId),
+        patientService.listPatientsVisibleTo(user.empresaId, user.uid, originalRole),
         scheduleService.listSchedulesForNurse(user.empresaId, user.uid),
       ])
         .then(([list, escala]) => {
-          // Só os pacientes escalados para HOJE (dia da semana atual)
+          // Sem nenhuma escala cadastrada, o enfermeiro atende quem foi
+          // autorizado: é o caso do modo familiar, onde a família convida o
+          // enfermeiro dela e não existe grade de horários.
           const today = new Date().getDay();
           const scheduledIds = new Set(
             escala.filter((e) => e.diaSemana === today).map((e) => e.pacienteId)
           );
-          const scheduled = list.filter((p) => scheduledIds.has(p.id));
-          setPatients(scheduled);
+          const available =
+            escala.length === 0 ? list : list.filter((p) => scheduledIds.has(p.id));
+          setPatients(available);
           setSelectedPatient((prev) =>
-            prev && scheduled.some((p) => p.id === prev.id)
+            prev && available.some((p) => p.id === prev.id)
               ? prev
-              : scheduled.length > 0
-                ? scheduled[0]
+              : available.length > 0
+                ? available[0]
                 : null
           );
         })
@@ -73,7 +77,7 @@ export const ShiftCheckinScreen = () => {
           setSelectedPatient(null);
         })
         .finally(() => setIsLoadingPatients(false));
-    }, [user?.empresaId, user?.uid])
+    }, [user?.empresaId, user?.uid, originalRole])
   );
 
   const loadActiveShift = useCallback(async () => {

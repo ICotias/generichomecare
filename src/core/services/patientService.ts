@@ -5,7 +5,12 @@
  *   empresas/{empresaId}/pacientes/{pacienteId}
  *
  * Somente admins da empresa podem criar/editar.
- * Enfermeiros e familiares podem ler (com restrições nas rules).
+ * Familiares leem o paciente vinculado a eles.
+ *
+ * ISOLAMENTO POR ENFERMEIRO: o enfermeiro só lê os pacientes cujo uid está em
+ * `enfermeirosAutorizados`. Isso é regra de servidor (firestore.rules), não
+ * filtro de tela. Use listPatientsForNurse (array-contains) nas telas do
+ * enfermeiro: listPatients pede a coleção inteira e será NEGADA para ele.
  */
 import {
   collection,
@@ -17,6 +22,8 @@ import {
   query,
   orderBy,
   where,
+  arrayUnion,
+  arrayRemove,
   Timestamp,
   serverTimestamp,
 } from 'firebase/firestore';
@@ -30,6 +37,7 @@ import type {
   VitalSignsRange,
   ResponsibleDoctor,
   Prescription,
+  UserRole,
 } from '../types';
 
 // ════════════════════════════════════════════
@@ -147,6 +155,8 @@ export const createPatientStub = async (
     criadoPorUid,
     validadoPorEquipe: false,
     cadastroCompleto: false,
+    // Nasce sem enfermeiro autorizado: autorizar é ato explícito do admin.
+    enfermeirosAutorizados: [],
     createdAt: now,
     updatedAt: now,
   };
@@ -227,6 +237,9 @@ export const createPatientByFamily = async (
     origemDados: 'familia',
     criadoPorUid: uid,
     validadoPorEquipe: false,
+    // Nasce sem enfermeiro autorizado. No modo familiar, a própria família
+    // autoriza depois, ao convidar o enfermeiro dela.
+    enfermeirosAutorizados: [],
     createdAt: now,
     updatedAt: now,
   };
@@ -304,7 +317,10 @@ export const getPatient = async (
 };
 
 /**
- * Lista todos os pacientes ativos da empresa.
+ * Lista todos os pacientes ativos da empresa. USO ADMIN.
+ *
+ * Para o enfermeiro esta consulta é negada pelas rules (ele não pode varrer a
+ * empresa inteira). Nas telas do enfermeiro, use listPatientsForNurse.
  */
 export const listPatients = async (
   empresaId: string,
@@ -320,6 +336,116 @@ export const listPatients = async (
   return snap.docs.map((d) => docToPatient(d.id, d.data()));
 };
 
+/**
+ * Lista os pacientes ATIVOS em que o enfermeiro está autorizado.
+ *
+ * O array-contains não é conveniência de tela: as rules exigem que a consulta
+ * já venha restrita ao uid, senão negam a leitura. Ordenação em memória para
+ * não exigir índice composto (array-contains + orderBy).
+ */
+export const listPatientsForNurse = async (
+  empresaId: string,
+  nurseUid: string
+): Promise<Patient[]> => {
+  const q = query(
+    collection(db, Collections.pacientes(empresaId)),
+    where('enfermeirosAutorizados', 'array-contains', nurseUid),
+    where('status', '==', 'ativo')
+  );
+  const snap = await getDocs(q);
+  return snap.docs
+    .map((d) => docToPatient(d.id, d.data()))
+    .sort((a, b) => a.nome.localeCompare(b.nome));
+};
+
+/**
+ * Lista os pacientes que o usuário PODE ver, escolhendo a consulta certa para
+ * o papel. Enfermeiro recebe só os autorizados; admin e família recebem a
+ * lista da empresa.
+ *
+ * Recebe o papel REAL (originalRole), não o simulado: durante a simulação
+ * admin → enfermeiro, o uid continua sendo o do admin e não está em nenhuma
+ * lista de autorizados, então a consulta restrita voltaria vazia.
+ */
+export const listPatientsVisibleTo = async (
+  empresaId: string,
+  uid: string,
+  role: UserRole | null
+): Promise<Patient[]> =>
+  role === 'nurse' ? listPatientsForNurse(empresaId, uid) : listPatients(empresaId);
+
+// ════════════════════════════════════════════
+// Autorização de enfermeiros
+// ════════════════════════════════════════════
+
+/**
+ * Autoriza um enfermeiro a acessar o paciente. Idempotente (arrayUnion).
+ *
+ * Quem chama é o dono do tenant: o admin da empresa (que escala e cobre
+ * faltas) ou a família, no modo familiar. As rules recusam qualquer outro.
+ */
+export const authorizeNurse = async (
+  empresaId: string,
+  pacienteId: string,
+  nurseUid: string
+): Promise<void> => {
+  await updateDoc(doc(db, Collections.pacientes(empresaId), pacienteId), {
+    enfermeirosAutorizados: arrayUnion(nurseUid),
+    updatedAt: serverTimestamp(),
+  });
+};
+
+/**
+ * Remove a autorização de um enfermeiro no paciente. Idempotente (arrayRemove).
+ * O acesso cai na próxima leitura: as rules consultam o doc do paciente.
+ */
+export const deauthorizeNurse = async (
+  empresaId: string,
+  pacienteId: string,
+  nurseUid: string
+): Promise<void> => {
+  await updateDoc(doc(db, Collections.pacientes(empresaId), pacienteId), {
+    enfermeirosAutorizados: arrayRemove(nurseUid),
+    updatedAt: serverTimestamp(),
+  });
+};
+
+/**
+ * Lista os pacientes da empresa em que um enfermeiro está autorizado.
+ * USO ADMIN: alimenta a tela de detalhe do enfermeiro.
+ */
+export const listPatientsAuthorizedFor = async (
+  empresaId: string,
+  nurseUid: string
+): Promise<Patient[]> => {
+  const q = query(
+    collection(db, Collections.pacientes(empresaId)),
+    where('enfermeirosAutorizados', 'array-contains', nurseUid)
+  );
+  const snap = await getDocs(q);
+  return snap.docs
+    .map((d) => docToPatient(d.id, d.data()))
+    .sort((a, b) => a.nome.localeCompare(b.nome));
+};
+
+/**
+ * Revoga o acesso de um enfermeiro a TODOS os pacientes da empresa.
+ *
+ * Chamado ao desativar ou excluir o enfermeiro: sem isso, ele continuaria
+ * lendo o prontuário dos pacientes em cuja lista ainda constava, porque a
+ * autorização vive no paciente, não no status da conta. Desativar sem revogar
+ * seria cosmético.
+ */
+export const deauthorizeNurseEverywhere = async (
+  empresaId: string,
+  nurseUid: string
+): Promise<void> => {
+  const autorizados = await listPatientsAuthorizedFor(empresaId, nurseUid);
+  await Promise.all(
+    autorizados.map((p) => deauthorizeNurse(empresaId, p.id, nurseUid))
+  );
+};
+
 // ════════════════════════════════════════════
 // Helpers
 // ════════════════════════════════════════════
@@ -330,6 +456,9 @@ const docToPatient = (id: string, data: Record<string, any>): Patient => {
     ...data,
     id,
     dataNascimento: data.dataNascimento?.toDate?.() ?? new Date(),
+    // Default para docs anteriores ao isolamento: sem a lista, ninguém é
+    // autorizado. Fail-closed de propósito — o backfill preenche.
+    enfermeirosAutorizados: data.enfermeirosAutorizados ?? [],
     createdAt: data.createdAt?.toDate?.() ?? new Date(),
     updatedAt: data.updatedAt?.toDate?.() ?? new Date(),
   } as Patient;

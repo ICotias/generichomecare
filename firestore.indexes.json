@@ -9,6 +9,14 @@
       ]
     },
     {
+      "collectionGroup": "pacientes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "enfermeirosAutorizados", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "escalas",
       "queryScope": "COLLECTION",
       "fields": [

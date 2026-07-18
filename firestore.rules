@@ -23,6 +23,38 @@ service cloud.firestore {
       return isAuth() && getUserData().empresaId == empresaId;
     }
 
+    // Dono do tenant: o admin que criou a empresa, ou a família no modo
+    // familiar (empresa invisível criada por ela). Só o dono gerencia quais
+    // enfermeiros estão autorizados em cada paciente.
+    function isTenantOwner(empresaId) {
+      return isAuth()
+             && get(/databases/$(database)/documents/empresas/$(empresaId)).data.ownerUid == request.auth.uid;
+    }
+
+    // Autorização do enfermeiro no paciente. A lista enfermeirosAutorizados
+    // vive no doc do paciente porque rules não conseguem consultar escalas:
+    // é a denormalização que torna a autorização verificável no servidor.
+    function isNurseAuthorizedFor(empresaId, pacienteId) {
+      return hasRole('nurse')
+             && belongsToCompany(empresaId)
+             && request.auth.uid in get(
+                  /databases/$(database)/documents/empresas/$(empresaId)/pacientes/$(pacienteId)
+                ).data.enfermeirosAutorizados;
+    }
+
+    // A lista de autorizados não mudou entre o doc atual e o payload
+    function authListUnchanged() {
+      return request.resource.data.enfermeirosAutorizados == resource.data.enfermeirosAutorizados;
+    }
+
+    // Família titular: responde pelo cadastro do paciente. O acompanhante
+    // convidado (familiaTitular: false) só lê.
+    // Default true: contas anteriores ao campo são todas titulares, e sem o
+    // default elas ficariam trancadas fora do próprio paciente.
+    function isFamiliaTitular() {
+      return hasRole('family') && getUserData().get('familiaTitular', true) == true;
+    }
+
     // Verifica se o campo existe no payload
     function hasField(field) {
       return field in request.resource.data;
@@ -49,50 +81,149 @@ service cloud.firestore {
                   && resource.data.empresaId == getUserData().empresaId
                   && resource.data.role == 'nurse';
 
-      // Usuário cria o próprio perfil no primeiro login (auto-criação)
-      // SEGURANÇA: role 'admin' bloqueado — só outro admin pode promover.
+      // Modo familiar: a família dona do tenant lê os enfermeiros dela.
+      // Não vale para família dentro de empresa: lá a equipe é da empresa.
+      allow read: if hasRole('family')
+                  && resource.data.empresaId == getUserData().empresaId
+                  && resource.data.role == 'nurse'
+                  && isTenantOwner(getUserData().empresaId);
+
+      // Modo familiar: a titular lê os parentes que convidou para o MESMO
+      // paciente (a tela Familiares). Sem isto, a lista quebra: a consulta
+      // varre vários docs e o "próprio uid" não a satisfaz.
+      allow read: if hasRole('family')
+                  && resource.data.empresaId == getUserData().empresaId
+                  && resource.data.role == 'family'
+                  && resource.data.pacienteId == getUserData().pacienteId
+                  && isTenantOwner(getUserData().empresaId);
+
+      // Usuário cria o próprio perfil no cadastro / primeiro login.
+      //
+      // SEGURANÇA: o perfil nasce SEM empresa (empresaId == ''), o que o torna
+      // inerte: role sozinho não dá acesso a nada, porque toda regra de dado
+      // exige belongsToCompany(). Virar 'admin' aqui só significa "admin de
+      // nenhuma empresa". Para ativar, é preciso reivindicar um tenant, e a
+      // regra de update abaixo só aceita tenant do qual o usuário é ownerUid.
       // Email validado contra auth.token para evitar spoofing.
+      // Não pode nascer com corenRegistro: o registro profissional e seu atesto
+      // são escritos por quem convida/confere (admin ou titular), nunca pelo
+      // próprio dono da conta no cadastro. É a mesma trava do auto-atesto.
       allow create: if isAuth()
                     && request.auth.uid == uid
                     && hasField('email')
                     && hasField('nome')
                     && hasField('role')
-                    && request.resource.data.role in ['nurse', 'family']
+                    && isValidRole(request.resource.data.role)
+                    && request.resource.data.empresaId == ''
+                    && !('corenRegistro' in request.resource.data)
                     && request.resource.data.email == request.auth.token.email;
 
-      // Admin cria perfis de outros usuários (nurse ou family)
+      // Admin cria perfis de outros usuários (nurse ou family), SÓ na própria
+      // empresa. Sem o vínculo de empresaId, um admin poderia criar uma conta
+      // dentro do tenant de outro e entrar por ela (ele define a senha).
       allow create: if hasRole('admin')
                     && hasField('email')
                     && hasField('nome')
                     && hasField('role')
                     && isValidRole(request.resource.data.role)
-                    && request.resource.data.role != 'admin';
+                    && request.resource.data.role != 'admin'
+                    && request.resource.data.empresaId == getUserData().empresaId;
 
-      // Admin no setup inicial: pode definir empresaId quando ainda está vazio
+      // Modo familiar: a família dona do tenant convida o próprio enfermeiro.
+      // Só enfermeiro, e só dentro do tenant dela.
+      allow create: if hasRole('family')
+                    && isTenantOwner(getUserData().empresaId)
+                    && hasField('email')
+                    && hasField('nome')
+                    && request.resource.data.role == 'nurse'
+                    && request.resource.data.empresaId == getUserData().empresaId;
+
+      // Modo familiar: a titular convida parentes para acompanhar o MESMO
+      // paciente (ex.: dois irmãos cuidando da mãe).
+      //
+      // O convidado nasce acompanhante (familiaTitular: false): lê a timeline,
+      // não edita o paciente, não mexe no enfermeiro e não convida ninguém.
+      // Quem responde pelo cadastro continua sendo uma pessoa só.
+      //
+      // pacienteId já vem preenchido por quem convida, e preso ao paciente
+      // dela: é o que impede o convite de virar porta para outro paciente.
+      allow create: if hasRole('family')
+                    && isTenantOwner(getUserData().empresaId)
+                    && hasField('email')
+                    && hasField('nome')
+                    && request.resource.data.role == 'family'
+                    && request.resource.data.empresaId == getUserData().empresaId
+                    && request.resource.data.pacienteId == getUserData().pacienteId
+                    && request.resource.data.familiaTitular == false;
+
+      // Setup, passo 1: escolher o papel, enquanto ainda não há tenant.
+      // Inerte por construção: role sem empresa não abre nada, porque toda
+      // regra de dado exige belongsToCompany(). Enfermeiro nunca passa por
+      // aqui (a conta dele já nasce com empresaId, vinda de quem convidou).
       allow update: if isAuth()
                     && request.auth.uid == uid
-                    && resource.data.role == 'admin'
                     && resource.data.empresaId == ''
-                    && request.resource.data.role == 'admin';
+                    && request.resource.data.empresaId == ''
+                    && request.resource.data.role in ['admin', 'family'];
 
-      // Admin atualiza usuários da mesma empresa (não pode mudar role para admin)
+      // Setup, passo 2: o usuário reivindica o tenant que acabou de criar.
+      // Vale para admin (empresa) e para família (tenant familiar invisível).
+      //
+      // isTenantOwner é o que fecha o buraco: sem ele, qualquer um com
+      // empresaId vazio poderia apontar para a empresa de OUTRO e entrar lá
+      // com o próprio role. Aqui, o empresaId reivindicado precisa ser de uma
+      // empresa cujo ownerUid é o próprio usuário.
+      allow update: if isAuth()
+                    && request.auth.uid == uid
+                    && resource.data.empresaId == ''
+                    && resource.data.role in ['admin', 'family']
+                    && request.resource.data.role == resource.data.role
+                    && isTenantOwner(request.resource.data.empresaId);
+
+      // Admin atualiza usuários da mesma empresa (não pode mudar role para admin).
+      // Prende o empresaId nos DOIS lados: sem prender o payload, o admin
+      // moveria a conta (a senha dela ele conhece) para o tenant de outro e
+      // entraria por ela. É o gêmeo, no update, do buraco que fechamos no create.
       allow update: if hasRole('admin')
                     && resource.data.empresaId == getUserData().empresaId
+                    && request.resource.data.empresaId == getUserData().empresaId
                     && request.resource.data.role != 'admin';
 
-      // Usuário atualiza próprio perfil (exceto role e empresaId).
-      // pacienteId é "claim único": só pode ser definido quando ainda vazio,
-      // e depois não pode ser repontado para outro paciente.
+      // Usuário atualiza próprio perfil (exceto role, empresaId e COREN).
+      //
+      // corenRegistro é imutável para o próprio usuário: quem atesta o
+      // registro profissional é o admin (ou a família dona do tenant). Se o
+      // enfermeiro pudesse editar o próprio COREN, o atesto não valeria nada,
+      // bastaria trocar o número depois de conferido.
+      //
+      // pacienteId só pode ser reivindicado para um paciente que o PRÓPRIO
+      // usuário criou. Nenhuma tela oferece "escolher um paciente": ou você
+      // cadastrou o paciente (modo familiar), ou alguém com autoridade te
+      // vinculou (o admin da empresa, ou a titular ao convidar um parente).
+      //
+      // Sem esta trava, bastava ter pacienteId vazio para apontar, por chamada
+      // direta à API, para o paciente de outra família. Nenhum dado prova
+      // parentesco, então o vínculo nunca nasce do que o usuário digita: nasce
+      // de quem já tem autoridade.
+      //
+      // familiaTitular também é imutável aqui: acompanhante não se promove.
+      // status também é imutável para o próprio usuário: senão um enfermeiro
+      // desativado se reativaria com um update (status: 'ativo') e voltaria às
+      // listas. Quem muda status é o admin.
       allow update: if isAuth()
                     && request.auth.uid == uid
                     && request.resource.data.role == resource.data.role
                     && request.resource.data.empresaId == resource.data.empresaId
+                    && !('corenRegistro' in request.resource.data.diff(resource.data).affectedKeys())
+                    && !('familiaTitular' in request.resource.data.diff(resource.data).affectedKeys())
+                    && !('status' in request.resource.data.diff(resource.data).affectedKeys())
                     && (
-                         ( ('pacienteId' in resource.data)
-                           && ('pacienteId' in request.resource.data)
-                           && request.resource.data.pacienteId == resource.data.pacienteId )
+                         // pacienteId inalterado
+                         request.resource.data.get('pacienteId', '') == resource.data.get('pacienteId', '')
                          ||
-                         ( !('pacienteId' in resource.data) || resource.data.pacienteId == '' )
+                         // ou reivindicando, e só o que você mesmo criou
+                         ( resource.data.get('pacienteId', '') == ''
+                           && get(/databases/$(database)/documents/empresas/$(resource.data.empresaId)/pacientes/$(request.resource.data.pacienteId)).data.criadoPorUid == request.auth.uid )
                        );
 
       // Ninguém deleta usuários (soft-delete via status)
@@ -105,9 +236,13 @@ service cloud.firestore {
     match /empresas/{empresaId} {
       allow read: if belongsToCompany(empresaId);
 
-      // Admin cria empresa no setup inicial (ownerUid == auth.uid)
-      allow create: if hasRole('admin')
+      // Cria o próprio tenant no setup inicial. Vale para o admin (empresa) e
+      // para a família (tenant familiar invisível).
+      // Guardas: precisa ser o dono, e só quem ainda não tem tenant cria um.
+      allow create: if isAuth()
                     && request.resource.data.ownerUid == request.auth.uid
+                    && getUserData().empresaId == ''
+                    && getUserData().role in ['admin', 'family']
                     && hasField('nome');
 
       // Só admins da própria empresa podem editar
@@ -116,21 +251,29 @@ service cloud.firestore {
 
       // ─── Pacientes ───
       match /pacientes/{pacienteId} {
-        // Enfermeiro e admin da empresa podem ler
-        allow read: if belongsToCompany(empresaId)
-                    && (hasRole('nurse') || hasRole('admin'));
+        // Admin lê todos os pacientes da sua empresa
+        allow read: if hasRole('admin') && belongsToCompany(empresaId);
+
+        // Enfermeiro lê APENAS os pacientes em que foi autorizado.
+        // Rules não são filtros: a query do enfermeiro precisa incluir
+        // where('enfermeirosAutorizados','array-contains', uid), senão nega.
+        allow read: if hasRole('nurse')
+                    && belongsToCompany(empresaId)
+                    && request.auth.uid in resource.data.enfermeirosAutorizados;
 
         // Família só lê seu paciente vinculado
         allow read: if hasRole('family')
                     && getUserData().pacienteId == pacienteId
                     && getUserData().empresaId == empresaId;
 
-        // Só admin cria pacientes — campos obrigatórios
+        // Só admin cria pacientes — campos obrigatórios.
+        // Nasce sem enfermeiro autorizado: a autorização é ato explícito.
         allow create: if hasRole('admin')
                       && belongsToCompany(empresaId)
                       && hasField('nome')
                       && hasField('dataNascimento')
-                      && hasField('status');
+                      && hasField('status')
+                      && request.resource.data.enfermeirosAutorizados.size() == 0;
 
         // Família cadastra o próprio paciente no 1º acesso (Fase 1):
         // pertence à empresa, ainda SEM paciente vinculado (cadastro único),
@@ -143,32 +286,48 @@ service cloud.firestore {
                       && request.resource.data.criadoPorUid == request.auth.uid
                       && hasField('nome')
                       && hasField('dataNascimento')
-                      && hasField('status');
+                      && hasField('status')
+                      && request.resource.data.enfermeirosAutorizados.size() == 0;
 
-        // Admin atualiza pacientes
+        // Admin atualiza pacientes da sua empresa, incluindo a lista de
+        // enfermeiros autorizados (é ele quem escala e quem cobre faltas).
         allow update: if hasRole('admin') && belongsToCompany(empresaId);
 
-        // Família edita os dados que ela mesma trouxe (seu paciente vinculado)
-        allow update: if hasRole('family')
+        // Família TITULAR edita os dados clínicos que ela mesma trouxe, mas
+        // NÃO mexe na autorização de enfermeiros: no modo empresa, quem decide
+        // quem atende é a empresa.
+        // O acompanhante convidado não entra aqui: ele só lê.
+        allow update: if isFamiliaTitular()
                       && belongsToCompany(empresaId)
-                      && getUserData().pacienteId == pacienteId;
+                      && getUserData().pacienteId == pacienteId
+                      && authListUnchanged();
+
+        // Modo familiar: a titular é dona do próprio tenant, então autoriza e
+        // desautoriza o enfermeiro dela.
+        allow update: if isFamiliaTitular()
+                      && belongsToCompany(empresaId)
+                      && getUserData().pacienteId == pacienteId
+                      && isTenantOwner(empresaId);
 
         // Não deleta (soft-delete via status)
         allow delete: if false;
 
         // ─── Prescrições ───
         match /prescricoes/{prescricaoId} {
-          allow read: if belongsToCompany(empresaId)
-                      && (hasRole('nurse') || hasRole('admin'));
+          allow read: if hasRole('admin') && belongsToCompany(empresaId);
+          allow read: if isNurseAuthorizedFor(empresaId, pacienteId);
           allow read: if hasRole('family')
+                      && getUserData().empresaId == empresaId
                       && getUserData().pacienteId == pacienteId;
           allow create: if hasRole('admin') && belongsToCompany(empresaId);
           allow update: if hasRole('admin') && belongsToCompany(empresaId);
-          // Família cria/edita prescrições do seu paciente (onboarding Fase 1)
-          allow create: if hasRole('family')
+          // Família TITULAR cria/edita prescrições do seu paciente (onboarding
+          // Fase 1). Acompanhante convidado só lê: medicação é dado clínico,
+          // e quem responde por ele é uma pessoa só.
+          allow create: if isFamiliaTitular()
                         && belongsToCompany(empresaId)
                         && getUserData().pacienteId == pacienteId;
-          allow update: if hasRole('family')
+          allow update: if isFamiliaTitular()
                         && belongsToCompany(empresaId)
                         && getUserData().pacienteId == pacienteId;
           allow delete: if false;
@@ -176,9 +335,11 @@ service cloud.firestore {
 
         // ─── Registros de cuidados (imutáveis) ───
         match /registros/{registroId} {
-          // Enfermeiro e admin leem todos
-          allow read: if belongsToCompany(empresaId)
-                      && (hasRole('nurse') || hasRole('admin'));
+          // Admin lê os registros de qualquer paciente da sua empresa
+          allow read: if hasRole('admin') && belongsToCompany(empresaId);
+
+          // Enfermeiro lê apenas registros dos pacientes em que foi autorizado
+          allow read: if isNurseAuthorizedFor(empresaId, pacienteId);
 
           // Família lê registros visíveis do seu paciente (exclui fotos clínicas).
           // Usa o campo denormalizado visibleToFamily para ser FILTRÁVEL —
@@ -189,19 +350,22 @@ service cloud.firestore {
                       && getUserData().empresaId == empresaId
                       && resource.data.visibleToFamily == true;
 
-          // Enfermeiro da empresa cria registros — campos obrigatórios
-          allow create: if hasRole('nurse')
-                        && belongsToCompany(empresaId)
+          // Enfermeiro autorizado no paciente cria registros — campos obrigatórios.
+          // empresaId e pacienteId presos ao path: senão o enfermeiro grava um
+          // registro carimbado com empresaId de outro tenant, que aparece no
+          // dashboard alheio (a consulta collectionGroup confia no campo).
+          allow create: if isNurseAuthorizedFor(empresaId, pacienteId)
                         && hasField('type')
-                        && hasField('pacienteId')
-                        && hasField('profissionalId')
+                        && request.resource.data.pacienteId == pacienteId
+                        && request.resource.data.empresaId == empresaId
                         && request.resource.data.profissionalId == request.auth.uid;
 
           // Admin pode criar registros (simulação de enfermeiro)
           allow create: if hasRole('admin')
                         && belongsToCompany(empresaId)
                         && hasField('type')
-                        && hasField('pacienteId')
+                        && request.resource.data.pacienteId == pacienteId
+                        && request.resource.data.empresaId == empresaId
                         && hasField('profissionalId');
 
           // Imutáveis — ninguém edita ou deleta
@@ -210,16 +374,15 @@ service cloud.firestore {
 
         // ─── Evoluções / Passagem de plantão ───
         match /evolucoes/{evolucaoId} {
-          allow read: if belongsToCompany(empresaId)
-                      && (hasRole('nurse') || hasRole('admin'));
+          allow read: if hasRole('admin') && belongsToCompany(empresaId);
+          allow read: if isNurseAuthorizedFor(empresaId, pacienteId);
           allow read: if hasRole('family')
                       && getUserData().pacienteId == pacienteId
                       && getUserData().empresaId == empresaId;
 
-          allow create: if hasRole('nurse')
-                        && belongsToCompany(empresaId)
+          allow create: if isNurseAuthorizedFor(empresaId, pacienteId)
                         && hasField('situacao')
-                        && hasField('profissionalId');
+                        && request.resource.data.profissionalId == request.auth.uid;
 
           // Admin pode criar evoluções (simulação de enfermeiro)
           allow create: if hasRole('admin')
@@ -236,20 +399,33 @@ service cloud.firestore {
       // Leitura só para equipe (nurse/admin). Família não acessa escalas,
       // para não expor a agenda de outros pacientes da empresa.
       match /escalas/{escalaId} {
-        allow read: if belongsToCompany(empresaId) && (hasRole('nurse') || hasRole('admin'));
+        allow read: if hasRole('admin') && belongsToCompany(empresaId);
+
+        // Enfermeiro lê só a PRÓPRIA escala: a escala carrega pacienteId e
+        // pacienteNome, então ler a escala alheia é ler quem atende quem.
+        // A query precisa incluir where('profissionalId','==', uid).
+        allow read: if hasRole('nurse')
+                    && belongsToCompany(empresaId)
+                    && resource.data.profissionalId == request.auth.uid;
+
         allow create, update: if hasRole('admin') && belongsToCompany(empresaId);
         allow delete: if hasRole('admin') && belongsToCompany(empresaId);
       }
 
       // ─── Plantões ───
       match /plantoes/{plantaoId} {
-        // Leitura só para equipe (nurse/admin). Família não acessa plantões,
-        // para não expor os plantões de outros pacientes da empresa.
-        allow read: if belongsToCompany(empresaId) && (hasRole('nurse') || hasRole('admin'));
+        // Admin vê todos os plantões da empresa (dashboard)
+        allow read: if hasRole('admin') && belongsToCompany(empresaId);
 
-        // Enfermeiro faz checkin — cria o plantão
-        allow create: if hasRole('nurse')
-                      && belongsToCompany(empresaId)
+        // Enfermeiro lê só os PRÓPRIOS plantões: o plantão carrega pacienteId
+        // e pacienteNome. A query precisa incluir
+        // where('profissionalId','==', uid). Família não acessa plantões.
+        allow read: if hasRole('nurse')
+                    && belongsToCompany(empresaId)
+                    && resource.data.profissionalId == request.auth.uid;
+
+        // Enfermeiro faz checkin — só em paciente no qual está autorizado
+        allow create: if isNurseAuthorizedFor(empresaId, request.resource.data.pacienteId)
                       && hasField('profissionalId')
                       && request.resource.data.profissionalId == request.auth.uid;
 
@@ -258,10 +434,16 @@ service cloud.firestore {
                       && belongsToCompany(empresaId)
                       && hasField('profissionalId');
 
-        // Enfermeiro faz checkout — atualiza apenas seu plantão
+        // Enfermeiro faz checkout — atualiza apenas seu plantão, e não reescreve
+        // as âncoras: quem, qual paciente, quando entrou. Sem congelar, dava
+        // para forjar horas (base do financeiro) ou plantar plantão em nome
+        // de outro.
         allow update: if hasRole('nurse')
                       && belongsToCompany(empresaId)
-                      && resource.data.profissionalId == request.auth.uid;
+                      && resource.data.profissionalId == request.auth.uid
+                      && request.resource.data.profissionalId == resource.data.profissionalId
+                      && request.resource.data.pacienteId == resource.data.pacienteId
+                      && request.resource.data.checkinAt == resource.data.checkinAt;
 
         // Admin pode atualizar qualquer plantão (ajustes)
         allow update: if hasRole('admin') && belongsToCompany(empresaId);
@@ -288,14 +470,39 @@ service cloud.firestore {
 
       // Cada usuário registra seus próprios eventos (create-only).
       // Imutável: sem update/delete a partir do client.
+      //
+      // userRole e empresaId são amarrados ao doc do próprio usuário: sem isso,
+      // qualquer um forja um log com o empresaId da vítima (que o admin dela lê
+      // como verdadeiro) ou com userRole 'admin'. Um log forjável não é trilha.
       // Quando houver Cloud Functions, migrar a escrita para Admin SDK.
       allow create: if isAuth()
                     && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.userRole == getUserData().role
+                    && request.resource.data.empresaId == getUserData().empresaId
                     && request.resource.data.keys().hasAll(
                          ['action', 'userId', 'userRole', 'empresaId', 'timestamp']
                        );
 
       allow update, delete: if false;
+    }
+
+    // ═══════════════════════════════════════
+    // COLLECTION GROUP: registros (dashboard e consultas cross-paciente)
+    // ═══════════════════════════════════════
+    // A regra por caminho (empresas/.../registros) valida o empresaId pelo path
+    // do documento, o que NÃO cobre consultas collectionGroup: elas filtram pelo
+    // CAMPO empresaId, e o Firestore não consegue provar que campo e path batem.
+    // Esta regra permite ao ADMIN ler registros da sua empresa via
+    // collectionGroup, validando o campo. A consulta precisa incluir
+    // where('empresaId','==', <empresa do usuário>), senão a leitura é negada.
+    //
+    // Restrita a admin de propósito: o enfermeiro só pode ler os pacientes em
+    // que foi autorizado, e uma consulta collectionGroup não consegue provar
+    // essa autorização (ela filtra por campo, sem enxergar o paciente-pai).
+    // Permitir nurse aqui reabriria o vazamento que a regra por caminho fecha.
+    match /{path=**}/registros/{registroId} {
+      allow read: if hasRole('admin')
+                  && resource.data.empresaId == getUserData().empresaId;
     }
 
     // ═══════════════════════════════════════

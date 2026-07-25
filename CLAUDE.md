@@ -149,6 +149,8 @@ No modo empresa a família **não** convida: a empresa é a cliente, é quem pag
 
 Cobrança por acesso extra (futuro) não precisa de campo novo: acessos por paciente = contar `usuarios` com `role: 'family'` e aquele `pacienteId`.
 
+**Limitação conhecida (uma conta = um tenant):** cada usuário tem um só `empresaId`, e o e-mail é único no Firebase Auth. A conta do enfermeiro é dele (e-mail próprio + `mustChangePassword`), nunca compartilhada, então enfermeiro rotativo dentro de UMA família é seguro (uma conta por pessoa, cada ação com o uid dela). Mas o MESMO enfermeiro atendendo VÁRIAS famílias não cabe hoje: o segundo convite com o mesmo e-mail falha (`auth/email-already-exists`), porque a conta já pertence a outro tenant. Resolver de verdade exige participação multi-tenant (usuário pertencer a N tenants) ou identidade do enfermeiro recebendo acesso a pacientes de tenants diferentes. É mudança de arquitetura, adiada até o caso virar comum.
+
 ### 7. COREN é atestado pelo admin, e o enfermeiro não edita o próprio
 
 `corenRegistro` é estruturado (UF, número, categoria) e guarda o atesto de quem conferiu no Cofen, com autor e data. O Cofen não tem API pública, então a conferência é assistida: botão que abre o Sigen e checkbox de confirmação.

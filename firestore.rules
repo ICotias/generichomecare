@@ -42,11 +42,6 @@ service cloud.firestore {
                 ).data.enfermeirosAutorizados;
     }
 
-    // A lista de autorizados não mudou entre o doc atual e o payload
-    function authListUnchanged() {
-      return request.resource.data.enfermeirosAutorizados == resource.data.enfermeirosAutorizados;
-    }
-
     // Família titular: responde pelo cadastro do paciente. O acompanhante
     // convidado (familiaTitular: false) só lê.
     // Default true: contas anteriores ao campo são todas titulares, e sem o

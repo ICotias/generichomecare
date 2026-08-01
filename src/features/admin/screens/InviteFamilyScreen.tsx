@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { colors, spacing, fontSize } from '../../../core/theme/theme';
@@ -36,10 +36,17 @@ const toWhatsappNumber = (phone: string): string => {
   return digits.length <= 11 ? `55${digits}` : digits;
 };
 
+type RouteType = RouteProp<{ InviteFamily: { patientId?: string } }, 'InviteFamily'>;
+
 export const InviteFamilyScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const route = useRoute<RouteType>();
   const { user } = useAuthStore();
+
+  // Vindo da ficha do paciente, a conta já nasce vinculada. Sem isso, ela fica
+  // sem paciente e depende da LinkFamilyScreen.
+  const patientId = route.params?.patientId;
 
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
@@ -64,7 +71,9 @@ export const InviteFamilyScreen = () => {
     `Acesse o app e entre com:\n` +
     `E-mail: ${em}\n` +
     `Senha temporária: ${pwd}\n\n` +
-    `No primeiro acesso você criará uma nova senha e cadastrará os dados do paciente.`;
+    (patientId
+      ? `No primeiro acesso você criará uma nova senha e já verá o acompanhamento.`
+      : `No primeiro acesso você criará uma nova senha e cadastrará os dados do paciente.`);
 
   const handleSave = async () => {
     if (!canSave || !user?.empresaId) return;
@@ -76,6 +85,7 @@ export const InviteFamilyScreen = () => {
         telefone: telefone.trim(),
         empresaId: user.empresaId,
         parentesco,
+        pacienteId: patientId,
       });
       setInvited({ email: email.trim().toLowerCase(), tempPassword: result.tempPassword });
     } catch (err) {
@@ -158,7 +168,9 @@ export const InviteFamilyScreen = () => {
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.intro}>
-          A conta será criada sem paciente. A família cadastra os dados do paciente no primeiro acesso.
+          {patientId
+            ? 'A conta já nasce vinculada a este paciente. A família entra com a senha temporária e passa a acompanhar o cuidado.'
+            : 'A conta será criada sem paciente. Depois é preciso vincular a um paciente pela ficha dele.'}
         </Text>
 
         <InsetGroupedSection header="DADOS DO FAMILIAR">

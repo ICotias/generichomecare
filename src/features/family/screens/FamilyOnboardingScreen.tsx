@@ -74,7 +74,13 @@ export const FamilyOnboardingScreen = () => {
   // Se veio com patientId, é "modo completar" (paciente-stub criado pelo admin).
   const completePatientId = (route.params as { patientId?: string } | undefined)?.patientId;
   const isComplete = !!completePatientId;
-  const { user, setUser } = useAuthStore();
+  const { user, setUser, originalRole } = useAuthStore();
+  // O assistente serve três papéis: admin (modo empresa), cuidador autônomo
+  // (dono do próprio tenant) e família (modo familiar). Só a família é contato
+  // do paciente, então só ela tem o contato pré-preenchido com os dados dela.
+  const isProfissional = originalRole === 'admin' || originalRole === 'nurse';
+  const accent =
+    originalRole === 'admin' ? colors.admin : originalRole === 'nurse' ? colors.primary : colors.family;
 
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -108,8 +114,8 @@ export const FamilyOnboardingScreen = () => {
   const [medicoCrm, setMedicoCrm] = useState('');
   const [medicoTel, setMedicoTel] = useState('');
   // Contato principal = o próprio usuário (pré-preenchido, editável)
-  const [contatoNome, setContatoNome] = useState(user?.nome ?? '');
-  const [contatoTel, setContatoTel] = useState(user?.telefone ?? '');
+  const [contatoNome, setContatoNome] = useState(isProfissional ? '' : (user?.nome ?? ''));
+  const [contatoTel, setContatoTel] = useState(isProfissional ? '' : (user?.telefone ?? ''));
   // Contatos de emergência adicionais
   const [contatosAdicionais, setContatosAdicionais] = useState<EmergencyContact[]>([]);
   const [addNome, setAddNome] = useState('');
@@ -222,7 +228,7 @@ export const FamilyOnboardingScreen = () => {
         alergias,
         contatoEmergencia: {
           nome: contatoNome.trim() || user.nome || '',
-          parentesco: user.parentesco ?? 'Responsável',
+          parentesco: isProfissional ? 'Responsável' : (user.parentesco ?? 'Responsável'),
           telefone: contatoTel.trim(),
         },
         contatosAdicionais,
@@ -233,7 +239,7 @@ export const FamilyOnboardingScreen = () => {
 
       if (isComplete && completePatientId) {
         // Completa o paciente-stub criado pelo admin (já vinculado à família)
-        await patientService.completePatientByFamily(user.empresaId, completePatientId, input);
+        await patientService.completePatient(user.empresaId, completePatientId, input);
         navigation.goBack();
       } else {
         // Fluxo legado: a própria família cria o paciente do zero
@@ -271,8 +277,8 @@ export const FamilyOnboardingScreen = () => {
         <View style={styles.headerTop}>
           {step > 0 ? (
             <TouchableOpacity onPress={goBack} style={styles.backRow} activeOpacity={0.7}>
-              <Ionicons name="chevron-back" size={22} color={colors.family} />
-              <Text style={styles.backText}>Voltar</Text>
+              <Ionicons name="chevron-back" size={22} color={accent} />
+              <Text style={[styles.backText, { color: accent }]}>Voltar</Text>
             </TouchableOpacity>
           ) : (
             <View style={styles.backRow} />
@@ -281,7 +287,7 @@ export const FamilyOnboardingScreen = () => {
         </View>
         <Text style={styles.title}>{STEPS[step]}</Text>
         <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: `${((step + 1) / STEPS.length) * 100}%` }]} />
+          <View style={[styles.progressFill, { width: `${((step + 1) / STEPS.length) * 100}%`, backgroundColor: accent }]} />
         </View>
       </View>
 
@@ -325,7 +331,7 @@ export const FamilyOnboardingScreen = () => {
               options={GENERO_OPTIONS}
               selectedKey={genero}
               onSelect={(k) => setGenero(k as Patient['genero'])}
-              accentColor={colors.family}
+              accentColor={accent}
             />
           </>
         )}
@@ -344,6 +350,7 @@ export const FamilyOnboardingScreen = () => {
               items={diagnosticos}
               onAdd={() => addItem(diagInput, diagnosticos, setDiagnosticos, () => setDiagInput(''))}
               onRemove={(i) => setDiagnosticos(diagnosticos.filter((_, idx) => idx !== i))}
+              accent={accent}
             />
             <AddList
               header="ALERGIAS"
@@ -353,6 +360,7 @@ export const FamilyOnboardingScreen = () => {
               items={alergias}
               onAdd={() => addItem(alergiaInput, alergias, setAlergias, () => setAlergiaInput(''))}
               onRemove={(i) => setAlergias(alergias.filter((_, idx) => idx !== i))}
+              accent={accent}
             />
           </>
         )}
@@ -419,8 +427,8 @@ export const FamilyOnboardingScreen = () => {
             </InsetGroupedSection>
 
             <TouchableOpacity style={styles.addMedBtn} onPress={addMedicamento} activeOpacity={0.7}>
-              <Ionicons name="add-circle-outline" size={20} color={colors.family} />
-              <Text style={styles.addMedText}>Adicionar à lista</Text>
+              <Ionicons name="add-circle-outline" size={20} color={accent} />
+              <Text style={[styles.addMedText, { color: accent }]}>Adicionar à lista</Text>
             </TouchableOpacity>
           </>
         )}
@@ -435,10 +443,12 @@ export const FamilyOnboardingScreen = () => {
             </InsetGroupedSection>
 
             <Text style={styles.helper}>
-              Você já é o contato de emergência principal. Edite se precisar e adicione outros contatos.
+              {isProfissional
+                ? 'Informe o contato de emergência principal do paciente e adicione outros, se houver.'
+                : 'Você já é o contato de emergência principal. Edite se precisar e adicione outros contatos.'}
             </Text>
-            <InsetGroupedSection header="CONTATO PRINCIPAL (VOCÊ)">
-              <InputRow label="Nome" value={contatoNome} onChangeText={setContatoNome} placeholder={user?.nome ?? 'Nome'} />
+            <InsetGroupedSection header={isProfissional ? 'CONTATO PRINCIPAL' : 'CONTATO PRINCIPAL (VOCÊ)'}>
+              <InputRow label="Nome" value={contatoNome} onChangeText={setContatoNome} placeholder={isProfissional ? 'Nome do contato' : (user?.nome ?? 'Nome')} />
               <InputRow label="Telefone" value={contatoTel} onChangeText={(v) => setContatoTel(formatPhone(v))} placeholder="(11) 99999-9999" keyboardType="phone-pad" last />
             </InsetGroupedSection>
 
@@ -462,8 +472,8 @@ export const FamilyOnboardingScreen = () => {
               <InputRow label="Telefone" value={addTel} onChangeText={(v) => setAddTel(formatPhone(v))} placeholder="(11) 99999-9999" keyboardType="phone-pad" last />
             </InsetGroupedSection>
             <TouchableOpacity style={styles.addMedBtn} onPress={addContato} activeOpacity={0.7}>
-              <Ionicons name="add-circle-outline" size={20} color={colors.family} />
-              <Text style={styles.addMedText}>Adicionar contato</Text>
+              <Ionicons name="add-circle-outline" size={20} color={accent} />
+              <Text style={[styles.addMedText, { color: accent }]}>Adicionar contato</Text>
             </TouchableOpacity>
           </>
         )}
@@ -487,7 +497,7 @@ export const FamilyOnboardingScreen = () => {
               <Ionicons
                 name={confirmado ? 'checkbox' : 'square-outline'}
                 size={24}
-                color={confirmado ? colors.family : colors.textMuted}
+                color={confirmado ? accent : colors.textMuted}
               />
               <Text style={styles.checkText}>
                 Confirmo que estes dados foram definidos pelo médico do paciente.
@@ -504,7 +514,7 @@ export const FamilyOnboardingScreen = () => {
           onPress={goNext}
           disabled={!canAdvance()}
           loading={saving}
-          style={{ backgroundColor: colors.family }}
+          style={{ backgroundColor: accent }}
         />
       </View>
 
@@ -518,7 +528,7 @@ export const FamilyOnboardingScreen = () => {
           setShowViaList(false);
         }}
         onClose={() => setShowViaList(false)}
-        accentColor={colors.family}
+        accentColor={accent}
       />
     </KeyboardAvoidingView>
   );
@@ -575,9 +585,11 @@ interface AddListProps {
   items: string[];
   onAdd: () => void;
   onRemove: (index: number) => void;
+  /** Cor de destaque do papel que está preenchendo (admin ou família) */
+  accent: string;
 }
 
-const AddList = ({ header, placeholder, value, onChangeValue, items, onAdd, onRemove }: AddListProps) => (
+const AddList = ({ header, placeholder, value, onChangeValue, items, onAdd, onRemove, accent }: AddListProps) => (
   <View style={styles.addListWrap}>
     <Text style={styles.sectionLabel}>{header}</Text>
     {items.map((it, i) => (
@@ -599,7 +611,7 @@ const AddList = ({ header, placeholder, value, onChangeValue, items, onAdd, onRe
         returnKeyType="done"
       />
       <TouchableOpacity onPress={onAdd} hitSlop={8} style={styles.addBtn}>
-        <Ionicons name="add-circle" size={26} color={colors.family} />
+        <Ionicons name="add-circle" size={26} color={accent} />
       </TouchableOpacity>
     </View>
   </View>

@@ -154,15 +154,9 @@ export const PatientListScreen = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Convidar família — fluxo principal: a família entra e cadastra o paciente */}
-      <TouchableOpacity
-        style={styles.inviteButton}
-        onPress={() => navigation.navigate('InviteFamily')}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="person-add-outline" size={18} color={colors.primary} />
-        <Text style={styles.inviteButtonText}>Convidar família</Text>
-      </TouchableOpacity>
+      {/* Convidar família saiu daqui de propósito: o convite agora parte da
+          ficha do paciente, já vinculado. Convidar solto criava conta de
+          família sem paciente, que era o estado que dava trabalho. */}
 
       {/* Search */}
       <View style={styles.searchContainer}>
@@ -253,25 +247,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Convidar família (CTA do fluxo principal)
-  inviteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.primary + '14',
-    borderWidth: 1,
-    borderColor: colors.primary + '33',
-  },
-  inviteButtonText: {
-    color: colors.primary,
-    fontSize: fontSize.sm,
-    fontWeight: '600',
-  },
 
   // Search
   searchContainer: {

@@ -324,13 +324,36 @@ export const AdminPatientDetailScreen = () => {
           </View>
         </View>
 
+        {/* Quem completa os dados clínicos no modo empresa é o admin, então o aviso
+            precisa levar de volta ao assistente (ele pode ter saído no meio). */}
         {patient.cadastroCompleto === false && (
-          <View style={styles.pendingBanner}>
+          <TouchableOpacity
+            style={styles.pendingBanner}
+            onPress={() => navigation.navigate('CompletePatient', { patientId: patient.id })}
+            activeOpacity={0.7}
+          >
             <Ionicons name="time-outline" size={18} color={colors.warning} />
             <Text style={styles.pendingBannerText}>
-              Cadastro pendente: aguardando a família completar os dados clínicos.
+              Cadastro pendente. Toque para completar os dados clínicos.
             </Text>
-          </View>
+            <Ionicons name="chevron-forward" size={16} color={colors.warning} />
+          </TouchableOpacity>
+        )}
+
+        {/* Sem cuidador autorizado o paciente fica invisível para a equipe. A
+            autorização nasce da escala, então o aviso leva para lá. */}
+        {patient.enfermeirosAutorizados.length === 0 && (
+          <TouchableOpacity
+            style={styles.pendingBanner}
+            onPress={() => navigation.getParent()?.navigate('TeamStack', { screen: 'Schedule' })}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="person-add-outline" size={18} color={colors.warning} />
+            <Text style={styles.pendingBannerText}>
+              Nenhum cuidador autorizado. Monte a escala para a equipe enxergar este paciente.
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.warning} />
+          </TouchableOpacity>
         )}
 
         {/* Dados pessoais */}
@@ -357,17 +380,30 @@ export const AdminPatientDetailScreen = () => {
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>Familiares vinculados</Text>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('LinkFamily', { patientId })}
-              activeOpacity={0.7}
-              hitSlop={8}
-            >
-              <Ionicons name="add-circle-outline" size={20} color={colors.family} />
-            </TouchableOpacity>
+            {/* Convidar cria a conta já vinculada. Vincular serve para quem já
+                tem conta no aplicativo. */}
+            <View style={styles.sectionActions}>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('InviteFamily', { patientId })}
+                activeOpacity={0.7}
+                hitSlop={8}
+              >
+                <Text style={styles.sectionAction}>Convidar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('LinkFamily', { patientId })}
+                activeOpacity={0.7}
+                hitSlop={8}
+              >
+                <Text style={styles.sectionAction}>Vincular</Text>
+              </TouchableOpacity>
+            </View>
           </View>
           <View style={styles.sectionCard}>
             {linkedFamily.length === 0 ? (
-              <Text style={styles.emptyTag}>Nenhum familiar vinculado</Text>
+              <Text style={styles.emptyTag}>
+                Nenhum familiar vinculado. Toque em Convidar para criar o acesso da família.
+              </Text>
             ) : (
               linkedFamily.map((member, idx) => (
                 <View
@@ -882,6 +918,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.sm,
+  },
+  sectionActions: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  sectionAction: {
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    color: colors.family,
   },
 
   // Editable vital rows

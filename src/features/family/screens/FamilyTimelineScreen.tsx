@@ -19,6 +19,7 @@ import { format } from 'date-fns';
 
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
+import { useIsTenantOwner } from '../../../core/hooks/useIsTenantOwner';
 import { useFamilyPatientId } from '../../../core/hooks/useFamilyPatientId';
 import * as registroService from '../../../core/services/registroService';
 import * as patientService from '../../../core/services/patientService';
@@ -62,6 +63,7 @@ export const FamilyTimelineScreen = () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const navigation = useNavigation<any>();
   const { user } = useAuthStore();
+  const { isOwner } = useIsTenantOwner();
   const {
     pacienteId,
     isSimulating,
@@ -210,10 +212,11 @@ export const FamilyTimelineScreen = () => {
         <Text style={styles.today}>{todayLabel}</Text>
       </View>
 
-      {/* Cadastro pendente — só a TITULAR completa os dados. O acompanhante
-          convidado só lê: mostrar o card a ele levaria a um permission-denied
-          no fim do wizard, com o trabalho todo perdido. */}
-      {!isSimulating && user?.familiaTitular !== false && patient && patient.cadastroCompleto === false && (
+      {/* Cadastro pendente — aparece só no MODO FAMILIAR, para a titular dona
+          do próprio tenant. No modo empresa quem cadastra os dados clínicos é
+          o admin, e as rules recusariam a escrita vinda da família: mostrar o
+          card levaria a um permission-denied com o trabalho todo perdido. */}
+      {!isSimulating && isOwner && user?.familiaTitular !== false && patient && patient.cadastroCompleto === false && (
         <TouchableOpacity
           style={styles.pendingCard}
           activeOpacity={0.85}

@@ -1,156 +1,1029 @@
 %PDF-1.4
-%“Œ‹ž ReportLab Generated PDF document (opensource)
+%âãÏÓ
 1 0 obj
 <<
-/F1 2 0 R /F2 3 0 R /F3 5 0 R
+/Producer (pypdf)
 >>
 endobj
 2 0 obj
 <<
-/BaseFont /Helvetica /Encoding /WinAnsiEncoding /Name /F1 /Subtype /Type1 /Type /Font
+/Type /Pages
+/Count 5
+/Kids [ 5 0 R 10 0 R 13 0 R 14 0 R 16 0 R ]
 >>
 endobj
 3 0 obj
 <<
-/BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding /Name /F2 /Subtype /Type1 /Type /Font
+/Type /Catalog
+/Pages 2 0 R
 >>
 endobj
 4 0 obj
 <<
-/Contents 13 0 R /MediaBox [ 0 0 595.2756 841.8898 ] /Parent 12 0 R /Resources <<
-/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
->> /Rotate 0 /Trans <<
-
->> 
-  /Type /Page
+/Length 5717
 >>
+stream
+1 0 0 1 0 0 cm  BT /F1 12 Tf 14.4 TL ET
+q
+1 0 0 1 62.69291 771.8661 cm
+q
+.023529 .713725 .831373 rg
+BT 1 0 0 1 0 3.5 Tm /F2 9.5 Tf 13 TL (GUIA DE PREPARA\307\303O) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 767.8661 cm
+Q
+q
+1 0 0 1 62.69291 738.8661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 25 Tf 29 TL (Benevita, perguntas e respostas) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 670.8661 cm
+q
+.352941 .4 .470588 rg
+BT 1 0 0 1 0 53 Tm /F1 11 Tf 16 TL (Um roteiro para voc\352 apresentar o Benevita com seguran\347a. As perguntas est\343o agrupadas por) Tj T* (tema, e as respostas s\343o fi\351is ao que o aplicativo faz hoje, incluindo os limites conhecidos e o) Tj T* (caminho de evolu\347\343o de cada um. Responder com honestidade sobre limites transmite mais) Tj T* (confian\347a do que fingir que n\343o existem.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 662.8661 cm
+Q
+q
+1 0 0 1 62.69291 660.8661 cm
+q
+1 w
+1 J
+.882353 .894118 .92549 RG
+n 0 0 m 469.8898 0 l S
+Q
+Q
+q
+1 0 0 1 62.69291 649.8661 cm
+Q
+q
+1 0 0 1 59.52756 618.8661 cm
+q
+.423529 .388235 1 rg
+n 0 31 476.2205 -31 re f*
+0 0 0 rg
+BT /F1 10 Tf 12 TL ET
+q
+1 0 0 1 12 7 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3.5 Tm /F2 13.5 Tf 17 TL (1. Produto e funcionalidades) Tj T* ET
+Q
+Q
+q
+Q
+Q
+Q
+q
+1 0 0 1 62.69291 612.8661 cm
+Q
+q
+1 0 0 1 62.69291 588.8661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: O que \351 o Benevita, em uma frase?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 543.3661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 33.5 Tm /F1 10 Tf 14.5 TL .867984 Tw (R: \311 um aplicativo de gest\343o e acompanhamento de cuidado domiciliar: o cuidador registra o plant\343o) Tj T* 0 Tw 1.164651 Tw (pelo celular, a fam\355lia acompanha em tempo real e a empresa administra pacientes, equipe, escalas e) Tj T* 0 Tw (financeiro em um s\363 lugar.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 519.3661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Que problema ele resolve?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 473.8661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 33.5 Tm /F1 10 Tf 14.5 TL 1.203318 Tw (R: Hoje o registro do cuidado domiciliar vive espalhado em papel e WhatsApp, sem hist\363rico confi\341vel) Tj T* 0 Tw 1.647045 Tw (nem transpar\352ncia para a fam\355lia. O Benevita centraliza tudo, com trilha do que foi feito e quando, e) Tj T* 0 Tw (aproxima a fam\355lia do cuidado.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 449.8661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Quem usa o aplicativo?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 418.8661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 19 Tm /F1 10 Tf 14.5 TL 2.415366 Tw (R: Tr\352s perfis. A empresa \(admin\) administra pacientes, equipe, escalas e financeiro. O cuidador) Tj T* 0 Tw (registra o plant\343o, com funcionamento offline. A fam\355lia acompanha o cuidado do paciente em tempo real.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 394.8661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: O que \351 o modo fam\355lia e como difere do modo empresa?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 349.3661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 33.5 Tm /F1 10 Tf 14.5 TL 1.218876 Tw (R: No modo empresa, uma cl\355nica \351 a cliente e administra tudo. No modo fam\355lia, a pr\363pria fam\355lia se) Tj T* 0 Tw -0.09064 Tw (cadastra sozinha, cadastra quem recebe o cuidado e convida o cuidador que j\341 atende, sem precisar de) Tj T* 0 Tw (uma empresa por tr\341s. \311 o mesmo aplicativo, com a fam\355lia no comando do pr\363prio ambiente.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 325.3661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Funciona sem internet?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 294.3661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 19 Tm /F1 10 Tf 14.5 TL .536235 Tw (R: Sim. O cuidador registra o plant\343o mesmo offline, e os dados sincronizam quando a conex\343o volta.) Tj T* 0 Tw (Isso \351 essencial no atendimento domiciliar, onde a conex\343o nem sempre \351 boa.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 270.3661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Tem vers\343o para iPhone e Android?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 253.8661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 4.5 Tm /F1 10 Tf 14.5 TL (R: Sim, \351 um aplicativo \372nico que roda nos dois sistemas.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 240.8661 cm
+Q
+q
+1 0 0 1 59.52756 209.8661 cm
+q
+.423529 .388235 1 rg
+n 0 31 476.2205 -31 re f*
+0 0 0 rg
+BT /F1 10 Tf 12 TL ET
+q
+1 0 0 1 12 7 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3.5 Tm /F2 13.5 Tf 17 TL (2. Tecnologia e arquitetura) Tj T* ET
+Q
+Q
+q
+Q
+Q
+Q
+q
+1 0 0 1 62.69291 203.8661 cm
+Q
+q
+1 0 0 1 62.69291 179.8661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Qual \351 a stack?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 134.3661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 33.5 Tm /F1 10 Tf 14.5 TL .388651 Tw (R: React Native com Expo \(SDK 54\) no aplicativo, TypeScript em modo estrito, e Firebase \(Autentica\347\343o) Tj T* 0 Tw .36152 Tw (e banco Firestore\) no backend. Navega\347\343o com React Navigation, estado com Zustand, formul\341rios com) Tj T* 0 Tw (valida\347\343o. \311 uma base moderna e amplamente adotada.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 110.3661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Por que Firebase e n\343o um servidor pr\363prio?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 64.86614 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 33.5 Tm /F1 10 Tf 14.5 TL .607318 Tw (R: O Firebase entrega autentica\347\343o, banco em tempo real, escala autom\341tica e regras de seguran\347a no) Tj T* 0 Tw .15436 Tw (servidor sem manter infraestrutura. Para um produto neste est\341gio, isso reduz custo e tempo, e as regras) Tj T* 0 Tw (do Firestore aplicam a seguran\347a no servidor, n\343o s\363 na tela.) Tj T* ET
+Q
+Q
+ 
+
+endstream
 endobj
 5 0 obj
 <<
-/BaseFont /Helvetica-Oblique /Encoding /WinAnsiEncoding /Name /F3 /Subtype /Type1 /Type /Font
+/Contents 4 0 R
+/MediaBox [ 0 0 595.2756 841.8898 ]
+/Resources <<
+/Font 6 0 R
+/ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
+>>
+/Rotate 0
+/Trans <<
+>>
+/Type /Page
+/Parent 2 0 R
 >>
 endobj
 6 0 obj
 <<
-/Contents 14 0 R /MediaBox [ 0 0 595.2756 841.8898 ] /Parent 12 0 R /Resources <<
-/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
->> /Rotate 0 /Trans <<
-
->> 
-  /Type /Page
+/F1 7 0 R
+/F2 8 0 R
+/F3 9 0 R
 >>
 endobj
 7 0 obj
 <<
-/Contents 15 0 R /MediaBox [ 0 0 595.2756 841.8898 ] /Parent 12 0 R /Resources <<
-/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
->> /Rotate 0 /Trans <<
-
->> 
-  /Type /Page
+/BaseFont /Helvetica
+/Encoding /WinAnsiEncoding
+/Name /F1
+/Subtype /Type1
+/Type /Font
 >>
 endobj
 8 0 obj
 <<
-/Contents 16 0 R /MediaBox [ 0 0 595.2756 841.8898 ] /Parent 12 0 R /Resources <<
-/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
->> /Rotate 0 /Trans <<
-
->> 
-  /Type /Page
+/BaseFont /Helvetica-Bold
+/Encoding /WinAnsiEncoding
+/Name /F2
+/Subtype /Type1
+/Type /Font
 >>
 endobj
 9 0 obj
 <<
-/Contents 17 0 R /MediaBox [ 0 0 595.2756 841.8898 ] /Parent 12 0 R /Resources <<
-/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
->> /Rotate 0 /Trans <<
-
->> 
-  /Type /Page
+/BaseFont /Helvetica-Oblique
+/Encoding /WinAnsiEncoding
+/Name /F3
+/Subtype /Type1
+/Type /Font
 >>
 endobj
 10 0 obj
 <<
-/PageMode /UseNone /Pages 12 0 R /Type /Catalog
+/Contents 11 0 R
+/MediaBox [ 0 0 595.2756 841.8898 ]
+/Resources <<
+/Font 6 0 R
+/ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
+>>
+/Rotate 0
+/Trans <<
+>>
+/Type /Page
+/Parent 2 0 R
 >>
 endobj
 11 0 obj
 <<
-/Author (Benevita) /CreationDate (D:20260725141735-03'00') /Creator (\(unspecified\)) /Keywords () /ModDate (D:20260725141735-03'00') /Producer (ReportLab PDF Library - \(opensource\)) 
-  /Subject (\(unspecified\)) /Title (Benevita, perguntas e respostas) /Trapped /False
+/Length 5636
 >>
+stream
+1 0 0 1 0 0 cm  BT /F1 12 Tf 14.4 TL ET
+q
+1 0 0 1 62.69291 769.8661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Como os dados s\343o organizados?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 724.3661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 33.5 Tm /F1 10 Tf 14.5 TL .36311 Tw (R: Arquitetura multi-tenant: cada empresa \(ou fam\355lia, no modo familiar\) \351 um espa\347o isolado, e todos os) Tj T* 0 Tw .43061 Tw (dados vivem dentro dele. Uma empresa nunca enxerga os dados de outra, isso \351 garantido pelas regras) Tj T* 0 Tw (do servidor.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 700.3661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: \311 nativo ou h\355brido?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 654.8661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 33.5 Tm /F1 10 Tf 14.5 TL 1.181567 Tw (R: \311 React Native, que gera aplicativo nativo de verdade para iOS e Android a partir de uma base de) Tj T* 0 Tw .616905 Tw (c\363digo s\363. N\343o \351 um site embrulhado: usa componentes nativos, c\342mera, localiza\347\343o e armazenamento) Tj T* 0 Tw (offline.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 630.8661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Onde ficam as fotos cl\355nicas hoje?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 585.3661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 33.5 Tm /F1 10 Tf 14.5 TL -0.081124 Tw (R: Hoje as fotos s\343o guardadas dentro do banco, em formato de texto. Funciona para o volume atual, mas) Tj T* 0 Tw .089984 Tw (o pr\363ximo passo natural \351 mover para o armazenamento de arquivos dedicado \(Firebase Storage\), que j\341) Tj T* 0 Tw (est\341 previsto. \311 um limite conhecido, n\343o um esquecimento.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 556.3661 cm
+q
+.352941 .4 .470588 rg
+BT 1 0 0 1 0 17 Tm /F3 9 Tf 13 TL (Dica: Se perguntarem, seja direto: funciona hoje, e a migra\347\343o para Storage \351 o pr\363ximo passo quando o volume de) Tj T* (fotos crescer.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 532.3661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Tem testes automatizados?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 486.8661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 33.5 Tm /F1 10 Tf 14.5 TL .602339 Tw (R: A qualidade hoje \351 garantida por checagem de tipos \(TypeScript estrito\) e an\341lise de c\363digo \(linter\) a) Tj T* 0 Tw 1.800697 Tw (cada mudan\347a, obrigat\363rios antes de concluir qualquer tarefa. Testes de unidade e integra\347\343o s\343o o) Tj T* 0 Tw (pr\363ximo degrau de maturidade, ainda n\343o implantados.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 473.8661 cm
+Q
+q
+1 0 0 1 59.52756 442.8661 cm
+q
+.423529 .388235 1 rg
+n 0 31 476.2205 -31 re f*
+0 0 0 rg
+BT /F1 10 Tf 12 TL ET
+q
+1 0 0 1 12 7 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3.5 Tm /F2 13.5 Tf 17 TL (3. Seguran\347a de dados e LGPD) Tj T* ET
+Q
+Q
+q
+Q
+Q
+Q
+q
+1 0 0 1 62.69291 436.8661 cm
+Q
+q
+1 0 0 1 62.69291 412.8661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Como os dados de sa\372de s\343o protegidos?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 367.3661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 33.5 Tm /F1 10 Tf 14.5 TL 1.30229 Tw (R: Em v\341rias camadas: acesso por autentica\347\343o, permiss\365es por papel, isolamento entre empresas, e) Tj T* 0 Tw .567356 Tw (regras no servidor que decidem quem pode ler e escrever cada dado. A tela nunca \351 a \372nica barreira, a) Tj T* 0 Tw (regra do servidor \351.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 343.3661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: O que impede um cuidador de ver pacientes que n\343o s\343o dele?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 283.3661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 48 Tm /F1 10 Tf 14.5 TL .210574 Tw (R: Cada paciente tem uma lista de cuidadores autorizados, e a regra do servidor exige que o cuidador) Tj T* 0 Tw 1.432765 Tw (esteja nessa lista para ler o paciente e o prontu\341rio. Quem mant\351m a lista \351 quem tem autoridade: a) Tj T* 0 Tw .496412 Tw (empresa \(pela escala\) ou a fam\355lia \(no modo familiar\). Sem autoriza\347\343o, o cuidador simplesmente n\343o) Tj T* 0 Tw (enxerga.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 259.3661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Quem \351 o controlador e quem \351 o operador na LGPD?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 213.8661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 33.5 Tm /F1 10 Tf 14.5 TL 2.301751 Tw (R: No modo empresa, a empresa cliente \351 a controladora dos dados \(ela decide e responde\), e o) Tj T* 0 Tw 1.940751 Tw (Benevita atua como operador, tratando os dados conforme instru\347\365es. Essa divis\343o est\341 prevista no) Tj T* 0 Tw (contrato de presta\347\343o de servi\347o.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 189.8661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Como funciona o consentimento?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 158.8661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 19 Tm /F1 10 Tf 14.5 TL .217882 Tw (R: No primeiro acesso, o usu\341rio l\352 e aceita os termos de uso e privacidade, e esse aceite fica registrado) Tj T* 0 Tw (com data e vers\343o. A base legal para o tratamento \351 a tutela da sa\372de, prevista na LGPD.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 134.8661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Por quanto tempo os dados s\343o guardados?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 103.8661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 19 Tm /F1 10 Tf 14.5 TL .405868 Tw (R: Os dados que comp\365em o prontu\341rio s\343o retidos por no m\355nimo 20 anos, contados do \372ltimo registro,) Tj T* 0 Tw (conforme a Lei 13.787/2018. Essa obriga\347\343o de guarda \351 da controladora, a empresa.) Tj T* ET
+Q
+Q
+ 
+
+endstream
 endobj
 12 0 obj
 <<
-/Count 5 /Kids [ 4 0 R 6 0 R 7 0 R 8 0 R 9 0 R ] /Type /Pages
+/Length 5863
 >>
+stream
+1 0 0 1 0 0 cm  BT /F1 12 Tf 14.4 TL ET
+q
+1 0 0 1 62.69291 769.8661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Voc\352s verificam se o cuidador \351 realmente registrado?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 709.8661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 48 Tm /F1 10 Tf 14.5 TL -0.110013 Tw (R: O registro profissional \(COREN\) \351 estruturado e guarda o atesto de quem conferiu, com autor e data. O) Tj T* 0 Tw .672485 Tw (Cofen n\343o tem uma consulta autom\341tica p\372blica, ent\343o a confer\352ncia \351 assistida: o app abre a consulta) Tj T* 0 Tw 2.461984 Tw (oficial e o administrador confirma. O que isso entrega \351 a trilha de responsabilidade. A verifica\347\343o) Tj T* 0 Tw (autom\341tica por servi\347o pago \351 uma evolu\347\343o futura.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 693.8661 cm
+q
+.352941 .4 .470588 rg
+BT 1 0 0 1 0 4 Tm /F3 9 Tf 13 TL (Dica: Assuma que hoje \351 confer\352ncia humana com trilha, n\343o valida\347\343o autom\341tica. \311 honesto e defens\341vel.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 669.8661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Existe trilha de auditoria?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 624.3661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 33.5 Tm /F1 10 Tf 14.5 TL .571984 Tw (R: Sim. Eventos importantes \(login, aceite de LGPD, cria\347\343o de registro, checkin e checkout de plant\343o\)) Tj T* 0 Tw 1.19686 Tw (ficam gravados de forma imut\341vel, com quem fez e quando. O pr\363ximo passo \351 mover essa grava\347\343o) Tj T* 0 Tw (para o servidor, o que a deixa \340 prova de adultera\347\343o total.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 600.3661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: E se a conta de um cuidador vazar ou ele for desligado?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 554.8661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 33.5 Tm /F1 10 Tf 14.5 TL .258876 Tw (R: O administrador desativa a conta, o que corta o acesso ao aplicativo e revoga o acesso aos pacientes) Tj T* 0 Tw .60436 Tw (na mesma a\347\343o. A conta pode ser reativada depois, mas o acesso aos pacientes precisa ser concedido) Tj T* 0 Tw (de novo, de forma expl\355cita.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 530.8661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Os dados s\343o criptografados e onde ficam hospedados?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 499.8661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 19 Tm /F1 10 Tf 14.5 TL 1.053318 Tw (R: Sim, criptografados em tr\342nsito e em repouso pela infraestrutura do Google Cloud, onde o Firebase) Tj T* 0 Tw (roda, com servidores na regi\343o das Am\351ricas.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 486.8661 cm
+Q
+q
+1 0 0 1 59.52756 455.8661 cm
+q
+.423529 .388235 1 rg
+n 0 31 476.2205 -31 re f*
+0 0 0 rg
+BT /F1 10 Tf 12 TL ET
+q
+1 0 0 1 12 7 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3.5 Tm /F2 13.5 Tf 17 TL (4. Escalabilidade) Tj T* ET
+Q
+Q
+q
+Q
+Q
+Q
+q
+1 0 0 1 62.69291 449.8661 cm
+Q
+q
+1 0 0 1 62.69291 425.8661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: O aplicativo aguenta crescer?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 380.3661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 33.5 Tm /F1 10 Tf 14.5 TL .404692 Tw (R: A base de dados \351 o Firestore, gerenciado pelo Google e projetado para escalar de forma autom\341tica) Tj T* 0 Tw 2.602706 Tw (conforme a demanda, sem precisar provisionar servidores. O modelo multi-tenant permite adicionar) Tj T* 0 Tw (empresas e fam\355lias sem mexer na arquitetura.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 356.3661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Como voc\352s evitam consultas lentas conforme cresce?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 310.8661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 33.5 Tm /F1 10 Tf 14.5 TL .362485 Tw (R: Com \355ndices adequados e consultas que trazem s\363 o necess\341rio. As m\351tricas do painel, por exemplo,) Tj T* 0 Tw -0.111124 Tw (usam contagem no servidor em vez de baixar todos os documentos, o que mant\351m o custo e a velocidade) Tj T* 0 Tw (est\341veis mesmo com muitos pacientes.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 286.8661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Qual \351 o gargalo conhecido hoje?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 226.8661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 48 Tm /F1 10 Tf 14.5 TL .012927 Tw (R: Tr\352s, todos mapeados. As fotos ainda ficam no banco em vez do armazenamento dedicado. A trilha de) Tj T* 0 Tw .044104 Tw (auditoria \351 gravada pelo aplicativo, n\343o pelo servidor. E cada conta pertence a um \372nico tenant, ent\343o um) Tj T* 0 Tw .769269 Tw (cuidador que atenda v\341rias fam\355lias diferentes ainda n\343o cabe num acesso s\363. Nenhum \351 bloqueante) Tj T* 0 Tw (agora, e cada um tem caminho de evolu\347\343o.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 210.8661 cm
+q
+.352941 .4 .470588 rg
+BT 1 0 0 1 0 4 Tm /F3 9 Tf 13 TL (Dica: Mostrar que voc\352 conhece os pr\363prios gargalos vale mais do que dizer que n\343o h\341 nenhum.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 186.8661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: E quando precisar de notifica\347\365es e l\363gica no servidor?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 141.3661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 33.5 Tm /F1 10 Tf 14.5 TL .166654 Tw (R: O caminho \351 ativar as fun\347\365es na nuvem \(Cloud Functions\), que exige o plano pago do Firebase. Est\341) Tj T* 0 Tw 2.496651 Tw (previsto, e o c\363digo j\341 est\341 preparado para essa migra\347\343o. Ficou para quando houver receita que) Tj T* 0 Tw (justifique o custo.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 128.3661 cm
+Q
+q
+1 0 0 1 59.52756 97.36614 cm
+q
+.423529 .388235 1 rg
+n 0 31 476.2205 -31 re f*
+0 0 0 rg
+BT /F1 10 Tf 12 TL ET
+q
+1 0 0 1 12 7 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3.5 Tm /F2 13.5 Tf 17 TL (5. Manuten\347\343o e opera\347\343o) Tj T* ET
+Q
+Q
+q
+Q
+Q
+Q
+q
+1 0 0 1 62.69291 91.36614 cm
+Q
+ 
+
+endstream
 endobj
 13 0 obj
 <<
-/Filter [ /ASCII85Decode /FlateDecode ] /Length 2301
+/Contents 12 0 R
+/MediaBox [ 0 0 595.2756 841.8898 ]
+/Resources <<
+/Font 6 0 R
+/ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
 >>
-stream
-Gb!#\?#SLf&q&<7kXQrO0H>NorGk^G4.!Q%QK8PW*:u!1B34+<3Rj/Gq#'H]HH>32Q>G$S%QI!;W*OGT]">PbRt?%c#krgT&cK)3+(#<e!U]S++to\HDtJ'onSfYk4-RHQZ60gFVS_(7M843-g@KqN%PmTQ&Z.ifhDW;@8G7"R1W<lOoO?NS0G74%Q`q+.NQY].q"9MnIS&-M0<_QsY&6Tk`P:p8GI2]e]C-WU)uMf%,Y9@+:Yu_$(J*"l'FOD!O@=-<$\C3m`?V2+$"r1(_Dd5FPH*/1GB-'1ZA60^A4qf]C)bX]qTEQ9e=VBPTLAhoiA^GimIh-P3#mGk/&K7UEBsN%aI5k<CT*@rda@-b3/hAM0FG<@)*4Ifgf2e'6Z6Oa)b-h!kc12#d!#1D1aEU?De+E[)IlRg>^!-!_i!sRj=.LS'711p6FS3L4nK(NAQ.l!G5@"JjTi@Un'm)6SX7$m$U^ef;HLG./Pt!l.bBC5(n/QO/h:5b)_)Q$UFCOZ4;bs`3RCW1H$$qpl9\Y:gqB]GKJ"NfC!E2KPE?>=[sUc4eEtqFWV:^t"r.76]rhn"]$#CRW8?hUhKpdDMQ>(/0M1D`(\AOCrStcLDG`A:l30!U>Oo'BN\\3Aje?o'<"pVrDT]E_USPAk1`p:)RZC<W5oM,8Ld_nDA%@?>4urJG72/4U-E%58VB>:4!kJ@1_KVmeb]HPN*>=&ql@=rDPCnH.(Y,Vb76&kJlM)nm]!eL"3s;,JI@Y.PbL.^/EE0^JA/N6$Z@E;Z(+g@r0QrP]?dNRY(9W0j[@pPL:fPm"b#\K.bM7rLcjS0m6inf.!!^3CT08KnE!kWiMTBk+i*2Xe!V\7Y]QjNc!8LZIP!j^<VK,0uUNd\[hoc@q0bda96-#h$FKS7gm0i]dlFjKgP8gP4-jiKTPc'c=E7E!$T1o]:+[Jd=7\`RC\LRJSg'o2RZ9l35*.0Zi!CN84I(1^F(-Z.M_`\1A@'J8(>Q^g;&`AFN2ind)k-ALu>M-\Y+j2ojBO*)iXHJ[frZLTc>)l$0cc<MXj:*Nc=E@P17S/lJ?'t2mL)Ei,cKY07bRe+=LER@DUrM:8b;:N/e,;\sl)9XSiO4m14b&)l2A-<bLAniP?$k*Y)tXldY@^BQU"-[s-`pd133)No?82@,Fr4u>3GUG)(O%K2]Gt,.S0K(Im+fRAI1&pI+K=Z7ZZ4.F=Uf>6KH!X4V4EK+oWmVk4sC4mUj9/EV4F%S.gQd4eFn.n!g^98d6-$bA#\^"A;A6tk!n8t+pR"%gt9/j\,g$A>KdFQ2;VZNHG'2oD-bT#'KMFk)-Q+_8PL)nHg1ce5ahSbe?raZ:C>46`=oJP]WB1mQpq%]/lA%Rbcr\l&o]]PUDUDN@1;o<&qj-U9[*YP+h$-IU;?:k/0!3inreRU+R.eqIkh4Rc3^XLD`ZkD/pDicZ;`Y]0++phQK\pok@]6!Zn`^!gp+!WJC+q+9V4Fdm9#XS4#KYp#IQbTHJ,kh%I[De89P?Hiuh[t0%V])Y4tO:f\[A60b6WdpfS;al`9ML[FMp##Jr++W`]f^efdQ)PNR1j\oV:a_o<gJc?Ahp/1B\n"pA/2D?\Eqm]20;.CJ[g2*>r?/:4FuV(t.r@#VoCl^tWuC^lnMCa)t6XJsS_W_rAUPun=K%o6YikbP[]mB:AB"p1h@lOnM>aglH!d,QZ6[D<=BU9QhFgK3^^0cY7IjGHn@f`%HsPrjLU.QaeBY'K;J?A/r^X1GN)(MaX&J)-1uI7ccEFDchh/Eb=50F_cg%_)]tk]:G\JOX_[GfQ!7ReT>NkLZ6>ci1-"SA7M?o%K>ji3ZipFNdL&fZ_rc3LJkk^ZC:DRHG5_a/J^arUYNB+I*5I:+\Z9di`q6AHE"H;)7V(G@m+USb2J9)Z/p`gRnM&71,5M]p.U6Ii@u<\%:gK$lBm$e-.'@Mo[DceK)(T*,sH'pcCSs]l."D#.tOfi(ti5_b=Rq_ej%f)Q_d=16<$R4aC"^o.^a:$2.4<!6iqT,B_eApre0[\?:`!``HC;-$L7!#_#';/S483<oW@Sn$M%FE_aD3W4Cqg"mN*n?\T.0>,+hZ4KCMKS)IYq']\Gc$?'ItU-I[uF&-&WWaqL?U1[k6ihs,*kk,?1Q40RMj<Hj)`k3tEaj[K;pR@%=a3V8^Jd:ZB]Md)5]R_J(=p]$F_oO]hKGu^Z#'=JLkIm/)f:F;*UMJHUSnFAJ>m\:=;WIX9ER967\[,F=oH,ar[;HRs@&FfcN,$J7@RfIaG'JuA#kjLgbpeXi<XlccWdM`<](dqgi;Q+~>endstream
+/Rotate 0
+/Trans <<
+>>
+/Type /Page
+/Parent 2 0 R
+>>
 endobj
 14 0 obj
 <<
-/Filter [ /ASCII85Decode /FlateDecode ] /Length 2396
+/Contents 15 0 R
+/MediaBox [ 0 0 595.2756 841.8898 ]
+/Resources <<
+/Font 6 0 R
+/ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
 >>
-stream
-Gau0DbECU>'"ms?e5;g!3<\7)bJl[2h8=mfe%I\G?kSX]+:0nrC;'63Rg"ld-.rlPN&J8B>G=Z]:mmT6,s`]'K_nt37)(q7cYiuDLn8f9Os$I]5NpA`_omZLn'%LKgI)uHH+"$://*7<*sZ4\,dF"-7%4=?#>p^5W?Ag&^ma8i%2Nca779JP/Q1G5p#2$^1Q<R,;'dajmC%!Ij1X9l<r^.*rpbl;^X2RJ*6h"OHn1p>$0$"o,"qJ\6R;G$_bG+a9,n29%gOHl`tQ(8YY<7AreFO(512+XA^J-U#:lbkl<_6n<@ci'O\/bJ;U*%X:==;s#2712)lIDPjdK@?NN!=ne$repY6^a,)B)N06/m^2+l/P)k?F.EhXJoe2k;ed!.lI+1EVKMbu#Q_6^;D5C[eN.!WBVj8'qf`M0J>gL"r44=t)3oD\89&3of8Q98c_^7!MP9m)Z3?Q']+dn6r6]&NABN!<Q[h8)WiV@`on$ZI_TC@A(r:fhWBg/0I<G-?FM4%5N`)'I(fmM%2/<5F!dHHH3:i28'EUp'UGRLK^$.i%]*prhqA5:int:8\]`VeA&AU27b!R(OL#p[K.e*P+BJU9*SoNgOuQ\^>+=.Q/3I_O=Un*SM-4a<ulMm.X\Nhr>E+0dJun(VE("ZKMgPB<OX<VPXLL?7b"<"26)TAl'G<oD'T&^b8WQU/h(4P]3;[Y!?JI*]Ve01Dipk:o%O`.\hcKo?.M],()K(/CqchObXdZa:,;?#%)P>e.%.%(019c>D%s8R+;o[^SVktukI0H?Df@3^h)h5#l>(;>HA`-]VNm`+L5r,P)D'VRZ<gIN<M>4VZRL8)-tLN.po:$a#K_Z0]HLLe-V.`4`G+!5KR%pd13[hD;'DQfEk?XuX`BqZlA_'U[=./YrWPe*QaBRpcPI1F3pM_9iX,jbXEDFf/5?"EQ(#+`opKedLuh7rJloge1sP18`@4^l)N!?69T*-E7.-b,C#b;5*LVAsq&\c,,mfhVg0Rt5X<D[m,ZQgDO2BRE-nq](SY?!#qKOV*QcCg65/6!rs2uNhAFbE5\[GQaJYCeo=sC+`*8OOuT0YXh!fMXMH34d4DR;uth+:h'/<&S5F6^-&Y?F#qjLejn.9(u*<.[NZGiL8C+-=A,lM81"oi,+CkWu0(lJA2c!]&o+W3t)R3c!o%"Tdp(2e72"@M';_Qu0Lc]B7rYQ!5Pi:)`br^$L"^X0JjMMHW#PQh:=nkNK`p9?a?*%$9Of]OtpVYnZ`Z(IX_9c=K/`W)W<c"0^-l3P1!r,^#"Fa&:@1Tgh-QhuYASH$f[4IRC[QdO7mI8s3kJE"[/e_%mah?BJ`#bJ<[H)5r>aoGVX!o_GD?d&lG%0S;L!nWLDHq],gS]B.:*)mIr-hRRq:J'n(`e/lcpZ/O2WT;1V2It%1k-3G@)Ru'-%AgYe^M!4kOEtNR#,30?N(feNncpKH:`&Ps/eB1/jLJ`.C`&A,G\TY&DgHrg>p@Ut^<30e=Koc^62IuGJj#)a/"*Y(*VVjSoFc^R.C[Z7kTA^9Y-F4$uEb0B$ZXV:BU[W/c:%Vs]?0A2sKqS;4]"oFY>`F'IOr]dOgRB]t:2^+ml!\Bu9C/I-s5ajI"ghZQQ"L&;W<%HXRMfK,k^og$(@EWun(i7dfZKULUi(qj,NQsG,/'iH[Z9fm0@YY&K*;[@MYMrDPSE!enjnFJIPO7)0aL^&5bW2c(/!Ao>!3tH2]q?iO)MA6q,^o\=tH;nbT=GqmNdh`/=ijJ\+1;NSMkW8R[IX1@4Bg4:"p2Ml<qh+AlSpVA]S:9a/9r%*96fB5%5;da"-Q\aX1N!>nEp=OJaVkVlV1*%L*e2)\_c;m@;8_esnKO/$\pG@J1l@Wb^Bu4Si-FbYNctW#J%ummp`N`mGEm3PtFZN6>f/1Af!T0\g6L/6;-aF;=>:S-Q]+..[!ejM)X"(h&%HS4;eLp3[_mA9K)ml(mFq'uTD"#m\G5(qM3[Qk`njFd%L-hS6'+L)D7HK?pmX3AG<d`85hC3GjE)H":;%!N._uDQr%'oS2U:Bt3VOMS!uk.#9C&\<Dlh#9U@GR1epY>^u0GM?OD$`VmO]3dG\bU5g1QlQQ^m,1>J+La"b7e[6BoB?$*ee\:s/2rpDI\k,2Da3f]SXAk--!/&U6I&e>MSuhJ[&IRS^*;?RQ]\Cc@/:RYXn\589Q5=?[Vu7ZGDK0PVX487YhDj1KdeIuI;RRZP,D7C>G%3[FKs/3:(rs`]1&g*7]&YgoX,#H5s2N0+OVJMfO"%tj!DbC>B#OoJq^EfY55[j,/%4TOF%d0UG%Bq$bR_n.s)J0?N^A[4mX#c1>rjo(L8+,3it6C>^*ulcm!qW@2Sj[$ru?`e(ouJR,SsJHPNJ"20%F\`C=d.J_uB_cW=++~>endstream
+/Rotate 0
+/Trans <<
+>>
+/Type /Page
+/Parent 2 0 R
+>>
 endobj
 15 0 obj
 <<
-/Filter [ /ASCII85Decode /FlateDecode ] /Length 2500
+/Length 5753
 >>
 stream
-Gb!#\9lo&Y'#!U4oMJB2=:Do7qN>k=3L;"O]rF6[1'33g-if!n!>q)NI9t6M,Tt4@FG5K%\QgB\bk-"lp\H`M`V:,Gs0<sIl'D>A;34?4G!dI31:mFLDJlYl?A\3t,)M2"Z50euf$UKG"J3Nm-sj'^<)=j'Fb[r3,["`i+Br2]9l\qm$b"\3+X-b!3H&m8a#j-Y.IY\IEO8eJDfdF4Ef(:)DPM$KZo*O&=A[,:<F)ftWRe5]Z8+YYU"]g`rIH3lN5*u=NG$Xr,$W%jU;Xf/?E[\T\I*m3(\*k#+6qT?&gE?)9"0;top9mpkn&WDSM_ARS2QpSkjJ;bV_:!Dhn9>)/)2lO"%Q"Al9X,ricMKH"[eQLYCgSh1jiIi/F]Vb3V:>NmRm1.U/-P3`k6Fn/<an8q^=XqNU!IS9=*,EO(F&Hnks@=HKeLFED?'r.dcZPATH\dirZ4I__Z>gQj_9+>)&+bNoG@ja`e`gDFa9S.QX[oM^O@e6EF7V%gZmb.LgCrAC]s_XHW>SB\W)tpr%i-EJ]&'n?=G9<]=7)3O-`oYaN/U%Do&C7.63+5ibQ[r@EonB;`_7:>*>C]29\RO!rurWP*##j"e"3jb`sqP_sTEKbAD1`"T'^!E8gZ'eBM:V6oqe8j26b7XX[g]lP/#VdaE_<!_np0t+TeP9(;Z22ai(pQG,g3l:7Q&JbJj[\iX-",mq%iqW(N2<UM$Z37pf":EYS\oO`+!3YE$oIZ4W9#$"mC!(OGNPJE*4Q7(IrO6Yh]%I1;`fY->QsN*a*;J9U>'C@;V:%M>O+.&hO.X6^7!qUPFjqRe93YEqWB91pIkjC;f6<2oM0AW*#$)=mFg3ED-pdB</,.tYj2X%^4@)M*5F*jVK%Gj=H6SX`fi<d+ZiaKhoMN)VEMeu@;/8E4.$'R#iGVP)-S7uRk6X,Z^h:Y3f18+]/$kV>D'+X9JbmMa1=2LsScu#OSsJjf_hm-#(Sfgl2RLq6Z'S87Or6eJ5*NLo27buT=6+Z#?+o74J1Z<n/;mH1R&_B^P.a=oa)`4u?SVsk4%mQ3PUsR#fsmB*CnY,,m(,R;9?gbi4mN`#QA4e#+K]ZLe>[O@V]gOOK+%e]gg)q5MGq)Bg+B7gmMe4g'WTX_(I*^u8lYmVF)5:<cKmiV,G<TIXoUTT;YT@1D4\b6'VS<qQ7&%-i!#Nm]`C2Qr`:qXN[+4-g`!Y#rpDQrPHDUG?\nC@L_3LSVl<cmoP*h>8o=cf5O"^3b)RPpau,hY44QSQ\rDtFa$HpL^DKn%#p1'A</Y]d6Q`^9pX6$dafMIPOICeGT[Z4;bM9%AJAh>N-,q-+mYiW-X5]M;kmdGLb*-CC:mU:noOS>Q<Jo5T$D5BU\7;CEWF^X\a#Uh-faQ<kLTB(2(,A"oB_'$PihpA?61D@M6pC)W_""&%b0iX)6^)JcClVQW`L/r?oBb0,e[(lc8Fh[*Hn#o;*Y]:#6kN('cN&!sMD*LoZT,jk#:.&3`Yo4N@%_F8!JKqi<\:7N<jC\a4H,>o<SW!D<:>>"?DW#qlq(,f^?:n9/`MEo^d53._Yp19_,E)6*OmojR.X`[HiIt2i9(=!66Hk;Mrpqpp8UJM7uXlfB-8_7?%-D2,Lp7/-WsD,P1c!W)W,eW<]rc)_'s*5%Tq^aj-f&K,s1;q"1td%N*U0/6#MbGhGM2+EHFlXJC$:^'(MgPB3H:1S1d'67SV__iQrjS&.U,0p*jhGT4kE(8@)f)"Gh2X],0MFC2S?X]Qj*U]uZs@GO2MX>X3#W?"4YV@f!'"La:Wm_1b;MZGnNQaZ?[<mpXH@b^0ZbA7:KX4uRM[**Ved%o'e2XtUYD^6_3kkRrq8VOT*ZLaG(75j`q@2dW1^TP)uAcN$ftOl?b!kjuTrDP2#%D(Q]eXFpI?6MsMu#%Eak\B&V1`Ag>m4Q,>PcVR/WW'W"YMW*P,YVDY-e/_R;[!U<m??W/*((og<EHqW=IGn"&i(d>02BA]_\_W.L9Z5UDLlTqYaA-^J1'lW+TT>k<s8@Hm1`Iq?ma7RS$csh8*Wn3+R<6%$8Y9R-1<'jl4IRS%>H@pS:=e'EHT[5JpONu#_,R*X]jW'rLDTM;L02TF\2cr2RR'`QLjiF]eq\rXhDYY^o)SH".^+in(CoD'\=;AR+R-Jlq@RI+MP#O\\]4QB)>lG2Ibae<N,gmE=>=m7Cpen;\-'Sg:Ys<'mH&sBXRq\`98qQXEc*$`S=DAF,VDa5RrLDMoeu9WqoPn&,$1k9%A0fcQR*:g4+jj`':87rU*tm]3t4ad@"e8?4HETRN"4YhEcfWFfE4TefA>'+a.Y#1oO2t<B&O,k*d,^cQfmi-h+r/K]kloFUcs9f[72ho%)s-k0WUUqJ!!`OU+2.&*dhZl7HP#b.lj"29LQ"cm<$YM#egf-qH0)d)>8O9ijT<p"jibo&*O9I(8#)Q&*JHk=WM;KWm+j'rUoOWeRmtVr?f,Wl?%?eJ->590-&8]hJ7*lmH6"2qA[LK9-X~>endstream
+1 0 0 1 0 0 cm  BT /F1 12 Tf 14.4 TL ET
+q
+1 0 0 1 62.69291 769.8661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Quem mant\351m o aplicativo?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 724.3661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 33.5 Tm /F1 10 Tf 14.5 TL .309984 Tw (R: O desenvolvimento \351 conduzido pelo Iago. O c\363digo \351 organizado, tipado e documentado, com regras) Tj T* 0 Tw .371163 Tw (de projeto registradas, o que reduz a depend\352ncia de uma pessoa s\363 e facilita trazer mais gente quando) Tj T* 0 Tw (for a hora.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 700.3661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Como garantem qualidade a cada mudan\347a?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 654.8661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 33.5 Tm /F1 10 Tf 14.5 TL -0.081124 Tw (R: Toda altera\347\343o passa por um port\343o obrigat\363rio de checagem de tipos e an\341lise de c\363digo antes de ser) Tj T* 0 Tw 2.010814 Tw (conclu\355da. H\341 regras de projeto documentadas que impedem repetir erros conhecidos, e atualiza\347\343o) Tj T* 0 Tw (autom\341tica de depend\352ncias para seguran\347a.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 630.8661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Como corrigem um problema em produ\347\343o?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 585.3661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 33.5 Tm /F1 10 Tf 14.5 TL .881235 Tw (R: As regras de seguran\347a e os \355ndices s\343o publicados de forma independente do aplicativo, ent\343o um) Tj T* 0 Tw .46686 Tw (ajuste de seguran\347a sobe em minutos, sem precisar de nova vers\343o nas lojas. Corre\347\365es de tela sobem) Tj T* 0 Tw (na pr\363xima atualiza\347\343o do aplicativo.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 561.3661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Quanto custa manter?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 515.8661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 33.5 Tm /F1 10 Tf 14.5 TL 2.09686 Tw (R: No est\341gio atual, o custo de infraestrutura \351 baixo e proporcional ao uso \(banco, autentica\347\343o e) Tj T* 0 Tw .709985 Tw (hospedagem do Firebase\). Ele cresce junto com o n\372mero de usu\341rios, de forma previs\355vel, e s\363 passa) Tj T* 0 Tw (para o plano pago quando fun\347\365es no servidor forem necess\341rias.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 491.8661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Como \351 feito backup e migra\347\343o de dados?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 460.8661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 19 Tm /F1 10 Tf 14.5 TL .089984 Tw (R: O Firestore permite exporta\347\343o dos dados, e h\341 scripts de manuten\347\343o versionados para tarefas como) Tj T* 0 Tw (popular dados de teste, corrigir campos em massa e preparar ambientes. Tudo documentado.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 447.8661 cm
+Q
+q
+1 0 0 1 59.52756 416.8661 cm
+q
+.423529 .388235 1 rg
+n 0 31 476.2205 -31 re f*
+0 0 0 rg
+BT /F1 10 Tf 12 TL ET
+q
+1 0 0 1 12 7 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3.5 Tm /F2 13.5 Tf 17 TL (6. Modelo de neg\363cio e mercado) Tj T* ET
+Q
+Q
+q
+Q
+Q
+Q
+q
+1 0 0 1 62.69291 410.8661 cm
+Q
+q
+1 0 0 1 62.69291 386.8661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Como o aplicativo ganha dinheiro?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 341.3661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 33.5 Tm /F1 10 Tf 14.5 TL .163984 Tw (R: Cobran\347a mensal calculada pelos pacientes ativos. No modo empresa, a cl\355nica paga e pode repassar) Tj T* 0 Tw .14528 Tw (o custo para a fam\355lia ou absorver como diferencial. No modo fam\355lia, h\341 espa\347o para cobrar por acessos) Tj T* 0 Tw (extras \(por exemplo, mais de um parente acompanhando\).) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 317.3661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Quem \351 o cliente que paga?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 286.3661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 19 Tm /F1 10 Tf 14.5 TL .74436 Tw (R: Principalmente a empresa de cuidado domiciliar, que \351 a controladora dos dados e a compradora. O) Tj T* 0 Tw (modo fam\355lia abre um segundo caminho, direto com quem cuida em casa.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 262.3661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Qual o diferencial em rela\347\343o a um grupo de WhatsApp ou papel?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 216.8661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 33.5 Tm /F1 10 Tf 14.5 TL .127984 Tw (R: Hist\363rico confi\341vel e organizado, transpar\352ncia em tempo real para a fam\355lia, controle de quem acessa) Tj T* 0 Tw .660542 Tw (o qu\352, e trilha de auditoria que protege cuidador, fam\355lia e empresa em caso de d\372vida. Nada disso o) Tj T* 0 Tw (WhatsApp entrega.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 192.8661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Como pretende crescer?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 161.8661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 19 Tm /F1 10 Tf 14.5 TL .701751 Tw (R: Fechar as primeiras empresas clientes, usar o modo fam\355lia como porta de entrada de baixo atrito, e) Tj T* 0 Tw (evoluir a monetiza\347\343o por acesso extra conforme a base cresce.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 132.8661 cm
+q
+.352941 .4 .470588 rg
+BT 1 0 0 1 0 17 Tm /F3 9 Tf 13 TL (Dica: Se tiver n\372mero real de clientes ou conversas em andamento, cite aqui. Se n\343o tiver ainda, seja honesto: est\341) Tj T* (em valida\347\343o.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 119.8661 cm
+Q
+q
+1 0 0 1 59.52756 88.86614 cm
+q
+.423529 .388235 1 rg
+n 0 31 476.2205 -31 re f*
+0 0 0 rg
+BT /F1 10 Tf 12 TL ET
+q
+1 0 0 1 12 7 cm
+q
+1 1 1 rg
+BT 1 0 0 1 0 3.5 Tm /F2 13.5 Tf 17 TL (7. Perguntas dif\355ceis \(obje\347\365es\)) Tj T* ET
+Q
+Q
+q
+Q
+Q
+Q
+q
+1 0 0 1 62.69291 82.86614 cm
+Q
+ 
+
+endstream
 endobj
 16 0 obj
 <<
-/Filter [ /ASCII85Decode /FlateDecode ] /Length 2402
+/Contents 17 0 R
+/MediaBox [ 0 0 595.2756 841.8898 ]
+/Resources <<
+/Font 6 0 R
+/ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
 >>
-stream
-Gb!#\9lo&I&A@sBi2C0cQJf6"l(i#KktISdX_)nL"X5)r/kOCiWI"L.q\GtQdRm\TU-lt.1.;5%I;e#W-"fEU\GMguN;^7uhnS?5#Ah(b4Rs])re8$ih`TcbiQ`_<P#\aG/59/OQ6[HB_qUcTAl6X;a+IBFO*a0S7PSOfGCqdKBcAU*@>fYUm^@pcK>j`mG1Xin<MFC"_jFM!1XVF:(Tfa^+'u5F"'`O;5jn.7\R:$1$dZZY,YJ"<6/Xiu=4p"Z@Hb[Y,WMki*7i*gL&PhP+j@^SiqH[N)_7_Log+oL<QVi&N8e?XY)D^N'q."ceEghQdiRr%n&$D%e8DchS"6M.ZRGI/[Aq&M-<[&6N`L1%F'ULFG=L6F)1C5l$WG?7cim9;een?.Yr1rK[PacjG)6VjFqU,Q#8;p!O`c4\K0!*+0C(*=i2kI\=UGO@Dagg$eI%$gSu"`aQ"<%q,-dH4$U"f*Z.0%/n$Nba$j:s-N52pNiN97>gBdsKJ/=$E</&,e"Nte4<cs+pn&$Og1WY]sd?poj5`Y;\cd+Q]:@qY("=)&i)F;d/-Nk`K[E(M:f2_I@m4[db;*3/<(.N"i.,W3Qlu5/$#!]Hu7daBk<*$Rl:5#?0=Lr%>RD9M]5"AFt8Dn&cG+_-+#`jD,V$;CR&Wb3O`-#OOWZ##2U1,?OAXG:Y_-eu##a0gW#co<`T$QSiP!sJpY%YQc<D/fU)/53J"")/rB*RF/O=CS8CMJeQ<NZdM^gRNhUGo#;Th+phkY?o&6)uu'YGF6^`e,s/P3S#I@5cCJ:]N&"DI'1\FKbl+\d`@"J>,i4CiLY!pAh_g0#ho=0^F:Q>r@n<-qU_?L\%4GXh4qTlA_TM<N68[i.Z<A"&#^LFEahtJfUX),-,^>;EkHQ+o0.!5/0\E;n80)^Z7517?-Re`;D!:P?\Z;HCPj0MA(G5D7Y@#U5Eu%8@Xs3boF=ape!#hMI.BD!aS!aX&oFfmiX,5>LXZA4Jss7hAUr,9\0?e^,'VZHD5!SdR0[JV/&p`!CBnqY/Nl[3G=#-##gWGF6;SK0.HS:T!s&`Tcq+<C%bjN\Ihm!^[g$h&isX#bp@`#>iIU5G;(KU.VW.HSYacpcp_p=`*j5CTIfX3+A:.U^6(F(SMJ3A$OWRA2<jR)%h4M8]6_CU]F"Br5gg'XJQQ]E3jS_@@-N0Y(p3S`--8HYPmY(TM#=HZ_,2_j)tt$Z<%@AT7#M]XX,+bs?Vi%5RlV\o'q@%PNAQoP4NJmbDj/>NI@PuAhR+Gp)qD<uhGGdkWUoL&'Z<02R"MUX7W&C;T'AaoBlqghUbPB-6T],GEfbA7XB\`-K9D.gr_)=<Zm\UA[8E`P:n`#5N;MKPon]@7PgAk/n]HcB1eq/kPB"Ga89qFkLW_FcF[q1T$5uR6#oM[Bm(8AU1>BOWn_IqC-6iqN$fd4>BtjbJs"=!(-l4"oH];$'8$g-D^ZpDu.LEK;;%]M_M.G%2gUP>@h%t.KrQjWcF@2EA="fW>g;=TTHh[sPCSK%C2@U.&X%gKpNsaku%,J0AJk[!fRYrp+9+0^u!oe=Y'9B]^_*<`uV.gF<^eQDGA8"WfdE+:4\K#U?(3qXon^QoN4Gnd87;u4N=#U3;^7o12R"*pHZ*E#U\m-C%>?beefs(#e_>+2VTi._(>U^2!k&`fII&nHQeC,:H+eMs/./++\6U'Hs-(9RX.GX\aX#Ths&4Ami6'0J*AjFAblh5+M69gPTfkQmuUs&H?!X57hf+@/(HC@<#Gj="TMuk,].'#O%7n,JihpJYq3`RVtfS!D=JDD(KR(>-n1rEjI<a=dA,@oN<2_^7eiHbMc-t4/gjR9$G69e=H5d5d_%pf$o1?YAT?-S(oA(h$t\usd;fn@8e9e,8'm0Gboc?,&0\3K_^[;VLg$DA'1`&Sr92>iqC,"P3RnNki:jNB!Moi=ql_9\42+$UitQD"6$BnXMM1&<dbp#F+0<PCTD^mT9LPcN631%LLGO/$(oN(9<F")?)_;<?YS9lpPd#L#tN&k9?NLW3XFgD)1(Em,DH@VJVnhNs=dK;Se45*GOQ$<k8P[-nYT?os+43BZ<%i9IEI_7)68%>JtbDs%GANh&djSg**D([kqL-Yn;\@2*9VfOJsh;5N3F3h!*%'YB]SkIh-%b,NRs*/qQ2^+Be?0,4;Vb>-GPSP%KNoZ&c<=lu+cG/mUmE)IEknjCFZi"f(,,;Y#8i^NW;rAa[J`mR%\+^;L1KatD\ck(-K+7s)s)VKC@E:lI-%S<BM8$M&#>n.bKN,[,.:a>%!`FGf.>,gqNg+Oj.+U]2r+6XSD:!WJ+3(P&#\\MqbpZUk+W&Y1BX+*'e=m"S%ri_&2p"1X+ck]f2#,/KD\m-`Mom63`)WL3mc*r^9E'EpM%D2E@(<7;p~>endstream
+/Rotate 0
+/Trans <<
+>>
+/Type /Page
+/Parent 2 0 R
+>>
 endobj
 17 0 obj
 <<
-/Filter [ /ASCII85Decode /FlateDecode ] /Length 2001
+/Length 4277
 >>
 stream
-Gatm<gN)%,&:O:SlsnaH=b8ShId&,#P%c8,k+_Pu0+\H3n;mVPOG_(cT<k1C<*W4aM+3XSP.9lH3I>pX5qu[ir2j.s(JFW'Pou49E_Ra910VDgQclE_=(4+o8>;hP8jW'CN#"i*0Fs5>GeV6s6'4^\%+CssR:j&Q\%0AEiiik-Cp?Dq6A-q2hVd)aC\jR\NrPUb.1IlNY0iO$p"%F0d[*7^DECiK4HlSpc7(D\j.sLC]IV`Nl2LI3Q?T_6Pn!_Cf7+[/A5RY0=qoXP/mp6eH!DsCR@C'N5$Eo<`4MZFS"heP71OOUd^,"doUL5-);Ef'QLKSk=7!if1_X*Dbc$dJSnqtJ*@]n;I5:<R?<%([k4kbGR[!%OS8oIYDMELrARn09V/"Ab`-6'&?0MR]c:I@DNnKAiLrC>QZUL-:CFouK/?-Y?]9qO^X^qkBF"H9_\3)BLfp9;)$uS:,dG*:ADaO6fK#)fO<P'/q?/(27%$CS8P%VICG#;B5Gh>+4@768pVjolZN(kRgQtsS;kR90*GRETZ1@SWY[.;.f:`X&mEnF`5VcM6HLgD8`#hEd,2iXPTW8S.oau3J0"(lhgd;(P.`C+ZXRQ`sP6kR[4S7fs8MLUi=0EotS^/r)W!6PKg3a,a#<2F>K&6WLtX_K(W\(/1K9HXY_1$Xo?cH$H80hbC_^9"\);V7R]0G[ep"A>U@4@2ZGQ-RKT@U05m4)_sUql1Mr7ZCqHoKbpl8eB'`hc\Ql8Yl;k$X.7j[LkPdr#?*I'Y[=6fL[IL)H=R.FL'Rb=DFYp>!FFLAO[$A4*\)_A$SV/Ag&[PDgtt?UXkqfm.>rA@uT,-pIJ8o[;M>pB@+(Xj,49mH`#`Kei)7_Dc"k&Bt#=la\2#gWGCGO8=Nf[c5Lj9L7^cbI$%c,4@.YGR:==!Z?mZ_if92"NjS2D]i,1nW'!@<)[N-RSg89o+fP&<g$(ECkQ_Z77_S4lldQ5B'(@eT`Fr%aX.]\W_Jn'oac]J7%V`(J6(J(V4F\NlR*Z(M.K`k,O!?A1MF-'#p;ILY8=f>.IRd?$rQo9a.>:#g62>l`mKa",,D?Rtl,GL*3VM`E\+kfJkK%1?LeGnO9up,?j:Um,_EZ&5K787pPP,T:!-iIZCS]oZFDIR.N^;6ndP]XeF!rF,$`RYLAT=6d-NuT]2CS>Y,R8i@9Lt+=Nd>=W39n!Zb0H$4$NP>#pKZFXR%D'>J&@_O!Q.;9a4[a_65+;RTNG(Xb4?7Z!qp)h.Ai.!fT!'cle.uJ;<*pE/(Z9</2\>>7g4U6<ROk3,YM5i]fm\BS+_85G.P3n8hPl;"Eb8CGrGjlShqKSq:Q.?MW"tqAYlo4T`*>7?%sBTP:0TDY*&-/=O8sl#?bb!hsV6'qD5(8A];X</4n$d&:80*)tTc`-7Et&#/\>M<k##XLj"b%_F;Yr$7MY7PC%l>GmmKf68;(t/P!M5m.\Y>;7"XG!Me,\]-rRgT*H$+pc%!.9VR><ZdI"PJ3>.W0W)*<6n^mb"82W>Y_#I6;6Z1t4GYH&*][9THF3%'>?oN<4/]?LG4JK%f=D8,Gn,t"jH<..-=eAIR&VLC#[^F7c4Z_U'L0MG;*MsY1/$'&giML#98KS/=BLs)k]bO4m6Ic_]T24)^>jt@-pjB]_7a@YbpNg>mDkBF\dn)2*h*"*AB$[Ph%P[>*9E'%YE2NEJQ8S$W&_9/r6nC_V&'>A1\f8H"*Zg/o\19(]ssM?>UZL$I+"R:EB6<u+s=Q!QZ1<1&E/$,33kVj;^t.>dt$iqe.[ZC;j_OY!,b"]<CHHqmX"#1&4Yc)"Al7!/&g4eCJ>Y]iV.L1r1A'IXFI=0$qk:'cLJ"ro(RtAdh@Y4YP>c@MAD*qbu;pH9V;]Kas>;*qY9p0KEYQ%poM./m:'hoe!&PLl2PRl,sN/l9\e*C_>amFLE&\Z?_B"-U(kj!-hU?HCthO&HdLs#(fHYeDT<ik@O&J;oiki*'L!R_j>G,;1QU%<Y.aoQ6)?.~>endstream
+1 0 0 1 0 0 cm  BT /F1 12 Tf 14.4 TL ET
+q
+1 0 0 1 62.69291 769.8661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: \311 s\363 um aplicativo, o que impede uma empresa grande de copiar?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 724.3661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 33.5 Tm /F1 10 Tf 14.5 TL .321654 Tw (R: A tecnologia \351 replic\341vel, mas o valor est\341 na execu\347\343o: entender o fluxo real do cuidado domiciliar, a) Tj T* 0 Tw .601751 Tw (confian\347a das empresas e fam\355lias, e o cuidado com seguran\347a e LGPD que j\341 est\341 embutido. Copiar a) Tj T* 0 Tw (tela \351 f\341cil, copiar a opera\347\343o e a confian\347a n\343o.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 700.3661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Voc\352s dependem do Firebase. E se o Google mudar pre\347o ou descontinuar?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 654.8661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 33.5 Tm /F1 10 Tf 14.5 TL 1.710542 Tw (R: O risco existe em qualquer fornecedor de nuvem. A mitiga\347\343o \351 que a l\363gica de neg\363cio est\341 no) Tj T* 0 Tw .01436 Tw (aplicativo, n\343o amarrada a recursos exclusivos, e os dados s\343o export\341veis, o que mant\351m a porta aberta) Tj T* 0 Tw (para migrar se algum dia fizer sentido. No est\341gio atual, o custo-benef\355cio do Firebase \351 muito favor\341vel.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 630.8661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: \311 um desenvolvedor s\363. E se voc\352 sair ou ficar indispon\355vel?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 585.3661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 33.5 Tm /F1 10 Tf 14.5 TL 1.779398 Tw (R: \311 um risco real de qualquer projeto em est\341gio inicial. A mitiga\347\343o \351 c\363digo organizado, tipado e) Tj T* 0 Tw 2.015318 Tw (documentado, com as decis\365es e regras registradas, o que encurta muito o tempo de outra pessoa) Tj T* 0 Tw (assumir. Crescer o time \351 parte natural do pr\363ximo passo.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 561.3661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Dados de sa\372de s\343o sens\355veis. Qual o plano se houver um incidente?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 515.8661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 33.5 Tm /F1 10 Tf 14.5 TL 2.400574 Tw (R: A LGPD prev\352 comunicar a controladora e apoiar a resposta \340 ANPD, e isso est\341 no contrato.) Tj T* 0 Tw 1.016651 Tw (Tecnicamente, o isolamento por empresa e por cuidador limita o alcance de qualquer exposi\347\343o, e a) Tj T* 0 Tw (trilha de auditoria ajuda a entender o que aconteceu.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 491.8661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: Um cuidador consegue burlar o isolamento e ver pacientes de outros?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 446.3661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 33.5 Tm /F1 10 Tf 14.5 TL 1.239461 Tw (R: N\343o pela tela nem por chamada direta ao banco: a decis\343o de acesso \351 da regra do servidor, que) Tj T* 0 Tw .896457 Tw (exige o cuidador na lista de autorizados do paciente. Uma consulta mais ampla do que o permitido \351) Tj T* 0 Tw (recusada inteira, n\343o filtrada.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 422.3661 cm
+q
+.078431 .129412 .227451 rg
+BT 1 0 0 1 0 4 Tm /F2 11 Tf 15 TL (P: J\341 tem cliente pagante?) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 391.3661 cm
+q
+.164706 .2 .25098 rg
+BT 1 0 0 1 0 19 Tm /F1 10 Tf 14.5 TL 1.942339 Tw (R: Responda com a verdade do seu momento. Se j\341 tem, cite. Se est\341 em valida\347\343o ou conversas) Tj T* 0 Tw (iniciais, diga isso com clareza e mostre o que j\341 est\341 pronto: o produto funcionando, testado e no ar.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 375.3661 cm
+q
+.352941 .4 .470588 rg
+BT 1 0 0 1 0 4 Tm /F3 9 Tf 13 TL (Dica: Nunca invente tra\347\343o. Investidor experiente percebe, e honestidade sobre o est\341gio conta a seu favor.) Tj T* ET
+Q
+Q
+q
+1 0 0 1 62.69291 362.3661 cm
+Q
+q
+1 0 0 1 62.69291 360.3661 cm
+q
+1 w
+1 J
+.882353 .894118 .92549 RG
+n 0 0 m 469.8898 0 l S
+Q
+Q
+q
+1 0 0 1 62.69291 353.3661 cm
+Q
+q
+1 0 0 1 62.69291 342.3661 cm
+q
+.352941 .4 .470588 rg
+BT 1 0 0 1 0 2.6 Tm /F1 8.4 Tf 11 TL (Benevita, aplicativo de acompanhamento e gest\343o para cuidado domiciliar. Documento de prepara\347\343o interna.) Tj T* ET
+Q
+Q
+ 
+
+endstream
 endobj
 xref
 0 18
 0000000000 65535 f 
-0000000061 00000 n 
-0000000112 00000 n 
-0000000219 00000 n 
-0000000331 00000 n 
-0000000536 00000 n 
-0000000651 00000 n 
-0000000856 00000 n 
-0000001061 00000 n 
-0000001266 00000 n 
-0000001471 00000 n 
-0000001541 00000 n 
-0000001835 00000 n 
-0000001919 00000 n 
-0000004312 00000 n 
-0000006800 00000 n 
-0000009392 00000 n 
-0000011886 00000 n 
+0000000015 00000 n 
+0000000054 00000 n 
+0000000141 00000 n 
+0000000190 00000 n 
+0000005959 00000 n 
+0000006158 00000 n 
+0000006209 00000 n 
+0000006316 00000 n 
+0000006428 00000 n 
+0000006543 00000 n 
+0000006744 00000 n 
+0000012433 00000 n 
+0000018349 00000 n 
+0000018550 00000 n 
+0000018751 00000 n 
+0000024557 00000 n 
+0000024758 00000 n 
 trailer
 <<
-/ID 
-[<c489d14275aac3608d937a55701782bc><c489d14275aac3608d937a55701782bc>]
-% ReportLab generated PDF document -- digest (opensource)
-
-/Info 11 0 R
-/Root 10 0 R
 /Size 18
+/Root 3 0 R
+/Info 1 0 R
 >>
 startxref
-13979
+29088
 %%EOF

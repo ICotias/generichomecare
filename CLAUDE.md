@@ -4,7 +4,15 @@
 App React Native (Expo SDK 54, dev-client) com Firebase JS SDK (Auth, Firestore, Storage), Zustand, React Navigation v7, TypeScript strict.
 
 ## Contexto do projeto
-Benevita é um app de gestão de cuidado domiciliar com três perfis: empresa (admin), enfermeiro e família. O enfermeiro registra o plantão pelo celular, com funcionamento offline. A família acompanha o cuidado em tempo real. A gestão administra pacientes, equipe, escalas e financeiro.
+Benevita é um app de gestão de cuidado domiciliar com três perfis: empresa (admin), profissional de cuidado e família. O profissional registra o plantão pelo celular, com funcionamento offline. A família acompanha o cuidado em tempo real. A gestão administra pacientes, equipe, escalas e financeiro.
+
+**Como chamar o profissional (regra de nomenclatura):** o título visível é **cuidador**, em todos os modos. "Enfermeiro" sobrevive apenas como **dado de cadastro**, isto é, uma das categorias do COREN, ao lado de técnico e auxiliar.
+
+- **Área do admin:** "cuidador". A empresa contrata cuidadores, que podem ou não ter registro em conselho.
+- **Modo familiar:** "cuidador". É o cuidador que a família já tem e convida para o aplicativo.
+- **Modo autônomo:** "cuidador". Ele é dono do próprio tenant e atende por conta própria.
+- **Telas do próprio profissional:** termo neutro ("Profissional"), porque a mesma tela atende os três modos.
+- **Nunca renomear** `role: 'nurse'`, o campo `enfermeirosAutorizados` nem as categorias do COREN (`enfermeiro`, `tecnico`, `auxiliar`). Os dois primeiros são dados gravados no Firestore, e o terceiro é taxonomia legal do Conselho de Enfermagem.
 
 **O produto é do Iago. É um único aplicativo (o Benevita), NÃO um app white-label.** Nunca escrever, em nenhum material (proposta, LP, documento, deck, copy do app), que o aplicativo é personalizado com a marca/identidade visual da empresa cliente, nem que é "entregue com a marca dela". As empresas são clientes que usam o Benevita, não donas de uma versão própria. A marca é sempre Benevita.
 
@@ -26,8 +34,9 @@ Pegadinhas conhecidas:
 - **Incluído x incluso:** usar a forma certa do particípio. "Incluído" (regular) vai na voz ativa, sempre com os auxiliares ter ou haver (ex.: "tinham incluído o nome na lista"). "Incluso/inclusa" (irregular) vai com ser ou estar, ou como adjetivo (ex.: "o documento está incluso no e-mail", "a taxa foi inclusa na fatura"). Concordância de gênero e número sempre com o substantivo (inclusa, inclusos, inclusas).
 
 ## Comandos
-- Rodar no device: `npx expo run:ios --device` / `npx expo run:android --device` (dev-client). Metro: `npx expo start --dev-client`.
-- Build na nuvem: `npx eas build -p android --profile preview` (gera APK). iPhone físico via cabo com Xcode (conta gratuita, validade de 7 dias).
+- **Build Android = SEMPRE EAS na nuvem (APK):** `npx eas build -p android --profile preview`. Quando o Iago pedir "buildar para Android", é este comando, sem perguntar. Não sugerir `expo run:android` nem build local com Gradle: a máquina dele não tem Android Studio nem `adb` (dá `spawn adb ENOENT`). O EAS builda na nuvem e devolve um link do `.apk` para instalar em qualquer aparelho.
+- Rodar no device iOS: `npx expo run:ios --device` (dev-client, cabo + Xcode, conta gratuita com validade de 7 dias). Metro: `npx expo start --dev-client`.
+- Mudou `app.json` (nome, permissões, ícone)? Rodar `npx expo prebuild` antes de buildar: recarregar o Metro não pega mudança nativa.
 - Checagem de tipos: `yarn typecheck` (`tsc --noEmit`)
 - Lint: `yarn lint` (ESLint, `--max-warnings 0`)
 - Seed de dados: `yarn seed:all`, `yarn seed:teste`, `yarn seed:escalas`
@@ -114,16 +123,16 @@ Ao criar/modificar fluxos de usuário, sempre verificar:
 - [ ] O `empresaId` está preenchido? (se não, admin vai para SetupEmpresa)
 - [ ] Campos obrigatórios (`nome`, `email`, `role`) têm fallbacks?
 
-### 4. Isolamento do enfermeiro (CRÍTICO, não regredir)
+### 4. Isolamento do profissional (CRÍTICO, não regredir)
 
-**O enfermeiro só acessa os pacientes em que foi autorizado.** Nunca todos os da empresa.
+**O profissional só acessa os pacientes em que foi autorizado.** Nunca todos os da empresa. Vale igual para o cuidador da empresa e para o cuidador convidado pela família: o papel é o mesmo (`nurse`).
 
-A autorização é a lista `enfermeirosAutorizados: string[]` no doc do paciente, e as `firestore.rules` exigem o uid do enfermeiro nela. A lista vive no paciente (denormalizada) porque as rules não conseguem consultar escalas.
+A autorização é a lista `enfermeirosAutorizados: string[]` no doc do paciente, e as `firestore.rules` exigem o uid do profissional nela. A lista vive no paciente (denormalizada) porque as rules não conseguem consultar escalas.
 
 - Quem mantém a lista é o **dono do tenant**: o admin da empresa (criar escala autoriza, remover a última escala do par revoga), ou a família no modo familiar.
-- Nas telas do enfermeiro, use `listPatientsVisibleTo(empresaId, uid, originalRole)`. **Nunca `listPatients`**: ela varre a empresa e é negada para o enfermeiro.
-- Passe sempre o `originalRole`, não o `role`. Na simulação admin → enfermeiro o uid continua sendo o do admin, que não está em lista nenhuma.
-- Consultas do enfermeiro precisam vir restritas: `array-contains` em pacientes, `profissionalId == uid` em escalas e plantões. **Rules não são filtros**: consulta ampla é negada inteira, não filtrada.
+- Nas telas do profissional, use `listPatientsVisibleTo(empresaId, uid, originalRole)`. **Nunca `listPatients`**: ela varre a empresa e é negada para o perfil `nurse`.
+- Passe sempre o `originalRole`, não o `role`. Na simulação admin → cuidador o uid continua sendo o do admin, que não está em lista nenhuma.
+- Consultas do profissional precisam vir restritas: `array-contains` em pacientes, `profissionalId == uid` em escalas e plantões. **Rules não são filtros**: consulta ampla é negada inteira, não filtrada.
 - `collectionGroup('registros')` é **só admin**. Uma consulta collectionGroup não enxerga o paciente-pai, então não consegue provar a autorização.
 - Paciente novo nasce com a lista vazia. Autorizar é ato explícito.
 
@@ -139,23 +148,54 @@ A conta nasce com `empresaId: ''`, o que a torna inerte (toda regra de dado exig
 
 Os três caminhos válidos, todos ancorados em alguém que já tem autoridade:
 
-- **Modo empresa:** o admin vincula. A âncora é humana e offline (a empresa conhece a família, tem contrato com ela).
+- **Modo empresa:** o admin cria o paciente e depois convida ou vincula a família. A âncora é humana e offline (a empresa conhece a família, tem contrato com ela).
 - **Modo familiar:** a família cria o paciente. Criar é ser dono. As rules só deixam reivindicar `pacienteId` de paciente cujo `criadoPorUid` é você.
 - **Parente extra:** a titular convida (`inviteRelativeAccount`), e o `pacienteId` vai preenchido por ela.
 
-**Titular x acompanhante** (`familiaTitular`): a titular responde pelo cadastro (edita paciente, prescrições, gerencia enfermeiro, convida parentes). O acompanhante só lê. Campo ausente = titular, e o default nas rules é `true` para não trancar contas antigas fora.
+**Quem cadastra os dados clínicos depende do modo.** No modo empresa é o **admin**: ele cria o paciente e é levado ao assistente de 6 passos (`FamilyOnboardingScreen`, registrado também na `PatientMgmtStack`) para preencher condições, sinais vitais, medicamentos e contatos. A família ali **só acompanha**: as rules recusam update de paciente e de prescrição vindo de família que não seja dona do tenant, e a timeline dela não mostra o card de cadastro pendente. No modo familiar não existe admin, então a titular dona do tenant faz esse cadastro pelo mesmo assistente.
+
+O assistente é um só para os dois papéis: ele lê `originalRole` para escolher a cor de destaque, decidir se pré-preenche o contato principal com os dados de quem está logado (só faz sentido para a família) e ajustar os textos. Não duplicar essa tela.
+
+**Ordem do cadastro no modo empresa: o paciente nasce sozinho.** Criar paciente pede só nome, nascimento e gênero, e emenda direto no assistente clínico. **Não exigir conta de família para criar paciente.** Essa dependência existia porque a família preenchia os dados clínicos; hoje quem preenche é o admin, e o paciente costuma chegar antes de a família querer o aplicativo, quando quer.
+
+O acesso da família é ato separado, feito pela ficha do paciente, com duas portas:
+
+- **Convidar** (`InviteFamily` recebendo `patientId`): cria a conta já vinculada. É o caminho normal.
+- **Vincular** (`LinkFamily`): para quem já tem conta no aplicativo.
+
+Não recolocar um "Convidar família" solto na lista de pacientes: ele é justamente o que produz conta de família sem paciente, o estado que dá trabalho depois. `createPatientStub` grava `origemDados: 'equipe'`, porque quem originou os dados foi a equipe.
+
+**Paciente sem cuidador autorizado é invisível para a equipe.** Como `enfermeirosAutorizados` nasce vazio e a autorização vem da escala, a ficha mostra uma faixa de aviso que leva para Equipe, Escalas. Manter a escala como porta única de autorização no modo empresa: uma segunda porta manual seria revogada sem aviso quando a última escala do par fosse removida.
+
+**Titular x acompanhante** (`familiaTitular`): a titular responde pelo cadastro (edita paciente, prescrições, gerencia cuidador, convida parentes). O acompanhante só lê. Campo ausente = titular, e o default nas rules é `true` para não trancar contas antigas fora.
 
 No modo empresa a família **não** convida: a empresa é a cliente, é quem paga e é a controladora dos dados. Ela já tem `InviteFamilyScreen` e `LinkFamilyScreen`.
 
 Cobrança por acesso extra (futuro) não precisa de campo novo: acessos por paciente = contar `usuarios` com `role: 'family'` e aquele `pacienteId`.
 
-**Limitação conhecida (uma conta = um tenant):** cada usuário tem um só `empresaId`, e o e-mail é único no Firebase Auth. A conta do enfermeiro é dele (e-mail próprio + `mustChangePassword`), nunca compartilhada, então enfermeiro rotativo dentro de UMA família é seguro (uma conta por pessoa, cada ação com o uid dela). Mas o MESMO enfermeiro atendendo VÁRIAS famílias não cabe hoje: o segundo convite com o mesmo e-mail falha (`auth/email-already-exists`), porque a conta já pertence a outro tenant. Resolver de verdade exige participação multi-tenant (usuário pertencer a N tenants) ou identidade do enfermeiro recebendo acesso a pacientes de tenants diferentes. É mudança de arquitetura, adiada até o caso virar comum.
+**Cuidador autônomo e cuidador convidado são exclusivos para a MESMA pessoa. Decisão: inverter quem convida.**
 
-### 7. COREN é atestado pelo admin, e o enfermeiro não edita o próprio
+O Firebase Auth é um e-mail, uma conta. Se o cuidador já se cadastrou como autônomo, o convite de uma família (ou de uma empresa) falha com `auth/email-already-in-use`, e vice-versa. Isso não se resolve com campo novo no Firestore: o erro acontece no Auth, antes de qualquer documento nosso ser lido.
+
+**O caminho oficial, quando os dois lados já usam o Benevita:** o cuidador cadastra o paciente no tenant dele e convida a família. Ela acompanha a mesma timeline, sem conta duplicada e sem prontuário duplicado.
+
+**O preço, e ele é consciente:** o prontuário fica no tenant do cuidador. Se a família trocar de profissional, perde o histórico junto. Aceito por ora, porque a alternativa é participação multi-tenant, que é mudança de arquitetura.
+
+Isso não é só limitação técnica. Se a mesma pessoa existisse nos dois tenants, o prontuário existiria em duas cópias que divergem no primeiro registro. Mesmo com multi-tenant, ainda seria preciso decidir de quem é o paciente.
+
+As duas telas de convite explicam o beco em vez de mostrar erro genérico (`FamilyNurseScreen` e `CreateNurseScreen`). Não regredir isso para `mapAuthError` puro.
+
+**Limitação conhecida (uma conta = um tenant):** cada usuário tem um só `empresaId`, e o e-mail é único no Firebase Auth. A conta do cuidador é dele (e-mail próprio + `mustChangePassword`), nunca compartilhada, então cuidador rotativo dentro de UMA família é seguro (uma conta por pessoa, cada ação com o uid dela). Mas o MESMO cuidador atendendo VÁRIAS famílias não cabe hoje: o segundo convite com o mesmo e-mail falha (`auth/email-already-exists`), porque a conta já pertence a outro tenant. Resolver de verdade exige participação multi-tenant (usuário pertencer a N tenants) ou identidade do cuidador recebendo acesso a pacientes de tenants diferentes. É mudança de arquitetura, adiada até o caso virar comum.
+
+### 7. COREN é opcional, atestado pelo admin, e o profissional não edita o próprio
 
 `corenRegistro` é estruturado (UF, número, categoria) e guarda o atesto de quem conferiu no Cofen, com autor e data. O Cofen não tem API pública, então a conferência é assistida: botão que abre o Sigen e checkbox de confirmação.
 
-O `corenRegistro` é **imutável para o próprio usuário** (rules). Se o enfermeiro pudesse editar o próprio número, o atesto não valeria nada. Isso não impede admin relapso, e não reverifica com o tempo: o que entrega é a trilha de auditoria.
+**O registro é opcional.** Cuidador não é profissão regulamentada e não tem conselho, então a conta existe sem `corenRegistro`. Quem é enfermeiro, técnico ou auxiliar preenche e o admin atesta. O que a tela não aceita é meio caminho: assim que UF ou número é tocado, o conjunto inteiro passa a ser exigido, incluindo o atesto. Registro pela metade, sem conferência, seria pior que registro nenhum. Quem consome o campo já trata a ausência (`formatCoren` devolve string vazia e as telas escondem a linha).
+
+O `corenRegistro` é **imutável para o próprio usuário** (rules). Se o profissional pudesse editar o próprio número, o atesto não valeria nada. Isso não impede admin relapso, e não reverifica com o tempo: o que entrega é a trilha de auditoria.
+
+As categorias (`enfermeiro`, `tecnico`, `auxiliar`) são a taxonomia do Conselho de Enfermagem. Não renomear para cuidador.
 
 ### 8. Apple HIG — Design obrigatório (CRÍTICO)
 **Este app DEVE seguir os padrões de design da Apple (Human Interface Guidelines).** Toda decisão de UI deve ser validada contra o que a Apple faria. Não usar padrões Material Design, Android, ou web.

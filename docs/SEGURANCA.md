@@ -30,7 +30,7 @@ Este é o coração da defesa. Princípios:
 
 Negar por padrão. Comece bloqueando tudo e libere só o necessário, caminho por caminho. Nunca use um `match /{document=**}` aberto.
 
-Menor privilégio. Cada perfil enxerga apenas o que precisa. Admin da empresa, enfermeiro escalado e familiar do paciente têm alcances diferentes.
+Menor privilégio. Cada perfil enxerga apenas o que precisa. Admin da empresa, profissional escalado e familiar do paciente têm alcances diferentes.
 
 Autorização por claim, não por leitura de documento. Hoje, se a regra lê o documento `usuarios/{uid}` para descobrir o papel, cada checagem custa uma leitura e depende de um dado que o cliente ajuda a manter. O padrão mais seguro e barato é colocar `role` e `empresaId` em custom claims, que só o Admin SDK define no servidor e o cliente não consegue forjar.
 
@@ -65,7 +65,7 @@ service cloud.firestore {
 
       match /pacientes/{pacienteId} {
         // Admin vê todos da empresa; familiar vê só o paciente dele;
-        // enfermeiro vê os pacientes que estão na escala dele.
+        // cuidador vê os pacientes que estão na escala dele.
         allow read: if fromApp() && sameEmpresa(empresaId) && (
           isAdmin() ||
           request.auth.token.pacienteId == pacienteId ||

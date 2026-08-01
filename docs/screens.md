@@ -8,7 +8,7 @@
 
 ## Princípios de Design
 
-1. **Reduzir carga cognitiva** — enfermeiros trabalham sob pressão; cada tela tem 1 objetivo claro.
+1. **Reduzir carga cognitiva** — profissionais trabalham sob pressão; cada tela tem 1 objetivo claro.
 2. **Design para interrupção** — autosave em formulários, rascunhos persistidos, recovery path.
 3. **Workflow real** — a navegação espelha o turno: chegou → viu paciente → registrou → passou plantão → saiu.
 4. **Apple HIG** — large titles, bottom tabs (max 5), botões primários no rodapé, inline errors.
@@ -31,7 +31,7 @@ O `SimulationBanner` fica acima do `NavigationContainer` (já implementado).
 
 ---
 
-## 1. Enfermeiro (NurseTabs)
+## 1. Profissional (NurseTabs)
 
 ### Tabs (4)
 
@@ -134,7 +134,7 @@ FamilyTabs
 
 | Tela             | Estado vazio                                      | Estado de erro              |
 |------------------|---------------------------------------------------|-----------------------------|
-| FamilyTimeline   | "Nenhum registro hoje. Seu enfermeiro atualizará." | "Erro de conexão" + retry  |
+| FamilyTimeline   | "Nenhum registro hoje. As atualizações aparecem aqui." | "Erro de conexão" + retry  |
 | PatientInfo      | —                                                 | "Paciente não encontrado"   |
 | HistoryFilter    | "Nenhum registro no período selecionado"          | —                           |
 | VitalsChart      | "Dados insuficientes para gerar gráfico"          | —                           |
@@ -199,7 +199,7 @@ AdminTabs
 |-------------------|---------------------------------------------|---------------------------|
 | AdminDashboard    | "Configure sua primeira escala para começar" | "Erro ao carregar dados" |
 | PatientList       | "Nenhum paciente cadastrado ainda" + CTA    | —                         |
-| TeamList          | "Cadastre seu primeiro enfermeiro" + CTA     | —                         |
+| TeamList          | "Cadastre seu primeiro cuidador" + CTA       | —                         |
 | ScheduleScreen    | "Monte a escala da semana" + CTA             | Conflito highlight        |
 | FinancialScreen   | "Sem dados financeiros este mês"             | —                         |
 
@@ -214,9 +214,9 @@ AdminTabs
 | EmptyState               | Todos               | Ilustração + título + subtítulo + CTA         |
 | LoadingScreen            | Todos               | Spinner centralizado                          |
 | ErrorBanner              | Todos               | Banner inline de erro com retry               |
-| RegisterDetailModal      | Família, Enfermeiro | Detalhes de um registro (medicamento, etc.)   |
+| RegisterDetailModal      | Família, Profissional | Detalhes de um registro (medicamento, etc.) |
 | NotificationSettings     | Todos               | Toggles de preferência de push                |
-| PatientDetailScreen      | Enfermeiro, Admin   | Ficha do paciente (shared, permissões variam) |
+| PatientDetailScreen      | Profissional, Admin | Ficha do paciente (shared, permissões variam) |
 
 ---
 
@@ -224,7 +224,7 @@ AdminTabs
 
 | Perfil     | Telas total | Tabs | Stacks (push) | Modais |
 |------------|-------------|------|----------------|--------|
-| Enfermeiro | 13          | 4    | 7              | 0      |
+| Profissional | 13        | 4    | 7              | 0      |
 | Família    | 8           | 4    | 2              | 2      |
 | Admin      | 14          | 4    | 6              | 4      |
 | Shared     | 6           | —    | —              | —      |

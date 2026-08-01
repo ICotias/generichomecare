@@ -16,7 +16,7 @@ Empresa padrão da maioria dos scripts: `clinica-generica-94hdol`. Quando o scri
 ## Seeds (populam dados de demonstração)
 
 ### seed:all
-Cria a base completa de demonstração de uma semana: 5 enfermeiros, 10 pacientes, 20 familiares, as escalas, os registros da semana e os plantões. É idempotente, ou seja, limpa os dados de seed anteriores antes de recriar e não toca no que você criou manualmente. A senha de todas as contas geradas é `Demo@123`.
+Cria a base completa de demonstração de uma semana: 5 cuidadores, 10 pacientes, 20 familiares, as escalas, os registros da semana e os plantões. É idempotente, ou seja, limpa os dados de seed anteriores antes de recriar e não toca no que você criou manualmente. A senha de todas as contas geradas é `Demo@123`.
 
 ```bash
 yarn seed:all
@@ -34,7 +34,7 @@ node scripts/seedPacienteTeste.js [empresaId] ["Nome do Paciente"]
 ```
 
 ### seed:escalas
-Popula algumas escalas reais para apresentação, vinculando um enfermeiro a pacientes em alguns dias da semana, incluindo hoje, para demonstrar o card Minha escala.
+Popula algumas escalas reais para apresentação, vinculando um cuidador a pacientes em alguns dias da semana, incluindo hoje, para demonstrar o card Minha escala.
 
 ```bash
 yarn seed:escalas
@@ -68,7 +68,7 @@ node scripts/findUser.js <email>
 ```
 
 ### quemCuida
-Mostra qual enfermeiro é responsável por um paciente, com base na escala, e em quais dias.
+Mostra qual cuidador é responsável por um paciente, com base na escala, e em quais dias.
 
 ```bash
 node scripts/quemCuida.js ["Nome do Paciente"] [empresaId]
@@ -88,11 +88,11 @@ node scripts/backfillVisibleToFamily.js
 ```
 
 ### backfillEnfermeirosAutorizados
-Preenche o campo `enfermeirosAutorizados` nos pacientes antigos. **Rode uma vez, logo depois de publicar as regras do isolamento por enfermeiro.**
+Preenche o campo `enfermeirosAutorizados` nos pacientes antigos. **Rode uma vez, logo depois de publicar as regras do isolamento por profissional.**
 
-A partir desta mudança, o enfermeiro só lê o paciente se o uid dele estiver nessa lista. Os pacientes criados antes não têm a lista, então ficam invisíveis para a equipe até o backfill rodar. O script reconstrói a lista a partir das escalas ativas e dos plantões já realizados (quem tem vínculo real com o paciente).
+A partir desta mudança, o profissional só lê o paciente se o uid dele estiver nessa lista. Os pacientes criados antes não têm a lista, então ficam invisíveis para a equipe até o backfill rodar. O script reconstrói a lista a partir das escalas ativas e dos plantões já realizados (quem tem vínculo real com o paciente).
 
-Sempre confira com `--dry-run` antes de aplicar. Pacientes que aparecerem como "sem vínculo" continuam sem enfermeiro autorizado: o admin precisa escalar alguém ou autorizar à mão no detalhe do paciente.
+Sempre confira com `--dry-run` antes de aplicar. Pacientes que aparecerem como "sem vínculo" continuam sem profissional autorizado: o admin precisa escalar alguém ou autorizar à mão no detalhe do paciente.
 
 ```bash
 # confere o que faria, sem escrever
@@ -110,6 +110,15 @@ node scripts/backfillEnfermeirosAutorizados.js --somente-escalas
 | `--dry-run` | Mostra as mudanças sem escrever nada |
 | `--somente-escalas` | Ignora os plantões e considera só as escalas ativas |
 
+### listContas
+Mostra todas as contas existentes, cruzando o Firebase Auth com os perfis do Firestore: e-mail, papel, empresa, status e observações (troca de senha pendente, acompanhante, família sem paciente, conta sem tenant). Também aponta contas órfãs, nos dois sentidos, e lista os pacientes de cada empresa com quantos profissionais estão autorizados.
+
+É o jeito confiável de saber o que existe no banco, em vez de confiar na memória ou no `TEST_ACCOUNTS.md`.
+
+```bash
+node scripts/listContas.js
+```
+
 ### resetApp
 **Zera o app inteiro.** Apaga todos os dados do Firestore (empresas, pacientes, prontuários, escalas, plantões, financeiro, usuários, auditoria) e todas as contas do Auth. ⚠️ Destrutivo e irreversível, só para testes.
 
@@ -121,7 +130,7 @@ node scripts/resetApp.js --yes    # apaga de verdade
 ```
 
 ### seedMinimo
-Cria o mínimo para testar depois do reset: 1 empresa, 1 admin, 1 enfermeiro, 1 família e 1 paciente, tudo amarrado. Senha de todas: `Demo@123`, sem troca obrigatória.
+Cria o mínimo para testar depois do reset: 1 empresa, 1 admin, 1 cuidador, 1 família e 1 paciente, tudo amarrado. Senha de todas: `Demo@123`, sem troca obrigatória.
 
 ```bash
 node scripts/seedMinimo.js
@@ -132,7 +141,7 @@ Contas geradas: `admin@benevita.test`, `enfermeiro@benevita.test`, `familia@bene
 ### resetTestPassword
 Define uma senha conhecida para uma conta, pelo e-mail. **Uso exclusivo de teste.**
 
-Serve para logar em contas convidadas (enfermeiro, família, parente) no simulador, onde a senha temporária não chega porque o WhatsApp não abre. A conta tem `mustChangePassword`, então o app pede a troca no 1º acesso mesmo assim.
+Serve para logar em contas convidadas (profissional, família, parente) no simulador, onde a senha temporária não chega porque o WhatsApp não abre. A conta tem `mustChangePassword`, então o app pede a troca no 1º acesso mesmo assim.
 
 ```bash
 node scripts/resetTestPassword.js <email> [senha]

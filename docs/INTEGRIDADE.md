@@ -30,7 +30,7 @@ Campos obrigatórios na criação. A regra valida que o registro tem tipo, pacie
 
 Visibilidade controlada para a família. Cada registro carrega o campo denormalizado `visibleToFamily`. A família só lê o que é visível e a leitura precisa incluir esse filtro na consulta, senão é negada. Fotos clínicas ficam fora do alcance da família, inclusive no Storage, como defesa em profundidade.
 
-Fila offline com sincronização. O enfermeiro registra em campo, muitas vezes sem sinal. Os registros entram numa fila local (`src/core/services/offlineQueue.ts` e `src/core/hooks/useOfflineSync.ts`) com um `syncStatus`, e sincronizam sozinhos quando a conexão volta. Nada de cuidado se perde por falta de internet, e o estado de cada registro é rastreável.
+Fila offline com sincronização. O profissional registra em campo, muitas vezes sem sinal. Os registros entram numa fila local (`src/core/services/offlineQueue.ts` e `src/core/hooks/useOfflineSync.ts`) com um `syncStatus`, e sincronizam sozinhos quando a conexão volta. Nada de cuidado se perde por falta de internet, e o estado de cada registro é rastreável.
 
 ---
 
@@ -48,7 +48,7 @@ Negação por padrão. Tudo começa bloqueado. Uma regra final `match /{document
 
 Isolamento por empresa. Toda leitura e escrita é amarrada ao `empresaId` do usuário, então uma empresa nunca enxerga dados de outra.
 
-Menor privilégio por papel. Existem três papéis, nurse, family e admin, cada um com alcance próprio. O admin gerencia a empresa, o enfermeiro atua nos pacientes, e a família vê apenas o seu paciente vinculado.
+Menor privilégio por papel. Existem três papéis, nurse, family e admin, cada um com alcance próprio. O admin gerencia a empresa, o profissional atua nos pacientes, e a família vê apenas o seu paciente vinculado.
 
 Proteção contra escalonamento de privilégio. Quando o usuário atualiza o próprio perfil, a regra impede que ele troque o próprio papel ou a própria empresa. Ninguém se promove a admin sozinho.
 
@@ -58,7 +58,7 @@ Sobre o Storage. O app não usa o Firebase Storage. As fotos são guardadas como
 
 ### Correções aplicadas nesta rodada de segurança
 
-Escalas e plantões restritos à equipe. A leitura estava liberada para qualquer membro da empresa, o que deixava a família enxergar a agenda e os plantões de todos os pacientes. Passou a ser exclusiva de enfermeiro e admin, que são os únicos que usam essas telas.
+Escalas e plantões restritos à equipe. A leitura estava liberada para qualquer membro da empresa, o que deixava a família enxergar a agenda e os plantões de todos os pacientes. Passou a ser exclusiva de profissional e admin, que são os únicos que usam essas telas.
 
 .gitignore endurecido. Passou a ignorar qualquer `.env`, o `serviceAccountKey.json` e keystores de release, além dos padrões que já existiam.
 

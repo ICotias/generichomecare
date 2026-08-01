@@ -2,7 +2,7 @@
 
 ## Visão geral
 
-App mobile de **home care para idosos no Brasil**. Três perfis de usuário (Enfermeiro, Família, Admin) com navegação por bottom tabs (4 abas cada). Estética **Apple HIG** — limpo, espaçoso, tipografia clara, sem poluição visual. Plataforma: iOS e Android (React Native).
+App mobile de **home care para idosos no Brasil**. Três perfis de usuário (Profissional, Família, Admin) com navegação por bottom tabs (4 abas cada). Estética **Apple HIG** — limpo, espaçoso, tipografia clara, sem poluição visual. Plataforma: iOS e Android (React Native).
 
 ---
 
@@ -24,7 +24,7 @@ App mobile de **home care para idosos no Brasil**. Três perfis de usuário (Enf
 | Text Primary | `#1E293B` | Títulos, corpo |
 | Text Secondary | `#64748B` | Subtítulos, labels |
 | Text Muted | `#94A3B8` | Placeholders, hints |
-| Nurse (perfil) | `#8B5CF6` | Roxo — cor temática enfermeiro |
+| Nurse (perfil) | `#8B5CF6` | Roxo — cor temática profissional |
 | Family (perfil) | `#06B6D4` | Ciano — cor temática família |
 | Admin (perfil) | `#F97316` | Laranja — cor temática admin |
 
@@ -64,7 +64,7 @@ App mobile de **home care para idosos no Brasil**. Três perfis de usuário (Enf
 
 ## Estrutura de Telas
 
-### Perfil: Enfermeiro (cor: roxo #8B5CF6)
+### Perfil: Profissional (cor: roxo #8B5CF6)
 
 **Bottom Tabs**: Início | Registrar | Plantão | Perfil
 
@@ -86,7 +86,7 @@ App mobile de **home care para idosos no Brasil**. Três perfis de usuário (Enf
 11. **ShiftEvolutionScreen** — Resumo do plantão: lista cronológica de todos os registros feitos durante o turno. Botão para assinar evolução com texto livre.
 
 #### Tab: Perfil
-12. **NurseProfileScreen** — Card com avatar + nome + email + "Enfermeiro(a)". Seção "Informações" (nome, email, telefone, COREN). Botão logout vermelho.
+12. **NurseProfileScreen** — Card com avatar + nome + email + "Profissional". Seção "Informações" (nome, email, telefone, COREN). Botão logout vermelho.
 
 ---
 
@@ -95,14 +95,14 @@ App mobile de **home care para idosos no Brasil**. Três perfis de usuário (Enf
 **Bottom Tabs**: Timeline | Paciente | Histórico | Perfil
 
 #### Tab: Timeline
-13. **FamilyTimelineScreen** — Feed cronológico de registros do paciente vinculado. Cards por tipo (medicamento, sinais vitais, alimentação, etc.) com ícone colorido, horário, enfermeiro responsável, dados resumidos. Pull-to-refresh.
+13. **FamilyTimelineScreen** — Feed cronológico de registros do paciente vinculado. Cards por tipo (medicamento, sinais vitais, alimentação, etc.) com ícone colorido, horário, profissional responsável, dados resumidos. Pull-to-refresh.
 
 #### Tab: Paciente
-14. **PatientInfoScreen** — Dados do paciente read-only (mesmo layout do PatientDetailScreen do enfermeiro, mas sem ações de registro). Nome, idade, diagnósticos, alergias, medicamentos, faixas de sinais vitais.
+14. **PatientInfoScreen** — Dados do paciente read-only (mesmo layout do PatientDetailScreen do profissional, mas sem ações de registro). Nome, idade, diagnósticos, alergias, medicamentos, faixas de sinais vitais.
 15. **VitalsChartScreen** — Gráficos de sinais vitais ao longo do tempo (linhas). Filtro por período (7d/30d/90d). PA, FC, temperatura, SpO₂. Faixas normais sombreadas em verde.
 
 #### Tab: Histórico
-16. **HistoryFilterScreen** — Filtros: tipo de registro (multi-select chips), período (date range), enfermeiro. Lista de resultados filtrados.
+16. **HistoryFilterScreen** — Filtros: tipo de registro (multi-select chips), período (date range), profissional. Lista de resultados filtrados.
 
 #### Tab: Perfil
 17. **FamilyProfileScreen** — Card com avatar + nome + email + "Familiar". Info: nome, email, telefone, parentesco, paciente vinculado. Botão logout.
@@ -114,7 +114,7 @@ App mobile de **home care para idosos no Brasil**. Três perfis de usuário (Enf
 **Bottom Tabs**: Dashboard | Pacientes | Equipe | Perfil
 
 #### Tab: Dashboard
-18. **AdminDashboardScreen** — Cards de métricas: pacientes ativos, enfermeiros ativos, plantões hoje, registros hoje. Lista de atividade recente (últimos registros).
+18. **AdminDashboardScreen** — Cards de métricas: pacientes ativos, cuidadores ativos, plantões hoje, registros hoje. Lista de atividade recente (últimos registros).
 
 #### Tab: Pacientes
 19. **PatientListScreen** — Header "Pacientes" + botão "+ Novo". Search bar. Lista de cards (nome, idade, tipo, diagnósticos, badge de status ativo/inativo/alta). Tap → detalhe.
@@ -123,13 +123,13 @@ App mobile de **home care para idosos no Brasil**. Três perfis de usuário (Enf
 22. **LinkFamilyScreen** — Modal. Form para vincular conta de familiar a um paciente. Email do familiar + botão vincular.
 
 #### Tab: Equipe
-23. **TeamListScreen** — Header "Equipe" + botão "+ Novo". Lista de enfermeiros (avatar, nome, COREN, status). Tap → detalhe.
+23. **TeamListScreen** — Header "Equipe" + botão "+ Novo". Lista de cuidadores (avatar, nome, COREN, status). Tap → detalhe.
 24. **CreateNurseScreen** — Modal. Form: nome, email, telefone, COREN (opcional), senha temporária (input com toggle mostrar/ocultar). Botão "Criar conta".
-25. **NurseDetailScreen** — Dados do enfermeiro, plantões recentes, métricas.
-26. **ScheduleScreen** — Escala de plantões: calendário semanal com enfermeiros × pacientes.
+25. **NurseDetailScreen** — Dados do cuidador, plantões recentes, métricas.
+26. **ScheduleScreen** — Escala de plantões: calendário semanal com cuidadores × pacientes.
 
 #### Tab: Perfil
-27. **AdminProfileScreen** — Card avatar + nome + email + "Administrador". Menu: Financeiro →. Seção "Simular perfil" (3 chips: Enfermeiro/Família/Admin com dots coloridos, chip ativo com borda da cor). Botão logout.
+27. **AdminProfileScreen** — Card avatar + nome + email + "Administrador". Menu: Financeiro →. Seção "Simular perfil" (3 chips: Profissional/Família/Admin com dots coloridos, chip ativo com borda da cor). Botão logout.
 28. **FinancialScreen** — Resumo financeiro da empresa.
 
 ---
@@ -139,7 +139,7 @@ App mobile de **home care para idosos no Brasil**. Três perfis de usuário (Enf
 30. **SetupEmpresaScreen** — Onboarding para admin sem empresa. Form: nome da empresa, CNPJ (opcional), cidade (opcional). Botão "Criar empresa".
 
 ### Componente global
-31. **SimulationBanner** — Banner laranja fixo no topo (acima das tabs) quando admin está simulando outro perfil. Texto: "Simulando: Enfermeiro" + tap para voltar.
+31. **SimulationBanner** — Banner laranja fixo no topo (acima das tabs) quando admin está simulando outro perfil. Texto: "Simulando: Profissional" + tap para voltar.
 
 ---
 

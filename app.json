@@ -7,7 +7,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "scheme": "homecare",
+    "scheme": "benevita",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -16,7 +16,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.generichomecare.app",
+      "bundleIdentifier": "com.benevita.app",
       "buildNumber": "1",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Benevita usa sua localização para registrar check-in e check-out dos plantões.",
@@ -34,7 +34,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#A557B3"
       },
-      "package": "com.generichomecare.app",
+      "package": "com.benevita.app",
       "versionCode": 1,
       "permissions": [
         "android.permission.ACCESS_FINE_LOCATION",

@@ -13,13 +13,22 @@ Se der erro de login/projeto, confirme que `.firebaserc` aponta para `generichom
 
 ---
 
-## 2. Google Services (Android)
+## 2. Google Services: não é necessário
 
-1. Abra o [Firebase Console](https://console.firebase.google.com) → projeto `generichomecare`
-2. Configurações do projeto → Seus apps → Android
-3. Se não tiver app Android, clique "Adicionar app" com package `com.generichomecare.app`
-4. Baixe o `google-services.json`
-5. Coloque na raiz do projeto: `HomecareApp/google-services.json`
+O app usa o **Firebase JS SDK**, que se conecta pelo objeto de configuração em
+`src/core/config/firebase.ts` (`projectId`, `authDomain`). Não são necessários o
+`google-services.json` (Android) nem o `GoogleService-Info.plist` (iOS), e o app
+não depende do bundle identifier para falar com o Firebase.
+
+Identificadores atuais, para referência:
+
+| Item | Valor |
+| --- | --- |
+| Bundle ID (iOS) e package (Android) | `com.benevita.app` |
+| Projeto Firebase | `generichomecare` (não pode ser alterado) |
+
+Só volte a precisar dos arquivos nativos se um dia adotar o React Native Firebase,
+push notifications ou login social.
 
 ---
 

@@ -1,33 +1,53 @@
-# Contas de teste (Benivita)
+# Contas de teste (Benevita)
 
-Arquivo de referência para testes manuais. **Não é usado pelo app.** Não versionar senhas reais aqui.
+Referência para testes manuais. **Não é usado pelo app** e não deve guardar senhas reais.
 
-Empresa/tenant de teste principal: `clinica-generica-94hdol`
-Tenant familiar de teste (modo família): `familia-gabriel-k09b5b`
+> Este arquivo envelhece rápido. Para ver o que existe de fato no banco agora, rode:
+>
+> ```bash
+> node scripts/listContas.js
+> ```
+>
+> Ele cruza o Firebase Auth com os perfis do Firestore e mostra papel, tenant, status,
+> contas órfãs e os pacientes de cada empresa.
 
-## Contas do modo família (tenant familia-gabriel-k09b5b)
+## Contas criadas pelo seed mínimo
 
-| Papel | Nome | E-mail | Detalhe | Senha |
-| --- | --- | --- | --- | --- |
-| Enfermeiro (convidado) | GhxNurse | gabriel.nurse@ghx.com | COREN-BA 456678976857-ENF | temporária, não capturada (ver nota) |
-| Acompanhante (convidado) | Irmao Do Ghx | irmaoghx@ghx.com | Sobrinho(a), só leitura | temporária, não capturada (ver nota) |
-| Titular da família | Gabriel | (e-mail do cadastro) | dona do tenant | a que você definiu no cadastro |
-
-Nota: os convidados nascem com senha temporária + `mustChangePassword: true`. No device real a senha vai na mensagem de WhatsApp. No simulador a mensagem não é enviada, então use o script `resetTestPassword` para definir uma senha conhecida e entrar (o app vai pedir troca no 1º acesso de qualquer forma).
-
-## Contas do seed (empresa clinica-generica-94hdol)
-
-Senha de todas: `Demo@123`
-
-| Papel | E-mail |
-| --- | --- |
-| Enfermeiros | enfermeiro1@demo.com ... enfermeiro5@demo.com |
-| Famílias | familia1a@demo.com, familia1b@demo.com ... familia10a/10b@demo.com |
-
-## Outras contas de teste avulsas
+Geradas por `node scripts/seedMinimo.js`. Senha de todas: `Demo@123`, sem troca obrigatória.
 
 | Papel | E-mail | Observação |
 | --- | --- | --- |
-| Enfermeiro | enfermeiro.test@test.com | usada no teste de isolamento |
-| Enfermeiro | iago.nurse@test.com | `empresaId` ajustado à mão no Console |
-| Admin de simulação | iago.admin@test.com | único e-mail que pode simular papéis (ver `SIMULATION_ADMIN_EMAIL`) |
+| Admin | admin@benevita.test | dono da empresa `clinica-benevita-demo` |
+| Cuidador | enfermeiro@benevita.test | autorizado na paciente Dona Teste |
+| Família | familia@benevita.test | titular, vinculada à Dona Teste |
+
+Paciente: **Dona Teste**, cadastro completo e ativo.
+
+## Contas criadas manualmente durante os testes
+
+Contas que você criar pelo aplicativo (cadastro de família, convite de profissional ou de
+parente) não aparecem aqui. Use o `listContas.js` para vê-las.
+
+Convidados nascem com senha temporária e `mustChangePassword: true`. No aparelho real a
+senha vai na mensagem de WhatsApp; no simulador a mensagem não é enviada, então defina uma
+senha conhecida:
+
+```bash
+node scripts/resetTestPassword.js <email>       # usa Demo@123
+```
+
+## Recomeçar do zero
+
+```bash
+node scripts/resetApp.js            # dry-run, só mostra o que apagaria
+node scripts/resetApp.js --yes      # apaga Firestore + Auth
+node scripts/seedMinimo.js          # recria admin, cuidador, família e paciente
+```
+
+## Identificadores do projeto
+
+| Item | Valor |
+| --- | --- |
+| Bundle ID (iOS) e package (Android) | `com.benevita.app` |
+| Projeto Firebase | `generichomecare` (imutável) |
+| Admin de simulação | `iago.admin@test.com` (único que pode simular papéis) |

@@ -17,7 +17,7 @@ export interface Patient {
   observacoes?: string;
   fotoUrl?: string;
   faixaSinaisVitais: VitalSignsRange;
-  /** Quem originou os dados clínicos: a equipe (admin/enfermagem) ou a família */
+  /** Quem originou os dados clínicos: a equipe (admin/cuidador) ou a família */
   origemDados?: 'equipe' | 'familia';
   /** UID de quem criou o registro do paciente */
   criadoPorUid?: string;
@@ -31,9 +31,9 @@ export interface Patient {
   /** Médico responsável informado (proveniência dos parâmetros clínicos) */
   medicoResponsavel?: ResponsibleDoctor;
   /**
-   * UIDs dos enfermeiros autorizados a ler este paciente e seus registros.
+   * UIDs dos cuidadores autorizados a ler este paciente e seus registros.
    * É a fonte de verdade da autorização: as rules do Firestore exigem que o uid
-   * do enfermeiro esteja nesta lista. Mantida por quem é dono do tenant
+   * do cuidador esteja nesta lista. Mantida por quem é dono do tenant
    * (o admin da empresa, ou a própria família no modo familiar).
    */
   enfermeirosAutorizados: string[];

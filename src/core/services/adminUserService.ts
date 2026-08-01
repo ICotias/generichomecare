@@ -115,7 +115,7 @@ export interface NurseMember {
 }
 
 /**
- * Cria uma conta de enfermeiro no Firebase Auth e um perfil no Firestore.
+ * Cria uma conta de cuidador no Firebase Auth e um perfil no Firestore.
  *
  * Usa uma app secundária para não desautenticar o admin atual.
  */
@@ -230,6 +230,12 @@ export interface InviteFamilyInput {
   telefone: string;
   empresaId: string;
   parentesco: string;
+  /**
+   * Paciente a que a família será vinculada. No modo empresa o paciente já
+   * existe quando o convite sai, então o vínculo nasce pronto e não sobra
+   * conta de família sem paciente.
+   */
+  pacienteId?: string;
 }
 
 export interface InviteFamilyResult {
@@ -250,9 +256,12 @@ const generateTempPassword = (): string => {
 };
 
 /**
- * Convida uma família: cria a conta no Firebase Auth com senha temporária,
- * SEM paciente vinculado (a família cadastra o paciente no 1º acesso) e com
- * mustChangePassword=true (troca obrigatória no 1º login).
+ * Convida uma família: cria a conta no Firebase Auth com senha temporária e
+ * com mustChangePassword=true (troca obrigatória no 1º login).
+ *
+ * Com `pacienteId`, a conta já nasce vinculada, que é o caminho normal no modo
+ * empresa (o convite sai de dentro da ficha do paciente). Sem ele, a conta fica
+ * sem paciente e precisa ser vinculada depois pela LinkFamilyScreen.
  *
  * Retorna a senha temporária para o admin repassar (ex.: via WhatsApp).
  * Usa a app secundária para não deslogar o admin.
@@ -281,7 +290,7 @@ export const inviteFamilyAccount = async (
       role: 'family' satisfies UserRole,
       empresaId: input.empresaId,
       telefone: input.telefone,
-      pacienteId: '', // sem paciente — família cadastra no 1º acesso
+      pacienteId: input.pacienteId ?? '',
       parentesco: input.parentesco,
       familiaTitular: true,
       mustChangePassword: true,
@@ -320,11 +329,11 @@ export interface InviteNurseResult {
 }
 
 /**
- * Convida um enfermeiro com senha temporária e troca obrigatória no 1º acesso.
+ * Convida um cuidador com senha temporária e troca obrigatória no 1º acesso.
  * Espelha o inviteFamilyAccount.
  *
  * Usado no modo familiar, onde a família é dona do próprio tenant e convida o
- * enfermeiro que já cuida do paciente dela. O admin de empresa usa o
+ * cuidador que já cuida do paciente dela. O admin de empresa usa o
  * createNurseAccount (que define a senha à mão).
  *
  * Convidar NÃO dá acesso ao prontuário: quem dá acesso é a autorização no
@@ -392,7 +401,7 @@ export interface InviteRelativeInput {
  *
  * O convidado nasce acompanhante (`familiaTitular: false`): vê a timeline, os
  * sinais vitais e o histórico, mas não edita o paciente, não mexe no
- * enfermeiro e não convida mais ninguém. Quem responde pelo cadastro continua
+ * cuidador e não convida mais ninguém. Quem responde pelo cadastro continua
  * sendo uma pessoa só, e o convite não vira corrente sem fim.
  *
  * O `pacienteId` vem de quem convida, nunca digitado pelo convidado: nenhum
@@ -444,7 +453,7 @@ export const inviteRelativeAccount = async (
 };
 
 /**
- * Lista os enfermeiros de um tenant. Usado pela família dona do tenant
+ * Lista os cuidadores de um tenant. Usado pela família dona do tenant
  * (modo familiar) para ver quem ela já convidou.
  */
 export const listNurses = async (empresaId: string): Promise<NurseMember[]> => {
@@ -496,33 +505,6 @@ export const listFamilyByPatient = async (
       familiaTitular: data.familiaTitular ?? true,
     };
   });
-};
-
-/**
- * Lista contas de família da empresa que AINDA não têm paciente vinculado.
- * Usado pelo admin ao criar um paciente (que precisa ser vinculado a uma
- * família já existente).
- */
-export const listUnlinkedFamily = async (empresaId: string): Promise<FamilyMember[]> => {
-  const q = query(
-    collection(db, Collections.USUARIOS),
-    where('empresaId', '==', empresaId),
-    where('role', '==', 'family')
-  );
-  const snap = await getDocs(q);
-  return snap.docs
-    .map((d) => {
-      const data = d.data();
-      return {
-        uid: d.id,
-        nome: data.nome ?? '',
-        email: data.email ?? '',
-        telefone: data.telefone,
-        parentesco: data.parentesco,
-        pacienteId: data.pacienteId,
-      };
-    })
-    .filter((f) => !f.pacienteId);
 };
 
 /**

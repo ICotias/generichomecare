@@ -26,7 +26,7 @@ interface CheckoutData {
   shiftId: string;
   empresaId: string;
   // Localização obrigatória: é a prova de presença no encerramento do plantão
-  // (protege enfermeiro e empresa). O checkout não acontece sem ela.
+  // (protege cuidador e empresa). O checkout não acontece sem ela.
   latitude: number;
   longitude: number;
 }

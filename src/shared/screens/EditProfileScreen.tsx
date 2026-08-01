@@ -158,8 +158,9 @@ export const EditProfileScreen = () => {
               })}
 
               {/* COREN é somente leitura: quem confere o registro no Cofen e
-                  responde por ele é a empresa. Se o enfermeiro pudesse editar
-                  o próprio número, o atesto do admin não valeria nada. */}
+                  responde por ele é a empresa. Se o profissional pudesse editar
+                  o próprio número, o atesto do admin não valeria nada. A linha
+                  some quando não há registro (cuidador sem conselho). */}
               {isNurse && coren ? (
                 <View style={styles.field}>
                   <Text style={styles.label}>COREN</Text>

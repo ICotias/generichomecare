@@ -44,7 +44,7 @@ export interface CreateScheduleInput {
 // ════════════════════════════════════════════
 
 /**
- * Cria uma nova escala e autoriza o enfermeiro no paciente.
+ * Cria uma nova escala e autoriza o cuidador no paciente.
  *
  * Escalar é o ato que dá acesso: quem está na escala precisa enxergar o
  * paciente. A autorização vive no doc do paciente porque as rules não
@@ -103,7 +103,7 @@ export const listSchedules = async (
 
 /**
  * Lista as escalas ATIVAS de um profissional específico (todos os dias),
- * ordenadas por dia da semana e horário. Usado na "escalinha" do enfermeiro.
+ * ordenadas por dia da semana e horário. Usado na "escalinha" do cuidador.
  */
 export const listSchedulesForNurse = async (
   empresaId: string,
@@ -134,12 +134,12 @@ export const listSchedulesForNurse = async (
 };
 
 /**
- * Remove uma escala. Se era a ÚLTIMA escala daquele enfermeiro naquele
+ * Remove uma escala. Se era a ÚLTIMA escala daquele cuidador naquele
  * paciente, revoga também a autorização de acesso: sem escala e sem
  * autorização explícita, ele não tem por que continuar lendo o prontuário.
  *
  * ponytail: a revogação é inferida da escala, não gerenciada à parte. Teto:
- * se o admin autorizou o enfermeiro à mão para cobrir uma falta (sem criar
+ * se o admin autorizou o cuidador à mão para cobrir uma falta (sem criar
  * escala) e depois apagar uma escala antiga do mesmo par, a cobertura cai
  * junto. Evolução: separar "autorizado por escala" de "autorizado à mão",
  * quando cobertura virar fluxo próprio.

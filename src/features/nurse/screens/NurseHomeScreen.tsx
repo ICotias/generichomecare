@@ -68,7 +68,7 @@ export const NurseHomeScreen = () => {
       setError(null);
 
       try {
-        // Só os pacientes em que este enfermeiro foi autorizado. A restrição é
+        // Só os pacientes em que este cuidador foi autorizado. A restrição é
         // das rules; a consulta apenas obedece.
         const list = await patientService.listPatientsVisibleTo(
           user.empresaId,
@@ -102,7 +102,7 @@ export const NurseHomeScreen = () => {
     loadPatients(true);
   };
 
-  const firstName = user?.nome?.split(' ')[0] ?? 'Enfermeiro(a)';
+  const firstName = user?.nome?.split(' ')[0] ?? 'Profissional';
 
   const filtered = search.trim()
     ? patients.filter((p) => p.nome.toLowerCase().includes(search.toLowerCase().trim()))
@@ -157,7 +157,7 @@ export const NurseHomeScreen = () => {
     );
   };
 
-  // ── Escalinha do enfermeiro (ListHeaderComponent) ──
+  // ── Escalinha do cuidador (ListHeaderComponent) ──
   const today = new Date().getDay();
   const renderEscalaHeader = () => {
     if (escala.length === 0) return null;

@@ -1,5 +1,5 @@
 /**
- * Hook compartilhado pelas telas de registro do enfermeiro.
+ * Hook compartilhado pelas telas de registro do cuidador.
  *
  * Concentra o fluxo repetido em todas elas: guarda de usuário autenticado,
  * estado de envio, chamada ao offlineQueue (online com fallback offline),

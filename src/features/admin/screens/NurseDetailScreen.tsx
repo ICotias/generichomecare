@@ -258,13 +258,13 @@ export const NurseDetailScreen = () => {
           )}
         </View>
 
-        {/* Pacientes que este enfermeiro pode acessar */}
+        {/* Pacientes que este cuidador pode acessar */}
         <Text style={styles.sectionTitle}>PACIENTES AUTORIZADOS</Text>
         <View style={styles.infoCard}>
           {authorized.length === 0 ? (
             <View style={styles.emptyRow}>
               <Text style={styles.emptyText}>
-                Nenhum paciente. O enfermeiro só enxerga quem estiver aqui, e é a
+                Nenhum paciente. O cuidador só enxerga quem estiver aqui, e é a
                 escala que autoriza.
               </Text>
             </View>

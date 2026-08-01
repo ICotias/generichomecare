@@ -1,5 +1,10 @@
 /**
- * Registro profissional do enfermeiro (COREN), com conferência assistida.
+ * Registro profissional no COREN, com conferência assistida.
+ *
+ * OPCIONAL POR DESENHO: cuidador não é profissão regulamentada e não tem
+ * conselho, então a conta existe sem registro. Quem é enfermeiro, técnico ou
+ * auxiliar preenche e o admin atesta. Preencheu pela metade não passa: a tela
+ * exige o conjunto completo assim que o primeiro campo é tocado.
  *
  * POR QUE ASSISTIDA E NÃO AUTOMÁTICA: o Cofen publica a consulta pública
  * (Sigen), mas não oferece API. As APIs de terceiros são pagas e por estado,
@@ -82,7 +87,7 @@ export const CorenField = ({
 
   return (
     <>
-      <InsetGroupedSection header="Registro profissional">
+      <InsetGroupedSection header="Registro profissional (opcional)">
         <InsetRow
           label="Categoria"
           value={COREN_CATEGORIA_LABEL[value.categoria]}
@@ -150,8 +155,10 @@ export const CorenField = ({
       ) : null}
 
       <Text style={styles.hint}>
-        A conferência fica registrada com o seu nome e a data. Quem responde pela
-        checagem do registro é a empresa, não o aplicativo.
+        Cuidador sem registro em conselho pode ficar em branco. Se preencher, o
+        número e a conferência passam a ser obrigatórios. A conferência fica
+        registrada com o seu nome e a data. Quem responde pela checagem do
+        registro é a empresa, não o aplicativo.
       </Text>
 
       <SelectionListModal

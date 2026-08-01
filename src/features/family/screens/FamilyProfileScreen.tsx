@@ -64,7 +64,7 @@ export const FamilyProfileScreen = () => {
           <MenuRow icon="person-outline" label="Paciente Vinculado" onPress={() => navigation.navigate('LinkedPatient')} />
         </View>
 
-        {/* Só a titular dona do próprio tenant gerencia enfermeiro e convida
+        {/* Só a titular dona do próprio tenant gerencia cuidador e convida
             parentes. Quando há uma empresa por trás, é ela quem controla os
             acessos, e o acompanhante convidado só acompanha. */}
         {isOwner && user?.familiaTitular !== false ? (
@@ -73,7 +73,7 @@ export const FamilyProfileScreen = () => {
             <View style={styles.menuCard}>
               <MenuRow
                 icon="medkit-outline"
-                label="Enfermeiro"
+                label="Cuidador"
                 onPress={() => navigation.navigate('FamilyNurse')}
               />
               <View style={styles.menuDivider} />

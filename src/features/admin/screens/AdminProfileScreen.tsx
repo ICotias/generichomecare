@@ -29,7 +29,7 @@ const MenuRow = ({
 );
 
 const ROLE_OPTIONS: { role: UserRole; label: string; styleKey: 'nurse' | 'family' | 'admin' }[] = [
-  { role: 'nurse', label: 'Enfermeiro', styleKey: 'nurse' },
+  { role: 'nurse', label: 'Cuidador', styleKey: 'nurse' },
   { role: 'family', label: 'Família', styleKey: 'family' },
   { role: 'admin', label: 'Admin', styleKey: 'admin' },
 ];
@@ -86,7 +86,7 @@ export const AdminProfileScreen = () => {
           <>
             <Text style={styles.sectionLabel}>SIMULAR PERFIL</Text>
             <Text style={styles.sectionHint}>
-              Visualize o app como enfermeiro ou familiar para testar.
+              Visualize o app como cuidador ou familiar para testar.
             </Text>
             <View style={styles.roleGrid}>
               {ROLE_OPTIONS.map(({ role: optionRole, label, styleKey }) => {

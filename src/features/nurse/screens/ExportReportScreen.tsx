@@ -94,8 +94,8 @@ export const ExportReportScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showPatientPicker, setShowPatientPicker] = useState(false);
 
-  // Load patients — a tela é compartilhada entre enfermeiro e admin, então a
-  // consulta certa depende do papel (o enfermeiro só vê os autorizados).
+  // Load patients — a tela é compartilhada entre cuidador e admin, então a
+  // consulta certa depende do papel (o cuidador só vê os autorizados).
   useEffect(() => {
     if (!user?.empresaId || !user?.uid) return;
     patientService

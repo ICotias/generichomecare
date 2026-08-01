@@ -7,7 +7,7 @@
  * empresa é a cliente, é quem paga, e as telas dela já fazem isso.
  *
  * O convidado é acompanhante: lê a timeline, os sinais vitais e o histórico.
- * Não edita o paciente, não mexe no enfermeiro e não convida mais ninguém. É o
+ * Não edita o paciente, não mexe no cuidador e não convida mais ninguém. É o
  * que mantém uma pessoa só respondendo pelo cadastro, e o que impede o convite
  * de virar corrente sem fim.
  */
@@ -265,7 +265,7 @@ export const FamilyRelativesScreen = () => {
                 <Text style={styles.formSubtitle}>
                   Ele vai acompanhar o cuidado com você: vê a timeline, os sinais
                   vitais e o histórico. Quem edita o cadastro e cuida do
-                  enfermeiro continua sendo você.
+                  cuidador continua sendo você.
                 </Text>
 
                 <FormInput

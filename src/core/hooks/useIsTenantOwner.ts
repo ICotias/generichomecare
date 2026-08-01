@@ -3,7 +3,7 @@
  * (família que se cadastrou sozinha, sem empresa por trás).
  *
  * É o que separa os dois mundos na interface: a família dona do tenant gerencia
- * o próprio enfermeiro; a família atendida por uma empresa não, porque quem
+ * o próprio cuidador; a família atendida por uma empresa não, porque quem
  * decide quem atende é a empresa. As rules aplicam a mesma separação no
  * servidor (isTenantOwner), então isto aqui é só para mostrar ou esconder.
  */

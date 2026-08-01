@@ -59,6 +59,8 @@ export const CreateNurseScreen = () => {
     password: '',
   });
   const [coren, setCoren] = useState<CorenFieldValue>(EMPTY_COREN);
+  /** Admin encostou no registro? Então ele passa a ser exigido por inteiro. */
+  const temRegistro = Boolean(coren.uf || coren.numero.trim());
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [focused, setFocused] = useState<keyof FormState | null>(null);
@@ -88,12 +90,15 @@ export const CreateNurseScreen = () => {
       next.password = 'A senha deve ter ao menos 8 caracteres';
     }
 
-    // O registro profissional é obrigatório: quem entra como enfermeiro vai
-    // ler prontuário e registrar cuidado. Sem registro conferido, não entra.
-    if (!coren.uf) next.corenUf = 'Selecione a UF do conselho';
-    if (!coren.numero.trim()) next.corenNumero = 'Informe o número do COREN';
-    if (!coren.verificado) {
-      next.corenVerificado = 'Consulte o registro no Cofen e confirme a conferência';
+    // O registro é opcional: cuidador não tem conselho profissional. Mas se o
+    // admin começou a preencher, exigimos o conjunto completo e o atesto. Meio
+    // registro, sem conferência, seria pior que registro nenhum.
+    if (temRegistro) {
+      if (!coren.uf) next.corenUf = 'Selecione a UF do conselho';
+      if (!coren.numero.trim()) next.corenNumero = 'Informe o número do COREN';
+      if (!coren.verificado) {
+        next.corenVerificado = 'Consulte o registro no Cofen e confirme a conferência';
+      }
     }
 
     setErrors(next);
@@ -115,12 +120,14 @@ export const CreateNurseScreen = () => {
         nome: form.nome.trim(),
         email: form.email.trim().toLowerCase(),
         telefone: form.telefone.trim(),
-        coren: {
-          uf: coren.uf,
-          numero: coren.numero.trim(),
-          categoria: coren.categoria,
-          verificado: coren.verificado,
-        },
+        coren: temRegistro
+          ? {
+              uf: coren.uf,
+              numero: coren.numero.trim(),
+              categoria: coren.categoria,
+              verificado: coren.verificado,
+            }
+          : undefined,
         password: form.password,
         empresaId: user.empresaId,
         criadoPorUid: user.uid,
@@ -128,12 +135,20 @@ export const CreateNurseScreen = () => {
 
       Alert.alert(
         'Conta criada',
-        `A conta de ${form.nome.trim()} foi criada com sucesso. Informe ao enfermeiro o e-mail e a senha temporária.`,
+        `A conta de ${form.nome.trim()} foi criada com sucesso. Informe ao cuidador o e-mail e a senha temporária.`,
         [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     } catch (error) {
       const code = (error as { code?: string })?.code ?? '';
-      setErrors({ general: mapAuthError(code, 'Não foi possível criar a conta. Tente novamente') });
+      // Mesmo beco do modo familiar: um e-mail, uma conta no Firebase Auth. Se
+      // o cuidador já usa o Benevita (por conta própria ou por outra empresa),
+      // não dá para criar outra conta com o mesmo e-mail.
+      setErrors({
+        general:
+          code === 'auth/email-already-in-use'
+            ? 'Este e-mail já tem conta no Benevita. Se o cuidador já usa o aplicativo por outra empresa ou por conta própria, ele precisa de um e-mail diferente para atender pela sua.'
+            : mapAuthError(code, 'Não foi possível criar a conta. Tente novamente'),
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -164,9 +179,9 @@ export const CreateNurseScreen = () => {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.title}>Novo enfermeiro</Text>
+            <Text style={styles.title}>Novo cuidador</Text>
             <Text style={styles.subtitle}>
-              Cadastre uma conta de enfermeiro. O profissional usará o e-mail e a senha
+              Cadastre uma conta de cuidador. O profissional usará o e-mail e a senha
               temporária para entrar no app.
             </Text>
 
@@ -190,7 +205,7 @@ export const CreateNurseScreen = () => {
                 label="E-mail"
                 value={form.email}
                 onChangeText={(v) => updateField('email', v)}
-                placeholder="enfermeiro@exemplo.com"
+                placeholder="cuidador@exemplo.com"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}

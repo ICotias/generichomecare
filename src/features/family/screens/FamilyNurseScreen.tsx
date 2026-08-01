@@ -1,11 +1,11 @@
 /**
- * A família gerencia o enfermeiro que cuida do paciente dela (modo familiar).
+ * A família gerencia o cuidador que cuida do paciente dela (modo familiar).
  *
  * Só existe para a família DONA do tenant, que se cadastrou sozinha. Quando há
  * uma empresa por trás, é ela quem monta a equipe, e esta tela não aparece.
  *
  * Convidar e autorizar são dois atos, mas aqui acontecem juntos: no modo
- * familiar não existe escala, então convidar o enfermeiro é justamente dizer
+ * familiar não existe escala, então convidar o cuidador é justamente dizer
  * que ele cuida deste paciente. Remover o acesso é separado, e é imediato.
  */
 import { useState, useCallback, useRef } from 'react';
@@ -122,7 +122,7 @@ export const FamilyNurseScreen = () => {
 
   const validate = (): boolean => {
     const next: FormErrors = {};
-    if (!form.nome.trim()) next.nome = 'Informe o nome do enfermeiro';
+    if (!form.nome.trim()) next.nome = 'Informe o nome do cuidador';
     if (!form.email.trim()) {
       next.email = 'Informe o e-mail';
     } else if (!EMAIL_REGEX.test(form.email.trim())) {
@@ -142,7 +142,7 @@ export const FamilyNurseScreen = () => {
     Keyboard.dismiss();
     if (!validate()) return;
     if (!user?.empresaId || !user?.uid || !user?.pacienteId) {
-      setErrors({ general: 'Cadastre o paciente antes de convidar o enfermeiro.' });
+      setErrors({ general: 'Cadastre o paciente antes de convidar o cuidador.' });
       return;
     }
 
@@ -176,7 +176,7 @@ export const FamilyNurseScreen = () => {
       await load();
 
       Alert.alert(
-        'Enfermeiro convidado',
+        'Cuidador convidado',
         `${nome} já pode entrar com:\n\nE-mail: ${email}\nSenha temporária: ${tempPassword}\n\n` +
           'No primeiro acesso ele troca a senha.',
         [
@@ -189,8 +189,15 @@ export const FamilyNurseScreen = () => {
       );
     } catch (error) {
       const code = (error as { code?: string })?.code ?? '';
+      // O e-mail já existir aqui quase sempre significa uma coisa só: esse
+      // cuidador já usa o Benevita por conta própria. O Firebase Auth é um
+      // e-mail por conta, então não dá para criar outra. A saída é inverter
+      // quem convida, e o usuário precisa saber disso, senão fica num beco.
       setErrors({
-        general: mapAuthError(code, 'Não foi possível convidar. Tente novamente'),
+        general:
+          code === 'auth/email-already-in-use'
+            ? 'Este cuidador já tem conta no Benevita. Peça para ele cadastrar o paciente na conta dele e convidar você: assim vocês acompanham o mesmo cuidado, sem cadastro duplicado.'
+            : mapAuthError(code, 'Não foi possível convidar. Tente novamente'),
       });
     } finally {
       setIsSubmitting(false);
@@ -257,13 +264,13 @@ export const FamilyNurseScreen = () => {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <ScreenHeader title="Enfermeiro" subtitle="Quem cuida" showBack />
+        <ScreenHeader title="Cuidador" subtitle="Quem cuida" showBack />
 
         {!user?.pacienteId ? (
           <View style={styles.card}>
             <Text style={styles.emptyText}>
               Cadastre o paciente primeiro. Depois disso você pode convidar o
-              enfermeiro que cuida dele.
+              cuidador que cuida dele.
             </Text>
           </View>
         ) : (
@@ -271,7 +278,7 @@ export const FamilyNurseScreen = () => {
             {nurses.length === 0 ? (
               <View style={styles.card}>
                 <Text style={styles.emptyText}>
-                  Nenhum enfermeiro ainda. Convide quem já cuida do paciente para
+                  Nenhum cuidador ainda. Convide quem já cuida do paciente para
                   que ele registre o cuidado por aqui.
                 </Text>
               </View>
@@ -317,7 +324,7 @@ export const FamilyNurseScreen = () => {
 
             {showForm ? (
               <View style={styles.form}>
-                <Text style={styles.formTitle}>Convidar enfermeiro</Text>
+                <Text style={styles.formTitle}>Convidar cuidador</Text>
                 <Text style={styles.formSubtitle}>
                   Ele recebe um acesso próprio e passa a registrar o cuidado no
                   aplicativo. Você pode remover o acesso quando quiser.
@@ -347,7 +354,7 @@ export const FamilyNurseScreen = () => {
                     setForm((p) => ({ ...p, email: v }));
                     setErrors((p) => ({ ...p, email: undefined, general: undefined }));
                   }}
-                  placeholder="enfermeiro@exemplo.com"
+                  placeholder="cuidador@exemplo.com"
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -431,7 +438,7 @@ export const FamilyNurseScreen = () => {
                 activeOpacity={0.7}
               >
                 <Ionicons name="add-circle-outline" size={20} color={colors.family} />
-                <Text style={styles.addButtonText}>Convidar enfermeiro</Text>
+                <Text style={styles.addButtonText}>Convidar cuidador</Text>
               </TouchableOpacity>
             )}
           </>

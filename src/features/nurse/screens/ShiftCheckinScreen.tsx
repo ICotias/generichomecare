@@ -53,9 +53,16 @@ export const ShiftCheckinScreen = () => {
         scheduleService.listSchedulesForNurse(user.empresaId, user.uid),
       ])
         .then(([list, escala]) => {
-          // Sem nenhuma escala cadastrada, o enfermeiro atende quem foi
-          // autorizado: é o caso do modo familiar, onde a família convida o
-          // enfermeiro dela e não existe grade de horários.
+          // Sem nenhuma escala cadastrada, o profissional atende quem foi
+          // autorizado. É o caso dos dois modos sem empresa: o familiar, em que
+          // a família convida o cuidador dela, e o autônomo, em que ele é dono
+          // do próprio tenant. Nenhum dos dois tem grade de horários.
+          //
+          // ponytail: a detecção do modo é por heurística (não tem escala, logo
+          // não é modo empresa). Só se sustenta porque no modo empresa a
+          // autorização nasce da escala e morre com ela. Se um dia existir
+          // cuidador autorizado sem escala numa empresa, trocar por
+          // useIsTenantOwner, que responde pelo fato em vez do sintoma.
           const today = new Date().getDay();
           const scheduledIds = new Set(
             escala.filter((e) => e.diaSemana === today).map((e) => e.pacienteId)
@@ -217,7 +224,7 @@ export const ShiftCheckinScreen = () => {
               Selecione o paciente e inicie seu plantão
             </Text>
 
-            {/* Patient selector — apenas pacientes da escala do enfermeiro */}
+            {/* Patient selector — apenas pacientes da escala do cuidador */}
             <View style={styles.patientSelector}>
               <Text style={styles.sectionLabel}>PACIENTE (ESCALA DE HOJE)</Text>
               {patients.filter((p) => p.status === 'ativo').length === 0 ? (

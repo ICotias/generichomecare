@@ -27,7 +27,7 @@ const toCorenRegistro = (raw: unknown): CorenRegistro | undefined => {
 };
 
 /**
- * Único e-mail autorizado a simular outras roles (admin → enfermeiro/família).
+ * Único e-mail autorizado a simular outras roles (admin → cuidador/família).
  * Admins comuns NÃO têm acesso a esse recurso.
  */
 export const SIMULATION_ADMIN_EMAIL = 'iago.admin@test.com';
@@ -153,6 +153,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         pacienteId: data.pacienteId ?? undefined,
         parentesco: data.parentesco ?? undefined,
         familiaTitular: data.familiaTitular ?? true,
+        planoAutonomo: data.planoAutonomo ?? undefined,
         mustChangePassword: data.mustChangePassword ?? false,
         lgpdConsentAt: data.lgpdConsentAt?.toDate?.() ?? undefined,
         createdAt: data.createdAt?.toDate?.() ?? new Date(),
@@ -213,6 +214,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               pacienteId: data.pacienteId ?? undefined,
               parentesco: data.parentesco ?? undefined,
               familiaTitular: data.familiaTitular ?? true,
+              planoAutonomo: data.planoAutonomo ?? undefined,
               mustChangePassword: data.mustChangePassword ?? false,
               lgpdConsentAt: data.lgpdConsentAt?.toDate?.() ?? undefined,
               createdAt: data.createdAt?.toDate?.() ?? new Date(),

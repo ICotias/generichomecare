@@ -32,9 +32,10 @@ import { db } from '../../../core/config/firebase';
 import { Collections } from '../../../shared/constants/firestore';
 import { useAuthStore } from '../../../core/hooks/useAuth';
 import * as empresaService from '../../../core/services/empresaService';
+import type { UserRole } from '../../../core/types';
 import { FormInput, SegmentedControl } from '../../../shared/components/ui';
 
-type Perfil = 'empresa' | 'familia';
+type Perfil = 'empresa' | 'familia' | 'autonomo';
 
 interface FormState {
   nome: string;
@@ -60,6 +61,7 @@ export const SetupEmpresaScreen = () => {
   const cidadeRef = useRef<TextInput>(null);
 
   const isEmpresa = perfil === 'empresa';
+  const isAutonomo = perfil === 'autonomo';
 
   const updateField = (key: keyof FormState, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -93,6 +95,15 @@ export const SetupEmpresaScreen = () => {
           adminUid: user.uid,
         });
         setUser({ ...user, role: 'admin', empresaId, updatedAt: new Date() });
+      } else if (isAutonomo) {
+        // O papel continua 'nurse': tudo que ele faz em campo já funciona
+        // nesse papel. Ser dono do tenant é o que destrava cadastrar paciente.
+        await setRole('nurse', user.uid);
+        const { empresaId } = await empresaService.createSoloTenant(
+          user.uid,
+          user.nome || 'Cuidador'
+        );
+        setUser({ ...user, role: 'nurse', empresaId, updatedAt: new Date() });
       } else {
         await setRole('family', user.uid);
         const { empresaId } = await empresaService.createFamilyTenant(
@@ -135,8 +146,9 @@ export const SetupEmpresaScreen = () => {
             <View style={styles.segmentWrapper}>
               <SegmentedControl
                 options={[
-                  { key: 'empresa', label: 'Sou uma empresa' },
-                  { key: 'familia', label: 'Sou uma família' },
+                  { key: 'empresa', label: 'Empresa' },
+                  { key: 'autonomo', label: 'Cuidador' },
+                  { key: 'familia', label: 'Família' },
                 ]}
                 selectedKey={perfil}
                 onSelect={(k) => {
@@ -149,8 +161,10 @@ export const SetupEmpresaScreen = () => {
             <View style={styles.explainer}>
               <Text style={styles.explainerText}>
                 {isEmpresa
-                  ? 'Você administra uma empresa de cuidado domiciliar. Vai cadastrar pacientes, montar a equipe de enfermagem, definir escalas e acompanhar o financeiro.'
-                  : 'Você cuida de alguém da sua família e quer centralizar as informações em um só lugar. Vai cadastrar o paciente, convidar o enfermeiro que já atende e acompanhar o cuidado no dia a dia.'}
+                  ? 'Você administra uma empresa de cuidado domiciliar. Vai cadastrar pacientes, montar a equipe de cuidadores, definir escalas e acompanhar o financeiro.'
+                  : isAutonomo
+                    ? 'Você atende por conta própria, sem empresa por trás. Vai cadastrar os seus pacientes, registrar o cuidado pelo celular e convidar a família de cada um para acompanhar.'
+                    : 'Você cuida de alguém da sua família e quer centralizar as informações em um só lugar. Vai cadastrar o paciente, convidar o cuidador que já atende e acompanhar o cuidado no dia a dia.'}
               </Text>
             </View>
 
@@ -235,7 +249,7 @@ export const SetupEmpresaScreen = () => {
 };
 
 /** Grava o papel escolhido antes de criar o tenant (as rules dependem dele). */
-const setRole = async (role: 'admin' | 'family', uid: string): Promise<void> => {
+const setRole = async (role: UserRole, uid: string): Promise<void> => {
   await updateDoc(doc(db, Collections.USUARIOS, uid), {
     role,
     updatedAt: Timestamp.now(),

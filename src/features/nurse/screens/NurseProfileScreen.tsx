@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
+import { useIsTenantOwner } from '../../../core/hooks/useIsTenantOwner';
 import { formatCoren, COREN_CATEGORIA_LABEL } from '../../../shared/utils/formatters';
 import type { NurseProfileStackParamList } from '../../../core/navigation/RootNavigator';
 
@@ -29,13 +30,17 @@ const MenuRow = ({
 export const NurseProfileScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<NurseProfileStackParamList>>();
-  const { user, signOut } = useAuthStore();
+  const { user, signOut, originalRole } = useAuthStore();
+  const { isOwner } = useIsTenantOwner();
+  const isSoloOwner = isOwner && originalRole === 'nurse';
 
-  const initials = (user?.nome ?? 'E').charAt(0).toUpperCase();
+  const initials = (user?.nome ?? 'P').charAt(0).toUpperCase();
   const registro = user?.corenRegistro;
+  // Sem registro no conselho a conta continua válida (cuidador não tem COREN),
+  // então o rótulo precisa servir aos dois casos.
   const coren = registro
     ? `${COREN_CATEGORIA_LABEL[registro.categoria]} - ${formatCoren(registro)}`
-    : 'Enfermeiro(a)';
+    : 'Profissional';
 
   return (
     <ScrollView
@@ -53,7 +58,7 @@ export const NurseProfileScreen = () => {
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{initials}</Text>
         </View>
-        <Text style={styles.headerName}>{user?.nome ?? 'Enfermeiro(a)'}</Text>
+        <Text style={styles.headerName}>{user?.nome ?? 'Profissional'}</Text>
         <Text style={styles.headerRole}>{coren}</Text>
       </LinearGradient>
 
@@ -65,6 +70,14 @@ export const NurseProfileScreen = () => {
           <MenuRow icon="settings-outline" label="Configurações Pessoais" onPress={() => navigation.navigate('EditProfile')} />
           <View style={styles.menuDivider} />
           <MenuRow icon="time-outline" label="Histórico de Plantões" onPress={() => navigation.navigate('ShiftHistory')} />
+          {/* O financeiro é do tenant. Só faz sentido para o cuidador autônomo,
+              que é dono do próprio: quem é contratado não tem o que ver aqui. */}
+          {isSoloOwner && (
+            <>
+              <View style={styles.menuDivider} />
+              <MenuRow icon="wallet-outline" label="Financeiro" onPress={() => navigation.navigate('Financial')} />
+            </>
+          )}
         </View>
 
         {/* SUPORTE E AJUDA */}

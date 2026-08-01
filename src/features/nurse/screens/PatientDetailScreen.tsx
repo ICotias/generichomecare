@@ -23,6 +23,7 @@ import { format, differenceInYears } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { colors, spacing, fontSize, borderRadius } from '../../../core/theme/theme';
 import { useAuthStore } from '../../../core/hooks/useAuth';
+import { useIsTenantOwner } from '../../../core/hooks/useIsTenantOwner';
 import * as patientService from '../../../core/services/patientService';
 import * as registroService from '../../../core/services/registroService';
 import type { Patient } from '../../../core/types';
@@ -113,7 +114,11 @@ export const PatientDetailScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const route = useRoute<RoutePropType>();
-  const { user } = useAuthStore();
+  const { user, originalRole } = useAuthStore();
+  const { isOwner } = useIsTenantOwner();
+  // Cuidador autônomo: dono do próprio tenant, então administra este paciente.
+  // O cuidador contratado por empresa ou convidado por família só lê.
+  const isSoloOwner = isOwner && originalRole === 'nurse';
 
   const patientId = route.params?.patientId;
 
@@ -273,6 +278,43 @@ export const PatientDetailScreen = () => {
             </View>
           ) : null}
         </View>
+
+        {/* Ações de dono: só o cuidador autônomo administra o cadastro */}
+        {isSoloOwner && (
+          <>
+            {patient.cadastroCompleto === false && (
+              <TouchableOpacity
+                style={styles.ownerBanner}
+                activeOpacity={0.7}
+                onPress={() => navigation.navigate('CompletePatient', { patientId: patient.id })}
+              >
+                <Ionicons name="time-outline" size={18} color={colors.warning} />
+                <Text style={styles.ownerBannerText}>
+                  Cadastro pendente. Toque para completar os dados clínicos.
+                </Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.warning} />
+              </TouchableOpacity>
+            )}
+            <View style={styles.ownerActions}>
+              <TouchableOpacity
+                style={styles.ownerBtn}
+                activeOpacity={0.7}
+                onPress={() => navigation.navigate('CompletePatient', { patientId: patient.id })}
+              >
+                <Ionicons name="create-outline" size={18} color={colors.primary} />
+                <Text style={styles.ownerBtnText}>Editar cadastro</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.ownerBtn}
+                activeOpacity={0.7}
+                onPress={() => navigation.navigate('InviteFamily', { patientId: patient.id })}
+              >
+                <Ionicons name="person-add-outline" size={18} color={colors.primary} />
+                <Text style={styles.ownerBtnText}>Convidar família</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
 
         {/* Exportar relatório */}
         <TouchableOpacity
@@ -571,6 +613,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.lg,
   },
+  ownerBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.warning + '1A',
+    marginBottom: spacing.md,
+  },
+  ownerBannerText: { flex: 1, fontSize: fontSize.sm, color: colors.textPrimary, lineHeight: 18 },
+  ownerActions: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
+  ownerBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primary + '14',
+    borderWidth: 1,
+    borderColor: colors.primary + '33',
+  },
+  ownerBtnText: { color: colors.primary, fontSize: fontSize.sm, fontWeight: '600' },
   exportBtnText: { fontSize: fontSize.md, fontWeight: '700', color: colors.white },
 
   // Info card unificado

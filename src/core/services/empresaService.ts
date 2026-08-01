@@ -44,6 +44,44 @@ export const createEmpresa = async (
 };
 
 /**
+ * Cria o tenant do CUIDADOR AUTÔNOMO: o profissional que atende por conta
+ * própria, sem empresa e sem família contratante por trás.
+ *
+ * Mesma ideia do tenant da família: um `empresas/{id}` invisível na interface,
+ * que mantém uma arquitetura só e isola cada cuidador dos demais pelas regras
+ * de sempre. O que muda é quem é o dono e quantos pacientes cabem.
+ *
+ * O papel continua `nurse`, de propósito. Tudo que ele faz em campo (plantão,
+ * registro, fila offline) já funciona nesse papel. Ser `ownerUid` é o que
+ * destrava criar paciente, preencher o cadastro clínico e convidar a família,
+ * via `isTenantOwner` nas rules.
+ */
+export const createSoloTenant = async (
+  nurseUid: string,
+  nomeCuidador: string
+): Promise<CreateEmpresaResult> => {
+  const now = Timestamp.now();
+  const primeiroNome = nomeCuidador.trim().split(/\s+/)[0] ?? '';
+  const nome = `Atendimento ${primeiroNome}`.trim();
+  const empresaId = generateEmpresaId(nome);
+
+  await setDoc(doc(db, Collections.EMPRESAS, empresaId), {
+    nome,
+    ownerUid: nurseUid,
+    tipo: 'autonomo',
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  await updateDoc(doc(db, Collections.USUARIOS, nurseUid), {
+    empresaId,
+    updatedAt: now,
+  });
+
+  return { empresaId };
+};
+
+/**
  * Cria o tenant de uma FAMÍLIA que não tem empresa por trás.
  *
  * O tenant existe só como container de dados: é o mesmo `empresas/{id}` do
@@ -51,7 +89,7 @@ export const createEmpresa = async (
  * existe. Isso mantém uma arquitetura só, e cada família fica isolada das
  * outras pelas mesmas regras de sempre.
  *
- * `ownerUid` é a família: é o que permite a ela convidar o próprio enfermeiro
+ * `ownerUid` é a família: é o que permite a ela convidar o próprio cuidador
  * e autorizá-lo no paciente (ver isTenantOwner nas rules).
  */
 export const createFamilyTenant = async (

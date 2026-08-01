@@ -7,10 +7,10 @@
  * Somente admins da empresa podem criar/editar.
  * Familiares leem o paciente vinculado a eles.
  *
- * ISOLAMENTO POR ENFERMEIRO: o enfermeiro só lê os pacientes cujo uid está em
+ * ISOLAMENTO POR CUIDADOR: o cuidador só lê os pacientes cujo uid está em
  * `enfermeirosAutorizados`. Isso é regra de servidor (firestore.rules), não
  * filtro de tela. Use listPatientsForNurse (array-contains) nas telas do
- * enfermeiro: listPatients pede a coleção inteira e será NEGADA para ele.
+ * cuidador: listPatients pede a coleção inteira e será NEGADA para ele.
  */
 import {
   collection,
@@ -38,7 +38,9 @@ import type {
   ResponsibleDoctor,
   Prescription,
   UserRole,
+  PlanoAutonomo,
 } from '../types';
+import { LIMITE_PACIENTES, PLANO_LABEL } from '../types';
 
 // ════════════════════════════════════════════
 // Input types
@@ -110,19 +112,14 @@ const EMPTY_ADDRESS: Address = {
 };
 
 /**
- * Cria o paciente a partir do onboarding da família (dados trazidos por ela,
- * a partir do médico do paciente). Marca proveniência `origemDados: 'familia'`
- * e `validadoPorEquipe: false`. Já entra `ativo` (decisão "ativa na hora").
- *
- * IMPORTANTE: escrita sequencial (paciente → vincula usuário → prescrições)
- * porque as Firestore rules das prescrições dependem do `pacienteId` já
- * vinculado no doc do usuário — um batch não enxergaria esse estado.
- */
-/**
  * Cria o "stub" do paciente pelo ADMIN: apenas dados pessoais básicos.
- * Fica marcado como cadastroCompleto: false até a família completar os
- * dados clínicos. NÃO vincula família aqui (o vínculo é feito à parte,
- * via adminUserService.linkExistingFamily).
+ * Fica `cadastroCompleto: false` até o admin passar pelo assistente clínico
+ * (FamilyOnboardingScreen, rota CompletePatient).
+ *
+ * O paciente nasce sozinho, de propósito: quem responde pelos dados clínicos
+ * no modo empresa é o admin, então a conta da família deixou de ser
+ * pré-requisito. Vincular ou convidar a família é ato separado, feito depois
+ * pela ficha do paciente.
  */
 export interface CreatePatientStubInput {
   nome: string;
@@ -130,6 +127,14 @@ export interface CreatePatientStubInput {
   genero: Patient['genero'];
   cpf?: string;
   contatoEmergencia?: EmergencyContact;
+  /**
+   * Cuidador autônomo: o uid dele, para o paciente já nascer autorizado.
+   *
+   * É o único modo em que a lista não começa vazia, porque criar e atender são
+   * a mesma pessoa. Nos outros, autorizar é ato de um terceiro (a empresa pela
+   * escala, a família pelo convite) e a lista nasce vazia de propósito.
+   */
+  autoAutorizarUid?: string;
 }
 
 export const createPatientStub = async (
@@ -151,12 +156,14 @@ export const createPatientStub = async (
     tipoAtendimento: 'integral',
     status: 'ativo',
     faixaSinaisVitais: DEFAULT_VITAL_SIGNS,
-    origemDados: 'familia',
+    // Quem cria e preenche aqui é a equipe, não a família.
+    origemDados: 'equipe',
     criadoPorUid,
     validadoPorEquipe: false,
     cadastroCompleto: false,
-    // Nasce sem enfermeiro autorizado: autorizar é ato explícito do admin.
-    enfermeirosAutorizados: [],
+    // No modo empresa nasce sem cuidador autorizado: autorizar é ato explícito,
+    // via escala. No modo autônomo o próprio criador já entra na lista.
+    enfermeirosAutorizados: input.autoAutorizarUid ? [input.autoAutorizarUid] : [],
     createdAt: now,
     updatedAt: now,
   };
@@ -165,10 +172,13 @@ export const createPatientStub = async (
 };
 
 /**
- * A família COMPLETA um paciente-stub já existente (criado pelo admin).
- * Atualiza os dados clínicos, marca cadastroCompleto: true e cria as prescrições.
+ * COMPLETA um paciente-stub já existente, preenchendo os dados clínicos,
+ * marcando cadastroCompleto: true e criando as prescrições.
+ *
+ * Usado pelo admin no modo empresa (é dele a responsabilidade pelo cadastro) e
+ * pela família dona do próprio tenant no modo familiar, onde não há admin.
  */
-export const completePatientByFamily = async (
+export const completePatient = async (
   empresaId: string,
   pacienteId: string,
   input: CreatePatientByFamilyInput
@@ -237,8 +247,8 @@ export const createPatientByFamily = async (
     origemDados: 'familia',
     criadoPorUid: uid,
     validadoPorEquipe: false,
-    // Nasce sem enfermeiro autorizado. No modo familiar, a própria família
-    // autoriza depois, ao convidar o enfermeiro dela.
+    // Nasce sem cuidador autorizado. No modo familiar, a própria família
+    // autoriza depois, ao convidar o cuidador dela.
     enfermeirosAutorizados: [],
     createdAt: now,
     updatedAt: now,
@@ -319,8 +329,8 @@ export const getPatient = async (
 /**
  * Lista todos os pacientes ativos da empresa. USO ADMIN.
  *
- * Para o enfermeiro esta consulta é negada pelas rules (ele não pode varrer a
- * empresa inteira). Nas telas do enfermeiro, use listPatientsForNurse.
+ * Para o cuidador esta consulta é negada pelas rules (ele não pode varrer a
+ * empresa inteira). Nas telas do cuidador, use listPatientsForNurse.
  */
 export const listPatients = async (
   empresaId: string,
@@ -337,12 +347,56 @@ export const listPatients = async (
 };
 
 /**
- * Lista os pacientes ATIVOS em que o enfermeiro está autorizado.
+ * Lista os pacientes ATIVOS em que o cuidador está autorizado.
  *
  * O array-contains não é conveniência de tela: as rules exigem que a consulta
  * já venha restrita ao uid, senão negam a leitura. Ordenação em memória para
  * não exigir índice composto (array-contains + orderBy).
  */
+/**
+ * Erro de faixa estourada do cuidador autônomo. Tipado para a tela distinguir
+ * "não cabe no seu plano" de "deu erro", que pedem mensagens bem diferentes.
+ */
+export class PatientQuotaError extends Error {
+  constructor(
+    readonly plano: PlanoAutonomo,
+    readonly limite: number,
+    readonly atuais: number
+  ) {
+    super(
+      `O plano ${PLANO_LABEL[plano]} permite ${limite} paciente${limite > 1 ? 's' : ''} ativo${limite > 1 ? 's' : ''}. Você já tem ${atuais}.`
+    );
+    this.name = 'PatientQuotaError';
+  }
+}
+
+/**
+ * Barra a criação de paciente acima da faixa contratada.
+ *
+ * ponytail: a checagem é no cliente, não nas rules. Contar documentos exigiria
+ * uma consulta que a linguagem das rules não faz, e a alternativa (manter um
+ * contador denormalizado no tenant) traz problema de consistência que não se
+ * paga aqui. O risco real é baixo: quem burlaria precisaria chamar a API na
+ * mão, e o teto é comercial, não de segurança. O que as rules garantem é o
+ * isolamento entre tenants, e isso continua inteiro.
+ *
+ * Evolução, se virar problema: mover para uma Cloud Function que cria o
+ * paciente e conta no servidor.
+ */
+export const assertPatientQuota = async (
+  empresaId: string,
+  nurseUid: string,
+  plano: PlanoAutonomo = 'inicio'
+): Promise<void> => {
+  const limite = LIMITE_PACIENTES[plano];
+  if (limite === null) return;
+
+  const atuais = await listPatientsForNurse(empresaId, nurseUid);
+  if (atuais.length >= limite) {
+    throw new PatientQuotaError(plano, limite, atuais.length);
+  }
+};
+
 export const listPatientsForNurse = async (
   empresaId: string,
   nurseUid: string
@@ -360,11 +414,11 @@ export const listPatientsForNurse = async (
 
 /**
  * Lista os pacientes que o usuário PODE ver, escolhendo a consulta certa para
- * o papel. Enfermeiro recebe só os autorizados; admin e família recebem a
+ * o papel. Cuidador recebe só os autorizados; admin e família recebem a
  * lista da empresa.
  *
  * Recebe o papel REAL (originalRole), não o simulado: durante a simulação
- * admin → enfermeiro, o uid continua sendo o do admin e não está em nenhuma
+ * admin → cuidador, o uid continua sendo o do admin e não está em nenhuma
  * lista de autorizados, então a consulta restrita voltaria vazia.
  */
 export const listPatientsVisibleTo = async (
@@ -375,11 +429,11 @@ export const listPatientsVisibleTo = async (
   role === 'nurse' ? listPatientsForNurse(empresaId, uid) : listPatients(empresaId);
 
 // ════════════════════════════════════════════
-// Autorização de enfermeiros
+// Autorização de cuidadores
 // ════════════════════════════════════════════
 
 /**
- * Autoriza um enfermeiro a acessar o paciente. Idempotente (arrayUnion).
+ * Autoriza um cuidador a acessar o paciente. Idempotente (arrayUnion).
  *
  * Quem chama é o dono do tenant: o admin da empresa (que escala e cobre
  * faltas) ou a família, no modo familiar. As rules recusam qualquer outro.
@@ -396,7 +450,7 @@ export const authorizeNurse = async (
 };
 
 /**
- * Remove a autorização de um enfermeiro no paciente. Idempotente (arrayRemove).
+ * Remove a autorização de um cuidador no paciente. Idempotente (arrayRemove).
  * O acesso cai na próxima leitura: as rules consultam o doc do paciente.
  */
 export const deauthorizeNurse = async (
@@ -411,8 +465,8 @@ export const deauthorizeNurse = async (
 };
 
 /**
- * Lista os pacientes da empresa em que um enfermeiro está autorizado.
- * USO ADMIN: alimenta a tela de detalhe do enfermeiro.
+ * Lista os pacientes da empresa em que um cuidador está autorizado.
+ * USO ADMIN: alimenta a tela de detalhe do cuidador.
  */
 export const listPatientsAuthorizedFor = async (
   empresaId: string,
@@ -429,9 +483,9 @@ export const listPatientsAuthorizedFor = async (
 };
 
 /**
- * Revoga o acesso de um enfermeiro a TODOS os pacientes da empresa.
+ * Revoga o acesso de um cuidador a TODOS os pacientes da empresa.
  *
- * Chamado ao desativar ou excluir o enfermeiro: sem isso, ele continuaria
+ * Chamado ao desativar ou excluir o cuidador: sem isso, ele continuaria
  * lendo o prontuário dos pacientes em cuja lista ainda constava, porque a
  * autorização vive no paciente, não no status da conta. Desativar sem revogar
  * seria cosmético.

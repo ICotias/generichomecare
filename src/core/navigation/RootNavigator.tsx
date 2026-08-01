@@ -26,6 +26,8 @@ import { ShiftCheckinScreen } from '../../features/nurse/screens/ShiftCheckinScr
 import { QuickRegisterScreen } from '../../features/nurse/screens/QuickRegisterScreen';
 import { NurseProfileScreen } from '../../features/nurse/screens/NurseProfileScreen';
 import { PatientDetailScreen } from '../../features/nurse/screens/PatientDetailScreen';
+import { SoloPatientListScreen } from '../../features/nurse/screens/SoloPatientListScreen';
+import { SoloCreatePatientScreen } from '../../features/nurse/screens/SoloCreatePatientScreen';
 import { RegisterMedicationScreen } from '../../features/nurse/screens/RegisterMedicationScreen';
 import { RegisterVitalsScreen } from '../../features/nurse/screens/RegisterVitalsScreen';
 import { RegisterFeedingScreen } from '../../features/nurse/screens/RegisterFeedingScreen';
@@ -84,6 +86,8 @@ export type RootStackParamList = {
 // ── Nurse ──
 export type NurseTabParamList = {
   NurseHomeStack: undefined;
+  /** Só existe para o cuidador autônomo, dono do próprio tenant */
+  SoloStack: undefined;
   RegisterStack: undefined;
   ShiftStack: undefined;
   NurseProfileStack: undefined;
@@ -94,11 +98,33 @@ export type NurseProfileStackParamList = {
   EditProfile: undefined;
   Help: undefined;
   ShiftHistory: undefined;
+  /** Cuidador autônomo: o financeiro do tenant é dele */
+  Financial: undefined;
 };
 
 export type NurseHomeStackParamList = {
   NurseHome: undefined;
   PatientDetail: { patientId?: string };
+  ExportReport: { patientId?: string };
+  /**
+   * As duas rotas abaixo só são alcançáveis pelo cuidador dono do tenant, mas
+   * ficam registradas aqui também porque ele chega ao detalhe do paciente pelas
+   * duas pilhas. Sem isso, a ação de dono quebraria vinda do Início.
+   */
+  CompletePatient: { patientId: string };
+  InviteFamily: { patientId?: string } | undefined;
+};
+
+/**
+ * Pilha do CUIDADOR AUTÔNOMO. Só existe para quem é dono do próprio tenant.
+ * Sem equipe e sem escala: aqui ele administra apenas os pacientes dele.
+ */
+export type SoloStackParamList = {
+  SoloPatientList: undefined;
+  SoloCreatePatient: undefined;
+  PatientDetail: { patientId?: string };
+  CompletePatient: { patientId: string };
+  InviteFamily: { patientId?: string } | undefined;
   ExportReport: { patientId?: string };
 };
 
@@ -161,8 +187,10 @@ export type PatientMgmtStackParamList = {
   CreatePatient: undefined;
   AdminPatientDetail: { patientId?: string };
   LinkFamily: { patientId?: string };
-  InviteFamily: undefined;
+  InviteFamily: { patientId?: string } | undefined;
   ExportReport: { patientId?: string };
+  /** Assistente de cadastro clínico, o mesmo usado no modo familiar */
+  CompletePatient: { patientId: string };
 };
 
 export type TeamStackParamList = {
@@ -203,7 +231,29 @@ const NurseHomeStack = () => (
     <NurseHomeStackNav.Screen name="NurseHome" component={NurseHomeScreen} />
     <NurseHomeStackNav.Screen name="PatientDetail" component={PatientDetailScreen} />
     <NurseHomeStackNav.Screen name="ExportReport" component={ExportReportScreen} />
+    {/* Só o cuidador dono do tenant alcança estas duas, mas ele chega ao
+        detalhe do paciente também por aqui, então precisam existir nas duas
+        pilhas. */}
+    <NurseHomeStackNav.Screen name="CompletePatient" component={FamilyOnboardingScreen} options={{ presentation: 'modal' }} />
+    <NurseHomeStackNav.Screen name="InviteFamily" component={InviteFamilyScreen} options={{ presentation: 'modal' }} />
   </NurseHomeStackNav.Navigator>
+);
+
+/**
+ * Pilha do cuidador autônomo: os pacientes dele, do cadastro ao convite da
+ * família. Reaproveita o detalhe do paciente e o assistente clínico, que já
+ * servem os outros modos.
+ */
+const SoloStackNav = createNativeStackNavigator<SoloStackParamList>();
+const SoloStack = () => (
+  <SoloStackNav.Navigator screenOptions={{ headerShown: false }}>
+    <SoloStackNav.Screen name="SoloPatientList" component={SoloPatientListScreen} />
+    <SoloStackNav.Screen name="SoloCreatePatient" component={SoloCreatePatientScreen} options={{ presentation: 'modal' }} />
+    <SoloStackNav.Screen name="PatientDetail" component={PatientDetailScreen} />
+    <SoloStackNav.Screen name="CompletePatient" component={FamilyOnboardingScreen} options={{ presentation: 'modal' }} />
+    <SoloStackNav.Screen name="InviteFamily" component={InviteFamilyScreen} options={{ presentation: 'modal' }} />
+    <SoloStackNav.Screen name="ExportReport" component={ExportReportScreen} />
+  </SoloStackNav.Navigator>
 );
 
 const RegisterStackNav = createNativeStackNavigator<RegisterStackParamList>();
@@ -231,6 +281,7 @@ const NurseProfileStackNav = createNativeStackNavigator<NurseProfileStackParamLi
 const NurseProfileStack = () => (
   <NurseProfileStackNav.Navigator screenOptions={{ headerShown: false }}>
     <NurseProfileStackNav.Screen name="NurseProfile" component={NurseProfileScreen} />
+    <NurseProfileStackNav.Screen name="Financial" component={FinancialScreen} />
     <NurseProfileStackNav.Screen name="EditProfile" component={EditProfileScreen} />
     <NurseProfileStackNav.Screen name="Help" component={HelpScreen} />
     <NurseProfileStackNav.Screen name="ShiftHistory" component={ShiftHistoryScreen} />
@@ -239,8 +290,12 @@ const NurseProfileStack = () => (
 
 const NurseTab = createBottomTabNavigator<NurseTabParamList>();
 const NurseTabNavigator = () => {
-  const { user } = useAuthStore();
+  const { user, originalRole } = useAuthStore();
   const [hasActiveShift, setHasActiveShift] = useState(false);
+  const { isOwner } = useIsTenantOwner();
+  // Dono do próprio tenant e profissional de verdade. O originalRole evita que
+  // a simulação do admin (que é dono da empresa) abra a aba do autônomo.
+  const isSoloOwner = isOwner && originalRole === 'nurse';
 
   useEffect(() => {
     if (!user?.empresaId || !user?.uid) return;
@@ -268,6 +323,11 @@ const NurseTabNavigator = () => {
       }}
     >
       <NurseTab.Screen name="NurseHomeStack" component={NurseHomeStack} options={{ tabBarLabel: 'Início', tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} /> }} />
+      {/* Só o cuidador autônomo administra pacientes. Quem foi contratado por
+          empresa ou convidado por família não é dono do tenant e não vê a aba. */}
+      {isSoloOwner && (
+        <NurseTab.Screen name="SoloStack" component={SoloStack} options={{ tabBarLabel: 'Pacientes', tabBarIcon: ({ color, size }) => <Ionicons name="people-outline" size={size} color={color} /> }} />
+      )}
       {hasActiveShift && (
         <NurseTab.Screen name="RegisterStack" component={RegisterStack} options={{ tabBarLabel: 'Registrar', tabBarIcon: ({ color, size }) => <Ionicons name="add-circle-outline" size={size} color={color} /> }} />
       )}
@@ -347,6 +407,13 @@ const PatientMgmtStack = () => (
     <PatientMgmtStackNav.Screen name="LinkFamily" component={LinkFamilyScreen} options={{ presentation: 'modal' }} />
     <PatientMgmtStackNav.Screen name="InviteFamily" component={InviteFamilyScreen} options={{ presentation: 'modal' }} />
     <PatientMgmtStackNav.Screen name="ExportReport" component={ExportReportScreen} />
+    {/* Mesmo assistente do modo familiar. Quem cadastra os dados clínicos no
+        modo empresa é o admin, então ele precisa da tela aqui também. */}
+    <PatientMgmtStackNav.Screen
+      name="CompletePatient"
+      component={FamilyOnboardingScreen}
+      options={{ presentation: 'modal' }}
+    />
   </PatientMgmtStackNav.Navigator>
 );
 
@@ -398,7 +465,7 @@ export const RootNavigator = () => {
   const { isLoading, isAuthenticated, role, user, originalRole, isSimulating } = useAuthStore();
   const [showSignUp, setShowSignUp] = useState(false);
 
-  // Conta sem tenant → Setup. O enfermeiro convidado tem empresaId, então não
+  // Conta sem tenant → Setup. O cuidador convidado tem empresaId, então não
   // cai aqui. A exclusão antiga (`originalRole !== 'nurse'`) prendia numa tela
   // vazia a conta-fantasma que o inferRoleFromEmail cria como 'nurse' sem
   // empresa: sem tenant, ela precisa passar pelo Setup como qualquer outra.

@@ -4,9 +4,39 @@ export type UserRole = 'nurse' | 'family' | 'admin';
 export type CorenCategoria = 'enfermeiro' | 'tecnico' | 'auxiliar';
 
 /**
- * Registro profissional do enfermeiro, conferido pelo admin no portal do Cofen.
- * O app não valida o registro de forma automática: guarda o dado estruturado e
- * o atesto de quem conferiu, como trilha de auditoria.
+ * Plano do cuidador autônomo, cobrado por faixa de pacientes ativos.
+ *
+ * O `inicio` é permanente e gratuito: serve para conhecer o aplicativo com
+ * paciente real. Ausente = `inicio`, para não trancar conta antiga fora.
+ *
+ * O campo é IMUTÁVEL para o próprio usuário nas rules. Não existe pagamento
+ * dentro do aplicativo, então quem muda de faixa é a operação, fora dele. Se o
+ * cuidador pudesse editar, a faixa não valeria nada.
+ */
+export type PlanoAutonomo = 'inicio' | 'essencial' | 'profissional' | 'ilimitado';
+
+/** Teto de pacientes ativos por faixa. `null` = sem limite. */
+export const LIMITE_PACIENTES: Record<PlanoAutonomo, number | null> = {
+  inicio: 2,
+  essencial: 6,
+  profissional: 15,
+  ilimitado: null,
+};
+
+export const PLANO_LABEL: Record<PlanoAutonomo, string> = {
+  inicio: 'Início',
+  essencial: 'Essencial',
+  profissional: 'Profissional',
+  ilimitado: 'Ilimitado',
+};
+
+/**
+ * Registro no COREN, conferido pelo admin no portal do Cofen. O app não valida
+ * o registro de forma automática: guarda o dado estruturado e o atesto de quem
+ * conferiu, como trilha de auditoria.
+ *
+ * Opcional na conta: cuidador não tem conselho profissional. Presente quando o
+ * profissional é enfermeiro, técnico ou auxiliar.
  */
 export interface CorenRegistro {
   uf: string;
@@ -27,7 +57,7 @@ export interface AppUser {
   role: UserRole;
   empresaId: string;
   telefone: string;
-  /** Enfermeiro: registro profissional estruturado + atesto do admin */
+  /** Registro no conselho + atesto do admin. Ausente para cuidador sem registro. */
   corenRegistro?: CorenRegistro;
   avatarUrl?: string;
   lgpdConsentAt?: Date;
@@ -45,13 +75,17 @@ export interface AppUser {
    * default nas rules é `true` justamente para não trancá-las fora.
    */
   familiaTitular?: boolean;
+  /**
+   * Cuidador autônomo: faixa contratada. Só existe em conta `nurse` que é dona
+   * do próprio tenant (`empresas/{id}.tipo === 'autonomo'`). Ausente = `inicio`.
+   */
+  planoAutonomo?: PlanoAutonomo;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface NurseProfile extends AppUser {
   role: 'nurse';
-  corenRegistro: CorenRegistro;
   especialidades: string[];
   disponibilidade: string;
   valorHora: number;

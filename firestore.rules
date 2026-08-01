@@ -138,6 +138,18 @@ service cloud.firestore {
                     && request.resource.data.role == 'nurse'
                     && request.resource.data.empresaId == getUserData().empresaId;
 
+      // Modo autônomo: o cuidador dono do tenant convida a família do paciente
+      // dele para acompanhar. Só família, e só dentro do tenant dele.
+      //
+      // Ele NÃO cria outro cuidador: o tenant é de uma pessoa só. Se um dia
+      // precisar de equipe, o caminho é o modo empresa, não este.
+      allow create: if hasRole('nurse')
+                    && isTenantOwner(getUserData().empresaId)
+                    && hasField('email')
+                    && hasField('nome')
+                    && request.resource.data.role == 'family'
+                    && request.resource.data.empresaId == getUserData().empresaId;
+
       // Modo familiar: a titular convida parentes para acompanhar o MESMO
       // paciente (ex.: dois irmãos cuidando da mãe).
       //
@@ -164,19 +176,24 @@ service cloud.firestore {
                     && request.auth.uid == uid
                     && resource.data.empresaId == ''
                     && request.resource.data.empresaId == ''
-                    && request.resource.data.role in ['admin', 'family'];
+                    && request.resource.data.role in ['admin', 'family', 'nurse'];
 
       // Setup, passo 2: o usuário reivindica o tenant que acabou de criar.
-      // Vale para admin (empresa) e para família (tenant familiar invisível).
+      // Vale para admin (empresa), família (tenant familiar invisível) e
+      // cuidador autônomo (tenant solo, também invisível).
       //
       // isTenantOwner é o que fecha o buraco: sem ele, qualquer um com
       // empresaId vazio poderia apontar para a empresa de OUTRO e entrar lá
       // com o próprio role. Aqui, o empresaId reivindicado precisa ser de uma
       // empresa cujo ownerUid é o próprio usuário.
+      //
+      // Incluir 'nurse' aqui é seguro pelo mesmo motivo: um cuidador convidado
+      // por empresa ou por família já tem empresaId preenchido, então nem entra
+      // nesta regra. Só passa quem ainda não tem tenant e é dono do que criou.
       allow update: if isAuth()
                     && request.auth.uid == uid
                     && resource.data.empresaId == ''
-                    && resource.data.role in ['admin', 'family']
+                    && resource.data.role in ['admin', 'family', 'nurse']
                     && request.resource.data.role == resource.data.role
                     && isTenantOwner(request.resource.data.empresaId);
 
@@ -217,6 +234,11 @@ service cloud.firestore {
                     && !('corenRegistro' in request.resource.data.diff(resource.data).affectedKeys())
                     && !('familiaTitular' in request.resource.data.diff(resource.data).affectedKeys())
                     && !('status' in request.resource.data.diff(resource.data).affectedKeys())
+                    // planoAutonomo é a faixa contratada do cuidador autônomo.
+                    // Não há pagamento dentro do aplicativo, então quem muda de
+                    // faixa é a operação, fora dele. Se o próprio usuário
+                    // pudesse editar, a trava por faixa não valeria nada.
+                    && !('planoAutonomo' in request.resource.data.diff(resource.data).affectedKeys())
                     && (
                          // pacienteId inalterado
                          request.resource.data.get('pacienteId', '') == resource.data.get('pacienteId', '')
@@ -236,13 +258,14 @@ service cloud.firestore {
     match /empresas/{empresaId} {
       allow read: if belongsToCompany(empresaId);
 
-      // Cria o próprio tenant no setup inicial. Vale para o admin (empresa) e
-      // para a família (tenant familiar invisível).
+      // Cria o próprio tenant no setup inicial. Vale para o admin (empresa),
+      // para a família (tenant familiar invisível) e para o cuidador autônomo
+      // (tenant solo, também invisível).
       // Guardas: precisa ser o dono, e só quem ainda não tem tenant cria um.
       allow create: if isAuth()
                     && request.resource.data.ownerUid == request.auth.uid
                     && getUserData().empresaId == ''
-                    && getUserData().role in ['admin', 'family']
+                    && getUserData().role in ['admin', 'family', 'nurse']
                     && hasField('nome');
 
       // Só admins da própria empresa podem editar
@@ -289,21 +312,50 @@ service cloud.firestore {
                       && hasField('status')
                       && request.resource.data.enfermeirosAutorizados.size() == 0;
 
+        // Cuidador AUTÔNOMO: dono do próprio tenant, cadastra os pacientes dele.
+        //
+        // Ele nasce autorizado no próprio paciente, e é o único caso em que a
+        // lista não começa vazia. Faz sentido: nos outros modos autorizar é ato
+        // de um terceiro (a empresa pela escala, a família pelo convite), aqui
+        // quem cria e quem atende são a mesma pessoa. Exigir lista vazia só o
+        // obrigaria a um segundo write para se autorizar.
+        //
+        // A trava por faixa de plano NÃO mora aqui: contar pacientes exigiria
+        // uma consulta que as rules não fazem. Ela é aplicada no cliente, em
+        // patientService.assertPatientQuota. O que as rules garantem é o
+        // isolamento, que é o que não pode falhar.
+        allow create: if hasRole('nurse')
+                      && belongsToCompany(empresaId)
+                      && isTenantOwner(empresaId)
+                      && request.resource.data.empresaId == empresaId
+                      && request.resource.data.criadoPorUid == request.auth.uid
+                      && hasField('nome')
+                      && hasField('dataNascimento')
+                      && hasField('status')
+                      // Só ele mesmo na lista. Comparação com lista literal
+                      // (`== [x]`) não é confiável na linguagem das rules, o
+                      // mesmo motivo pelo qual `== []` foi trocado por
+                      // `.size() == 0` nas regras acima.
+                      && request.resource.data.enfermeirosAutorizados.size() == 1
+                      && request.auth.uid in request.resource.data.enfermeirosAutorizados;
+
         // Admin atualiza pacientes da sua empresa, incluindo a lista de
         // enfermeiros autorizados (é ele quem escala e quem cobre faltas).
         allow update: if hasRole('admin') && belongsToCompany(empresaId);
 
-        // Família TITULAR edita os dados clínicos que ela mesma trouxe, mas
-        // NÃO mexe na autorização de enfermeiros: no modo empresa, quem decide
-        // quem atende é a empresa.
-        // O acompanhante convidado não entra aqui: ele só lê.
-        allow update: if isFamiliaTitular()
+        // Cuidador autônomo edita os pacientes do próprio tenant: é ele quem
+        // preenche o cadastro clínico pelo assistente.
+        allow update: if hasRole('nurse')
                       && belongsToCompany(empresaId)
-                      && getUserData().pacienteId == pacienteId
-                      && authListUnchanged();
+                      && isTenantOwner(empresaId);
 
-        // Modo familiar: a titular é dona do próprio tenant, então autoriza e
-        // desautoriza o enfermeiro dela.
+        // Modo familiar: a titular DONA DO TENANT cadastra e edita o paciente,
+        // e autoriza ou desautoriza o enfermeiro dela. Não há admin nesse modo.
+        //
+        // No modo empresa a família NÃO edita: quem responde clinicamente pelo
+        // paciente é a empresa, e é dela a responsabilidade pelo cadastro. A
+        // família acompanha, mas não altera diagnóstico, alergia nem medicação.
+        // O acompanhante convidado nunca edita, em nenhum dos modos.
         allow update: if isFamiliaTitular()
                       && belongsToCompany(empresaId)
                       && getUserData().pacienteId == pacienteId
@@ -321,15 +373,26 @@ service cloud.firestore {
                       && getUserData().pacienteId == pacienteId;
           allow create: if hasRole('admin') && belongsToCompany(empresaId);
           allow update: if hasRole('admin') && belongsToCompany(empresaId);
-          // Família TITULAR cria/edita prescrições do seu paciente (onboarding
-          // Fase 1). Acompanhante convidado só lê: medicação é dado clínico,
-          // e quem responde por ele é uma pessoa só.
+          // Medicação é dado clínico. No modo empresa quem cadastra é o admin,
+          // pela regra acima. Só a família DONA DO PRÓPRIO TENANT (modo
+          // familiar, onde não há admin) cria e edita prescrições.
           allow create: if isFamiliaTitular()
                         && belongsToCompany(empresaId)
-                        && getUserData().pacienteId == pacienteId;
+                        && getUserData().pacienteId == pacienteId
+                        && isTenantOwner(empresaId);
           allow update: if isFamiliaTitular()
                         && belongsToCompany(empresaId)
-                        && getUserData().pacienteId == pacienteId;
+                        && getUserData().pacienteId == pacienteId
+                        && isTenantOwner(empresaId);
+          // Cuidador autônomo: mesmo raciocínio. É ele quem preenche o cadastro
+          // clínico no tenant dele, então é ele quem cria a prescrição. A
+          // autorização no paciente continua sendo exigida pela leitura.
+          allow create: if hasRole('nurse')
+                        && belongsToCompany(empresaId)
+                        && isTenantOwner(empresaId);
+          allow update: if hasRole('nurse')
+                        && belongsToCompany(empresaId)
+                        && isTenantOwner(empresaId);
           allow delete: if false;
         }
 
@@ -453,10 +516,17 @@ service cloud.firestore {
 
       // ─── Financeiro ───
       match /financeiro/{financeiroId} {
-        // Apenas admin da empresa lê e escreve
+        // Admin da empresa lê e escreve
         allow read: if hasRole('admin') && belongsToCompany(empresaId);
         allow create, update: if hasRole('admin') && belongsToCompany(empresaId);
         allow delete: if hasRole('admin') && belongsToCompany(empresaId);
+
+        // Cuidador autônomo: o financeiro do tenant é o dele, é um negócio de
+        // uma pessoa. Exige ser DONO, então cuidador contratado por empresa ou
+        // convidado por família continua sem enxergar nada aqui.
+        allow read: if hasRole('nurse') && belongsToCompany(empresaId) && isTenantOwner(empresaId);
+        allow create, update: if hasRole('nurse') && belongsToCompany(empresaId) && isTenantOwner(empresaId);
+        allow delete: if hasRole('nurse') && belongsToCompany(empresaId) && isTenantOwner(empresaId);
       }
     }
 

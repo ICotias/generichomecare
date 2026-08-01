@@ -3949,6 +3949,11 @@ expo-font@~14.0.12:
   dependencies:
     fontfaceobserver "^2.1.0"
 
+expo-image-loader@~57.0.0:
+  version "57.0.0"
+  resolved "https://registry.yarnpkg.com/expo-image-loader/-/expo-image-loader-57.0.0.tgz#111c37408cdd381217897d1b1a7426f43d815c63"
+  integrity sha512-EhwnoPC4T/EMdB7Nsg7qITzhO/qB0hUnmVghmtAKQwwDVaLWWYCGE4NLkes3zk9Ub451SmS/swgPp4PCPzOlnw==
+
 expo-image-loader@~6.0.0:
   version "6.0.0"
   resolved "https://registry.yarnpkg.com/expo-image-loader/-/expo-image-loader-6.0.0.tgz#15230442cbb90e101c080a4c81e37d974e43e072"
@@ -3961,12 +3966,12 @@ expo-image-manipulator@~14.0.8:
   dependencies:
     expo-image-loader "~6.0.0"
 
-expo-image-picker@~17.0.11:
-  version "17.0.11"
-  resolved "https://registry.yarnpkg.com/expo-image-picker/-/expo-image-picker-17.0.11.tgz#8f1537df946f7c19747ba9d0043ef7e3e8cb67dc"
-  integrity sha512-/apkoyukDvsCHHb9fzP+F34A1uQqSzUtYH/2P/xJACNEwq+mwEXjXvVU8bzlJq6ih0Qo1+tpVivIa7B9kYSwOQ==
+expo-image-picker@~57.0.1:
+  version "57.0.1"
+  resolved "https://registry.yarnpkg.com/expo-image-picker/-/expo-image-picker-57.0.1.tgz#b6a160b383f3463ec9cf10754574a4929cde50d9"
+  integrity sha512-DHwFK48ZKkHbGKWgamwfedK/THpM2lvqIFADi60F7EnO5D7limVFz5ZR6UPCa+CKKmNNE7D5wW36oNs61372qA==
   dependencies:
-    expo-image-loader "~6.0.0"
+    expo-image-loader "~57.0.0"
 
 expo-json-utils@~0.15.0:
   version "0.15.0"

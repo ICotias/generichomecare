@@ -1,6 +1,35 @@
 version: 2
+
+# POR QUE ESTE ARQUIVO TEM TANTO `ignore`
+#
+# O Expo SDK fixa a versão compatível de cada módulo nativo, na lista
+# `node_modules/expo/bundledNativeModules.json`. O Dependabot não conhece essa
+# lista e propõe a última versão publicada no npm, que quase sempre é de um SDK
+# mais novo.
+#
+# Isso já aconteceu aqui: PRs subindo `expo-image-picker` de 17 para 57 e
+# `expo-linear-gradient` de 15 para 57. Os pacotes do Expo passaram a numerar
+# junto com o SDK, então o salto parece enorme e o merge quebra o aplicativo.
+#
+# E o pior é o modo de falha: `expo-doctor` e `expo install --check` conferem o
+# que está em `node_modules`, não o que está declarado no package.json. Depois
+# de um merge desses, a máquina de quem não rodou `yarn install` continua
+# passando em tudo, e só o build limpo do EAS quebra. Falha silenciosa.
+#
+# COMO ATUALIZAR ESSES PACOTES, ENTÃO:
+#
+#   npx expo install --check     # mostra o que está fora da faixa do SDK
+#   npx expo install --fix       # corrige para as versões compatíveis
+#   npx expo-doctor              # confere o conjunto
+#
+# Se o `--fix` disser que está tudo certo mas o package.json parecer errado,
+# nomeie os pacotes: `npx expo install <pacote>` resolve pela lista do SDK.
+#
+# Ao subir de SDK, o caminho é `npx expo install expo@^<versão>` seguido de
+# `npx expo install --fix`, nunca um PR do Dependabot.
+
 updates:
-  # Dependências npm do app
+  # ── Dependências npm ──
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
@@ -8,6 +37,7 @@ updates:
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
+
     # Agrupa atualizações menores para reduzir ruído
     groups:
       minor-and-patch:
@@ -15,7 +45,33 @@ updates:
           - "minor"
           - "patch"
 
-  # Atualizações das GitHub Actions (se houver workflows)
+    ignore:
+      # Tudo que o Expo SDK gerencia. Ver o bloco de comentário acima.
+      - dependency-name: "expo"
+      - dependency-name: "expo-*"
+      - dependency-name: "@expo/*"
+      - dependency-name: "react-native"
+      - dependency-name: "react-native-*"
+      - dependency-name: "@react-native/*"
+      - dependency-name: "@react-native-community/*"
+      - dependency-name: "@react-native-async-storage/*"
+
+      # React vem casado com a versão de React Native que o SDK fixa.
+      - dependency-name: "react"
+      - dependency-name: "react-dom"
+      - dependency-name: "react-test-renderer"
+
+      # React Navigation depende de módulos nativos (screens, safe-area-context)
+      # e sobe de major junto com eles. Atualizar em conjunto, à mão.
+      - dependency-name: "@react-navigation/*"
+
+      # Major de TypeScript quebra o typecheck inteiro de uma vez, e o typecheck
+      # é metade do nosso portão de qualidade. Minor e patch passam.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+
+  # ── GitHub Actions ──
+  # Aqui pode passar: não afeta o aplicativo em produção.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
